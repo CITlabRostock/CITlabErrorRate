@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>de.uros.citlab</groupId>
+    <artifactId>errorrate</artifactId>
+    <name>CITlabErrorRate</name>
+    <description>A tool for creating different error rates</description>
+    <version>3.0.0</version>
+    <packaging>jar</packaging>
+
+    <parent>
+        <groupId>de.uros.citlab</groupId>
+        <artifactId>parent_pom</artifactId>
+        <version>1.0</version>
+    </parent>
+    <dependencies>
+        <dependency>
+            <groupId>eu.transkribus</groupId>
+            <artifactId>TranskribusInterfaces</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>eu.transkribus</groupId>
+            <artifactId>TranskribusXMLExtractor</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-cli</groupId>
+            <artifactId>commons-cli</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-math3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+        </dependency>
+        <dependency> 
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>de.uros.citlab</groupId>
+            <artifactId>tokenizer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.panayotis</groupId>
+            <artifactId>javaplot</artifactId>
+        </dependency>
+        <!--FOR TESTING-->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest-core</artifactId>
+        </dependency>
+    </dependencies>
+</project>
