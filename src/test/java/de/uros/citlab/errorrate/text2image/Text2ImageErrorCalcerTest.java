@@ -13,6 +13,8 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
+import de.uros.citlab.errorrate.types.Result;
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
 import static org.junit.Assert.*;
@@ -54,7 +56,7 @@ public class Text2ImageErrorCalcerTest {
     public static void tearDown() {
     }
 
-    private void printResult(ErrorRateCalcer.Result result) {
+    private void printResult(Result result) {
         System.out.println(result.getMethod() + ":" + result.getCounts());
         System.out.println(result.getMethod() + ":" + result.getMetrics());
         System.out.println("");

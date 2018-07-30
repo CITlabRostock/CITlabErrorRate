@@ -5,11 +5,18 @@
  */
 package de.uros.citlab.errorrate;
 
-import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
 import de.uros.citlab.errorrate.costcalculator.CostCalculatorDft;
+import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.types.Count;
+import de.uros.citlab.errorrate.types.Method;
+import de.uros.citlab.errorrate.types.Metric;
+import de.uros.citlab.errorrate.types.Result;
 import de.uros.citlab.tokenizer.TokenizerConfig;
+import org.apache.commons.cli.*;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.math3.util.Pair;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -17,13 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.math3.util.Pair;
 
 /**
  * Parser to make {@link ErrorModuleDynProg} accessible for the console.
@@ -43,7 +43,7 @@ public class HtrErrorTxtLeip {
         options.addOption("D", "Detailed", false, "use detailed calculation (creates substitution map) (only one of -d and -D allowed at the same time)");
     }
 
-    public void run(String[] args) {
+    public Result run(String[] args) {
 
         CommandLine cmd = null;
         try {
@@ -66,6 +66,14 @@ public class HtrErrorTxtLeip {
             //CATEGORIZER
             //normalize to letter or to all codepoints?
             IErrorModule em = new ErrorModuleDynProg(new CostCalculatorDft(), new TokenizerConfig(cmd.getOptionValue('p')), null, detailed);
+            Result res = null;
+            if (cmd.hasOption('b')) {
+                res = new Result(cmd.hasOption('l') ? Method.BOT_ALNUM : Method.BOT);
+            } else if (cmd.hasOption('w')) {
+                res = new Result(cmd.hasOption('l') ? Method.WER_ALNUM : Method.WER);
+            } else {
+                res = new Result(cmd.hasOption('l') ? Method.CER_ALNUM : Method.CER);
+            }
             List<String> argList = cmd.getArgList();
             if (argList.size() != 2) {
                 help("no arguments given, missing <txt_groundtruth> <txt_hypothesis>.");
@@ -94,11 +102,14 @@ public class HtrErrorTxtLeip {
                 em.calculate(reco, ref);
             }
             //print statistic to console
-            List<String> results = em.getResults();
-            for (String result : results) {
-                System.out.println(result);
-            }
+            //print statistic to console
             List<Pair<Count, Long>> resultOccurrence = em.getCounter().getResultOccurrence();
+            if (detailed == null || detailed == true) {
+                List<String> results = em.getResults();
+                for (String result : results) {
+                    System.out.println(result);
+                }
+            }
             Map<Count, Long> map = new HashMap<>();
             for (Pair<Count, Long> pair : resultOccurrence) {
                 map.put(pair.getFirst(), pair.getSecond());
@@ -106,17 +117,15 @@ public class HtrErrorTxtLeip {
             for (Count count : new Count[]{Count.DEL, Count.INS, Count.SUB, Count.COR, Count.GT, Count.HYP}) {
                 map.putIfAbsent(count, 0L);
             }
+
             map.put(Count.ERR, map.get(Count.DEL) + map.get(Count.INS) + map.get(Count.SUB));
-            if (map.get(Count.GT) > 0) {
-                double gt = map.get(Count.GT);
-                for (Count count : new Count[]{Count.DEL, Count.INS, Count.SUB, Count.ERR}) {
-                    System.out.println(count + " = " + map.get(count) / gt);
-                }
-            }
+            res.addCounts(em.getCounter());
+            return res;
 
         } catch (ParseException e) {
             help("Failed to parse comand line properties", e);
         }
+        return null;
     }
 
     private void help() {
@@ -139,10 +148,10 @@ public class HtrErrorTxtLeip {
         formater.printHelp(
                 "java -cp <this-jar>.jar de.uros.citlab.errorrate.ErrorRateParserTxtLeipTok <list_pageXml_groundtruth> <list_pageXml_hypothesis>",
                 "This method calculates the (character) error rates between two lists of textfiles."
-                + " As input it requires two lists of UTF8-encoded text-files. The first one is the ground truth, the second one is the hypothesis."
-                + " The programm returns the number of manipulations (corrects, substitution, insertion or deletion)"
-                + " and the corresponding percentage to come from the hypothesis to the ground truth."
-                + " The order of the xml-files in both lists has to be the same.",
+                        + " As input it requires two lists of UTF8-encoded text-files. The first one is the ground truth, the second one is the hypothesis."
+                        + " The programm returns the number of manipulations (corrects, substitution, insertion or deletion)"
+                        + " and the corresponding percentage to come from the hypothesis to the ground truth."
+                        + " The order of the xml-files in both lists has to be the same.",
                 options,
                 suffix,
                 true
@@ -153,6 +162,10 @@ public class HtrErrorTxtLeip {
     public static void main(String[] args) {
 //        args = ("--help").split(" ");
         HtrErrorTxtLeip erp = new HtrErrorTxtLeip();
-        erp.run(args);
+        Result res = erp.run(args);
+        for (Metric metric : res.getMetrics().keySet()) {
+            System.out.println(metric + " = " + res.getMetric(metric));
+        }
+
     }
 }

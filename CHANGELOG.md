@@ -1,6 +1,9 @@
 
 # Changelog
 
+# 3.0.1
+* all HtrError classes return a result structure which contains the counts and measures
+
 # 3.0.0
 * refactor ErrorRate from eu.transkribs.TranskribsErrorRate to de.uros.citlab.errorrate
 

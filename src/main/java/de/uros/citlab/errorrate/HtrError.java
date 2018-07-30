@@ -6,38 +6,34 @@
 package de.uros.citlab.errorrate;
 
 //github.com/Transkribus/TranskribusErrorRate.git
-import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
-import de.uros.citlab.errorrate.htr.ErrorRateCalcer;
-import de.uros.citlab.errorrate.htr.ErrorModuleBagOfTokens;
-import java.io.File;
-import java.io.IOException;
-import java.text.Normalizer;
-import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.io.FileUtils;
 
 import de.uros.citlab.errorrate.costcalculator.CostCalculatorDft;
+import de.uros.citlab.errorrate.htr.ErrorModuleBagOfTokens;
+import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDftConfigurable;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.Method;
 import de.uros.citlab.errorrate.types.Metric;
-import eu.transkribus.interfaces.IStringNormalizer;
-import eu.transkribus.languageresources.extractor.pagexml.PAGEXMLExtractor;
+import de.uros.citlab.errorrate.types.Result;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterConfigurable;
 import de.uros.citlab.tokenizer.categorizer.CategorizerWordDftConfigurable;
 import de.uros.citlab.tokenizer.interfaces.ICategorizer;
-import java.util.HashMap;
-import java.util.Map;
+import eu.transkribus.interfaces.IStringNormalizer;
+import eu.transkribus.languageresources.extractor.pagexml.PAGEXMLExtractor;
+import org.apache.commons.cli.*;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.util.Pair;
+
+import java.io.File;
+import java.io.IOException;
+import java.text.Normalizer;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Parser to make {@link ErrorModuleDynProg} accessible for the console.
@@ -65,7 +61,7 @@ public class HtrError {
         options.addOption("b", "bag", false, "using bag of words instead of dynamic programming tabular");
     }
 
-    public ErrorRateCalcer.Result run(String[] args) {
+    public Result run(String[] args) {
 
         CommandLine cmd = null;
         try {
@@ -143,13 +139,13 @@ public class HtrError {
             IErrorModule em = bagOfWords ? new ErrorModuleBagOfTokens(categorizer, sn, detailed)
                     : new ErrorModuleDynProg(new CostCalculatorDft(), categorizer, sn, detailed);
             List<String> argList = cmd.getArgList();
-            ErrorRateCalcer.Result res = null;
+            Result res = null;
             if (bagOfWords) {
-                res = new ErrorRateCalcer.Result(cmd.hasOption('l') ? Method.BOT_ALNUM : Method.BOT);
+                res = new Result(cmd.hasOption('l') ? Method.BOT_ALNUM : Method.BOT);
             } else if (wer) {
-                res = new ErrorRateCalcer.Result(cmd.hasOption('l') ? Method.WER_ALNUM : Method.WER);
+                res = new Result(cmd.hasOption('l') ? Method.WER_ALNUM : Method.WER);
             } else {
-                res = new ErrorRateCalcer.Result(cmd.hasOption('l') ? Method.CER_ALNUM : Method.CER);
+                res = new Result(cmd.hasOption('l') ? Method.CER_ALNUM : Method.CER);
             }
             if (argList.size() != 2) {
                 help("no arguments given, missing <list_pageXml_groundtruth> <list_pageXml_hypothesis>.");
@@ -227,10 +223,10 @@ public class HtrError {
         formater.printHelp(
                 "java -jar errorrate.jar <list_pageXml_groundtruth> <list_pageXml_hypothesis>",
                 "This method calculates the (character) error rates between two lists of PAGE-XML-files."
-                + " As input it requires two lists of PAGE-XML-files. The first one is the ground truth, the second one is the hypothesis."
-                + " The programm returns the number of manipulations (corrects, substitution, insertion or deletion)"
-                + " and the corresponding percentage to come from the hypothesis to the ground truth."
-                + " The order of the xml-files in both lists has to be the same.",
+                        + " As input it requires two lists of PAGE-XML-files. The first one is the ground truth, the second one is the hypothesis."
+                        + " The programm returns the number of manipulations (corrects, substitution, insertion or deletion)"
+                        + " and the corresponding percentage to come from the hypothesis to the ground truth."
+                        + " The order of the xml-files in both lists has to be the same.",
                 options,
                 suffix,
                 true
@@ -241,7 +237,7 @@ public class HtrError {
     public static void main(String[] args) {
 //        args = ("--help").split(" ");
         HtrError erp = new HtrError();
-        ErrorRateCalcer.Result res = erp.run(args);
+        Result res = erp.run(args);
         for (Metric metric : res.getMetrics().keySet()) {
             System.out.println(metric + " = " + res.getMetric(metric));
         }

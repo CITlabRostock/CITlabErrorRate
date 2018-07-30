@@ -9,18 +9,21 @@ import de.uros.citlab.errorrate.htr.ErrorRateCalcer;
 import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.Method;
 import de.uros.citlab.errorrate.types.Metric;
+import de.uros.citlab.errorrate.types.Result;
 import de.uros.citlab.errorrate.util.ObjectCounter;
-import java.io.File;
-import java.util.Arrays;
-import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
-import static org.junit.Assert.*;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.File;
+import java.util.Arrays;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 /**
- *
  * @author gundram
  */
 public class ErrorRateCalcerTest {
@@ -54,7 +57,7 @@ public class ErrorRateCalcerTest {
     public static void tearDown() {
     }
 
-    private void printResult(ErrorRateCalcer.Result result) {
+    private void printResult(Result result) {
         System.out.println(result.getMethod() + ":" + result.getCounts());
         System.out.println(result.getMethod() + ":" + result.getMetrics());
         System.out.println("");
@@ -64,8 +67,8 @@ public class ErrorRateCalcerTest {
     public void testLA_HTR() {
         System.out.println("testLA_HTR");
         ErrorRateCalcer instance = new ErrorRateCalcer();
-        Map<Method, ErrorRateCalcer.Result> results = instance.process(listBot, listGT, Method.values());
-        for (ErrorRateCalcer.Result result : results.values()) {
+        Map<Method, Result> results = instance.process(listBot, listGT, Method.values());
+        for (Result result : results.values()) {
             printResult(result);
         }
     }
@@ -74,8 +77,8 @@ public class ErrorRateCalcerTest {
     public void testHTR() {
         System.out.println("testHTR");
         ErrorRateCalcer instance = new ErrorRateCalcer();
-        Map<Method, ErrorRateCalcer.Result> results = instance.process(listErr, listGT, Method.values());
-        for (ErrorRateCalcer.Result result : results.values()) {
+        Map<Method, Result> results = instance.process(listErr, listGT, Method.values());
+        for (Result result : results.values()) {
             printResult(result);
         }
     }
@@ -84,7 +87,7 @@ public class ErrorRateCalcerTest {
     public void testTranskribusUsage() {
         System.out.println("testTranskribusUsage");
         ErrorRateCalcer instance = new ErrorRateCalcer();
-        ErrorRateCalcer.Result resultWer = instance.process(listErr, listGT, Method.WER);
+        Result resultWer = instance.process(listErr, listGT, Method.WER);
         System.out.println("WORD ERROR RATE");
         System.out.println(String.format("Number of Words =%5d in Ground Truth", resultWer.getCount(Count.GT)));
         System.out.println(String.format("Number of Words =%5d in Hypothesis", resultWer.getCount(Count.HYP)));
@@ -95,7 +98,7 @@ public class ErrorRateCalcerTest {
         System.out.println(String.format("DEL = %5.2f %% (=%5d) (too many words / over segemention)", resultWer.getCount(Count.DEL) * 100.0 / resultWer.getCount(Count.GT), resultWer.getCount(Count.DEL)));
         System.out.println("");
         System.out.println("CHARACTER ERROR RATE");
-        ErrorRateCalcer.Result resultCer = instance.process(listErr, listGT, Method.CER);
+        Result resultCer = instance.process(listErr, listGT, Method.CER);
         System.out.println(String.format("Number of Characters =%5d in Ground Truth", resultCer.getCount(Count.GT)));
         System.out.println(String.format("Number of Characters =%5d in Hypothesis", resultCer.getCount(Count.HYP)));
         System.out.println(String.format("CER = %5.2f %% (=%5d) (all character errors)", resultCer.getMetric(Metric.ERR) * 100, resultCer.getCount(Count.ERR)));
@@ -109,8 +112,8 @@ public class ErrorRateCalcerTest {
     public void testBestCase() {
         System.out.println("testBestCase");
         ErrorRateCalcer instance = new ErrorRateCalcer();
-        Map<Method, ErrorRateCalcer.Result> results = instance.process(listGT, listGT, Method.values());
-        for (ErrorRateCalcer.Result value : results.values()) {
+        Map<Method, Result> results = instance.process(listGT, listGT, Method.values());
+        for (Result value : results.values()) {
             Map<Metric, Double> metrics = value.getMetrics();
             for (Metric metric : metrics.keySet()) {
                 double val = metrics.get(metric);
@@ -136,7 +139,7 @@ public class ErrorRateCalcerTest {
         for (ErrorRateCalcer.ResultPagewise result : results.values()) {
             ObjectCounter<Count> counts = result.getCounts();
             ObjectCounter<Count> countsPagewise = new ObjectCounter<>();
-            for (ErrorRateCalcer.Result resultPagewise : result.getPageResults()) {
+            for (Result resultPagewise : result.getPageResults()) {
                 countsPagewise.addAll(resultPagewise.getCounts());
             }
             for (Count count : counts.getResult()) {
