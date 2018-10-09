@@ -5,7 +5,6 @@
  */
 package de.uros.citlab.errorrate;
 
-//github.com/Transkribus/TranskribusErrorRate.git
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.panayotis.gnuplot.JavaPlot;

@@ -1,7 +1,7 @@
-# TranskribusErrorRate
+# CITlabErrorRate
 A tool for computing error rates for different algorithms:
 
-[![Build Status](http://dbis-halvar.uibk.ac.at/jenkins/buildStatus/icon?job=TranskribusErrorRate)](http://dbis-halvar.uibk.ac.at/jenkins/job/TranskribusErrorRate)
+[![Build Status](http://dbis-halvar.uibk.ac.at/jenkins/buildStatus/icon?job=CITlabErrorRate)](http://dbis-halvar.uibk.ac.at/jenkins/job/CITlabErrorRate)
 
 ## Running:
 
@@ -10,23 +10,23 @@ It can calculate Character Error Rate (CER), Word Error Rate (WER),
 Bag of Tokens (BOG)
 and some more metrics. Type
 ```
-java -cp <this-jar> eu.transkribus.errorrate.HtrError --help
+java -cp <this-jar> de.uros.citlab.errorrate.HtrError --help
 ```
 for more information concerning evaluating an HTR result if the files are
 PAGE-XML-files. For raw UTF-8 encoded textfiles use
 ```
-java -cp <this-jar> eu.transkribus.errorrate.HtrErrorTxt
+java -cp <this-jar> de.uros.citlab.errorrate.HtrErrorTxt
 ```
 or
 ```
-java -cp <this-jar> eu.transkribus.errorrate.HtrErrorTxtLeip
+java -cp <this-jar> de.uros.citlab.errorrate.HtrErrorTxtLeip
 ```
 
 ### KWS:
 
 To calculate measures for KWS
 ```
-java -cp <this-jar> eu.transkribus.errorrate.KwsError
+java -cp <this-jar> de.uros.citlab.errorrate.KwsError
 ```
 can be used. Use --help to see the configuration opportunities
 
@@ -34,7 +34,7 @@ can be used. Use --help to see the configuration opportunities
 
 To calculate measures for image alignment
 ```
-java -cp <this-jar> eu.transkribus.errorrate.Text2ImageError
+java -cp <this-jar> de.uros.citlab.errorrate.Text2ImageError
 ```
 can be used. Use --help to see the configuration opportunities
 
@@ -46,10 +46,7 @@ can be used. Use --help to see the configuration opportunities
 
 ## Build
 ```
-git clone https://github.com/Transkribus/TranskribusErrorRate
-cd TranskribusErrorRate
+git clone https://github.com/CITlabRostock/CITlabErrorRate
+cd CITlabErrorRate
 mvn install
 ```
-
-### Links
-- https://transkribus.eu/TranskribusErrorRate/apidocs/index.html

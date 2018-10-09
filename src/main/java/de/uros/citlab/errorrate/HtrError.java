@@ -5,8 +5,6 @@
  */
 package de.uros.citlab.errorrate;
 
-//github.com/Transkribus/TranskribusErrorRate.git
-
 import de.uros.citlab.errorrate.htr.ErrorModuleBagOfTokens;
 import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;

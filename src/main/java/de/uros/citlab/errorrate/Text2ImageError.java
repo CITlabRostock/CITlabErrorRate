@@ -5,8 +5,6 @@
  */
 package de.uros.citlab.errorrate;
 
-//github.com/Transkribus/TranskribusErrorRate.git
-
 import de.uros.citlab.errorrate.aligner.BaseLineAligner;
 import de.uros.citlab.errorrate.aligner.IBaseLineAligner;
 import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
@@ -147,7 +145,6 @@ public class Text2ImageError {
                 threshold = Double.parseDouble(cmd.getOptionValue('t'));
             } else {
                 LOG.warn("threshold not set, use {} as default", threshold);
-                ;
             }
             //ouput calculate pagewise
             boolean pagewise = cmd.hasOption('p');
@@ -191,16 +188,16 @@ public class Text2ImageError {
             double sumAll = 0;
             double emGt = 0;
             double emHyp = 0;
-            double emCor = 0;
-            int cntLinesCor = 0;
+            double emErr = 0;
+            int cntLinesErr = 0;
             int cntLinesGt = 0;
             for (int i = 0; i < recos.size(); i++) {
                 double emGtCur = 0;
                 double emHypCur = 0;
-                double emCorCur = 0;
+                double emErrCur = 0;
                 double sumCur = 0;
                 double sumAllCur = 0;
-                int cntLinesCorCur = 0;
+                int cntLinesCorErr = 0;
                 int cntLinesGtCur = 0;
                 String reco = recos.get(i);
                 String ref = refs.get(i);
@@ -213,12 +210,16 @@ public class Text2ImageError {
                         linesHyp.add(line);
                     }
                 }
+                //TODO: is it clear that each GT-line can be aligned to only one HYP-line?
                 IBaseLineAligner.IAlignerResult alignment = baseLineAligner.getAlignment(toArray(linesGT), toArray(linesLA), toArray(linesHyp), threshold, null);
                 int[][] precAlignment = alignment.getGTLists();
+                // Algorithm returns index of GT-lines, which overlap with a HYP-line with more than <var_t> percent.
+                // The array can have length 0-#GT-lines
                 for (int j = 0; j < precAlignment.length; j++) {
                     int[] idsGT = precAlignment[j];
                     String textHyp = linesHyp.get(j).textEquiv;
                     String gtText = null;
+                    //create GT-String from 0, 1 or arbitrary many strings
                     switch (idsGT.length) {
                         case 0:
                             gtText = "";
@@ -235,11 +236,14 @@ public class Text2ImageError {
                             gtText = sb.toString();
                         }
                     }
-                    if (gtText.equals(textHyp)) {
-                        cntLinesCorCur += idsGT.length;
+                    //TODO: make space as seperator optional
+                    if (!gtText.equals(textHyp)) {
+                        cntLinesCorErr += idsGT.length;
                     }
-                    errorModule.calculate(gtText, textHyp);
+                    //TODO: check if order ist okay: gt-hyp vs. reco-ref
+                    errorModule.calculate(textHyp,gtText);
                 }
+                //calculate couverage of GT-lines by HYP-lines. If the HYP couver all GT-lines, sumCur=sumAllCur
                 double[] recValue = alignment.getRecallsLA();
                 for (int j = 0; j < recValue.length; j++) {
                     sumCur += linesGT.get(j).textEquiv.length() * recValue[j];
@@ -247,27 +251,28 @@ public class Text2ImageError {
                 for (XMLExtractor.Line line : linesGT) {
                     sumAllCur += line.textEquiv.length();
                 }
-                emCorCur = errorModule.getCounter().get(Count.COR);
+                emErrCur = errorModule.getCounter().get(Count.ERR);
                 emGtCur = errorModule.getCounter().get(Count.GT);
                 emHypCur = errorModule.getCounter().get(Count.HYP);
                 errorModule.reset();
                 cntLinesGtCur = linesGT.size();
                 if (pagewise) {
-                    System.out.println(String.format("P-Value(text): %.4f R-Value(text): %.4f R-Value(geom): %.4f R-Value(line): %.4f - %s <>%s", ((double) emCorCur) / emGtCur, ((double) emCorCur) / sumCur, ((double) sumCur) / sumAllCur, ((double) cntLinesCorCur) / cntLinesGtCur, reco, ref));
+                    System.out.println(String.format("P-Value(text): %.4f R-Value(text): %.4f R-Value(geom): %.4f R-Value(line): %.4f - %s <>%s", ((double) emErrCur) / emGtCur, ((double) emErrCur) / sumCur, ((double) sumCur) / sumAllCur, ((double) cntLinesCorErr) / cntLinesGtCur, reco, ref));
                 }
                 sum += sumCur;
                 sumAll += sumAllCur;
-                emCor += emCorCur;
+                emErr += emErrCur;
                 emGt += emGtCur;
                 emHyp += emHypCur;
-                cntLinesCor += cntLinesCorCur;
+                cntLinesErr += cntLinesCorErr;
                 cntLinesGt += cntLinesGtCur;
             }
             HashMap res = new HashMap();
-            res.put("P_text", ((double) emCor) / emGt);
-            res.put("R_text", ((double) emCor) / emHyp);
-            res.put("R_geom", ((double) sum) / sumAll);
-            res.put("R_line", ((double) cntLinesCor) / cntLinesGt);
+            res.put("P_text", 1.0-emErr / emGt);
+            res.put("R_text", 1.0-emErr / emHyp);
+            res.put("R_geom", sum / sumAll);
+            res.put("LER", ((double) cntLinesErr) / cntLinesGt);
+            res.put("CER",  emErr / emGt);
             return res;
         } catch (ParseException e) {
             help("Failed to parse comand line properties", e);
