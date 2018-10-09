@@ -154,7 +154,7 @@ public class Text2ImageError {
             boolean pagewise = cmd.hasOption('p');
             //normalize to letter or to all codepoints?
             IStringNormalizer sn = cmd.hasOption('l') ? new StringNormalizerLetterNumber(snd) : snd;
-            IErrorModule errorModule = new ErrorModuleDynProg(new CostCalculatorDft(), categorizer, sn, detailed);
+            IErrorModule errorModule = new ErrorModuleDynProg(categorizer, sn, detailed);
 //            IErrorModule emRec = new ErrorModuleDynProg(new CostCalculatorDft(), categorizer, sn, detailed);
 //            IBaseLineAligner baseLineAligner = new BaseLineAlignerSameBaselines();
             IBaseLineAligner baseLineAligner = new BaseLineAligner();

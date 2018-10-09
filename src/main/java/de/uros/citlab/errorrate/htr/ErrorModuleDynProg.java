@@ -29,54 +29,45 @@ import java.util.List;
  * @author gundram
  */
 public class ErrorModuleDynProg implements IErrorModule {
-    //    private final PathCalculatorGraph<String, String> pathCalculator = new PathCalculatorGraph<>();
     private final ObjectCounter<Count> counter = new ObjectCounter<>();
     private final ObjectCounter<RecoRef> counterSub = new ObjectCounter<>();
-    //    private final ICostCalculator costCalculatorCharacter;
-//    private final ICategorizer categorizer;
     private final ITokenizer tokenizer;
     private final Boolean detailed;
     private final IStringNormalizer stringNormalizer;
 
-    public ErrorModuleDynProg(ICostCalculator costCalculatorCharacter, ICategorizer categorizer, IStringNormalizer stringNormalizer, Boolean detailed) {
-        this(costCalculatorCharacter, new TokenizerCategorizer(categorizer), stringNormalizer, detailed);
-        if (costCalculatorCharacter instanceof ICostCalculator.CategoryDependent) {
-            ((ICostCalculator.CategoryDependent) costCalculatorCharacter).setCategorizer(categorizer);
-        }
-
+    public ErrorModuleDynProg(ICategorizer categorizer, IStringNormalizer stringNormalizer, Boolean detailed) {
+        this( new TokenizerCategorizer(categorizer), stringNormalizer, detailed);
     }
 
-    public ErrorModuleDynProg(ICostCalculator costCalculator, ITokenizer tokenizer, IStringNormalizer stringNormalizer, Boolean detailed) {
+    public ErrorModuleDynProg(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Boolean detailed) {
         this.detailed = detailed;
-//        this.categorizer = cactegorizer;
         if (tokenizer == null) {
             throw new RuntimeException("no tokenizer given (is null)");
         }
         this.tokenizer = tokenizer;
         this.stringNormalizer = stringNormalizer;
-//            pathCalculator.addCostCalculator(new CostCalculatorIntern(costCalculator, "SUB"));
-//            pathCalculator.addCostCalculator(new CostCalculatorIntern(costCalculator, "INS"));
-//            pathCalculator.addCostCalculator(new CostCalculatorIntern(costCalculator, "DEL"));
     }
 
     private void calcBestPathFast(String[] recos, String[] refs) {
-        int[][] costs = new int[recos.length + 1][refs.length + 1];
-        Count[][] predecessor = new Count[recos.length + 1][refs.length + 1];
+        final int X = refs.length + 1;
+        final int Y = recos.length + 1;
+        int[][] costs = new int[Y][X];
+        Count[][] predecessor = new Count[Y][X];
         int[] costsStart = costs[0];
         Count[] predecessorStart = predecessor[0];
         predecessorStart[0] = Count.ERR;
-        for (int i = 1; i < costsStart.length; i++) {
+        for (int i = 1; i < X; i++) {
             costsStart[i] = i;
             predecessorStart[i] = Count.INS;
         }
-        for (int i = 1; i < costs.length; i++) {
+        for (int i = 1; i < Y; i++) {
             final int[] costVec = costs[i];
             final int[] costVecB = costs[i - 1];
             final Count[] predecessorVec = predecessor[i];
             costVec[0] = i;
             predecessorVec[0] = Count.DEL;
             String reco = recos[i - 1];
-            for (int j = 1; j < costVec.length; j++) {
+            for (int j = 1; j < X; j++) {
                 final int sub = costVecB[j - 1];
                 final int del = costVecB[j];
                 final int ins = costVec[j - 1];
@@ -105,8 +96,8 @@ public class ErrorModuleDynProg implements IErrorModule {
             }
         }
         LinkedList<PathCalculatorGraph.IDistance<String, String>> res = new LinkedList<>();
-        int i = costs.length - 1;
-        int j = costs[0].length - 1;
+        int i = Y - 1;
+        int j = X - 1;
         Count manipulation = predecessor[i][j];
         String[] empty = new String[0];
         while (manipulation != Count.ERR) {

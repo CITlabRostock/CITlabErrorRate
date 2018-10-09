@@ -89,14 +89,14 @@ public class TestErrorRatesASV {
 
     public Map<Count, Long> getCount(boolean upper, boolean word, boolean bagoftokens, boolean letterNumber, String gt, String hyp) {
         System.out.println("\"" + gt + "\" vs \"" + hyp + "\"");
-        ICostCalculator cc = upper ? new CostCalculatorDft() : new CostCalculatorDftUpper();
         ITokenizer tokenizer = new TokenizerConfig("src/test/res/tokenizer_config.properties");
 //        ITokenizer tokenizer = new TokenizerCategorizer(word ? new CategorizerWordDft() : new CategorizerCharacterDft());
         IStringNormalizer sn = new StringNormalizerDft(Normalizer.Form.NFKC, upper);
         if (letterNumber) {
             sn = new StringNormalizerLetterNumber(sn);
         }
-        IErrorModule impl = bagoftokens ? new ErrorModuleBagOfTokens(tokenizer, sn, false) : new ErrorModuleDynProg(cc, tokenizer, sn, false);
+
+        IErrorModule impl = bagoftokens ? new ErrorModuleBagOfTokens(tokenizer, sn, false) : new ErrorModuleDynProg(tokenizer, sn, false);
         impl.calculate(hyp, gt);
         return impl.getCounter().getMap();
     }

@@ -5,26 +5,25 @@
  */
 package de.uros.citlab.errorrate;
 
-import de.uros.citlab.errorrate.htr.ErrorModuleBagOfTokens;
-import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
 import de.uros.citlab.errorrate.costcalculator.CostCalculatorDft;
 import de.uros.citlab.errorrate.costcalculator.CostCalculatorDftUpper;
+import de.uros.citlab.errorrate.htr.ErrorModuleBagOfTokens;
+import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
 import de.uros.citlab.errorrate.interfaces.ICostCalculator;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
-import eu.transkribus.interfaces.IStringNormalizer;
-import eu.transkribus.interfaces.ITokenizer;
 import de.uros.citlab.tokenizer.TokenizerCategorizer;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
-import de.uros.citlab.tokenizer.categorizer.CategorizerWordDft;
 import de.uros.citlab.tokenizer.categorizer.CategorizerWordMergeGroups;
+import eu.transkribus.interfaces.IStringNormalizer;
+import eu.transkribus.interfaces.ITokenizer;
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.text.Normalizer;
 import java.util.Map;
-import org.junit.Assert;
-import org.junit.Test;
 
 /**
  * Here every one can add groundtruth (GT) and hypothesis (HYP) text. Then some
@@ -94,13 +93,12 @@ public class TestErrorRatesCITlab {
 
     public Map<Count, Long> getCount(boolean upper, boolean word, boolean bagoftokens, boolean letterNumber, String gt, String hyp) {
         System.out.println("\"" + gt + "\" vs \"" + hyp + "\"");
-        ICostCalculator cc = upper ? new CostCalculatorDft() : new CostCalculatorDftUpper();
         ITokenizer tokenizer = new TokenizerCategorizer(word ? new CategorizerWordMergeGroups() : new CategorizerCharacterDft());
         IStringNormalizer sn = new StringNormalizerDft(Normalizer.Form.NFKC, upper);
         if (letterNumber) {
             sn = new StringNormalizerLetterNumber(sn);
         }
-        IErrorModule impl = bagoftokens ? new ErrorModuleBagOfTokens(tokenizer, sn, false) : new ErrorModuleDynProg(cc, tokenizer, sn, false);
+        IErrorModule impl = bagoftokens ? new ErrorModuleBagOfTokens(tokenizer, sn, false) : new ErrorModuleDynProg(tokenizer, sn, false);
         impl.calculate(hyp, gt);
         return impl.getCounter().getMap();
     }

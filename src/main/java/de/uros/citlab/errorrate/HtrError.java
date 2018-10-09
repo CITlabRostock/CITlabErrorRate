@@ -137,7 +137,7 @@ public class HtrError {
             IStringNormalizer sn = cmd.hasOption('l') ? new StringNormalizerLetterNumber(snd) : snd;
             boolean bagOfWords = cmd.hasOption('b');
             IErrorModule em = bagOfWords ? new ErrorModuleBagOfTokens(categorizer, sn, detailed)
-                    : new ErrorModuleDynProg(new CostCalculatorDft(), categorizer, sn, detailed);
+                    : new ErrorModuleDynProg(categorizer, sn, detailed);
             List<String> argList = cmd.getArgList();
             Result res = null;
             if (bagOfWords) {

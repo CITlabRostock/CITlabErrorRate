@@ -65,7 +65,7 @@ public class HtrErrorTxtLeip {
             }
             //CATEGORIZER
             //normalize to letter or to all codepoints?
-            IErrorModule em = new ErrorModuleDynProg(new CostCalculatorDft(), new TokenizerConfig(cmd.getOptionValue('p')), null, detailed);
+            IErrorModule em = new ErrorModuleDynProg(new TokenizerConfig(cmd.getOptionValue('p')), null, detailed);
             Result res = null;
             if (cmd.hasOption('b')) {
                 res = new Result(cmd.hasOption('l') ? Method.BOT_ALNUM : Method.BOT);

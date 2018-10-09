@@ -5,12 +5,11 @@
  */
 package de.uros.citlab.errorrate.normalizer;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import eu.transkribus.interfaces.IStringNormalizer;
 import de.uros.citlab.tokenizer.categorizer.CategorizerWordDft;
 import de.uros.citlab.tokenizer.interfaces.ICategorizer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -18,7 +17,7 @@ import de.uros.citlab.tokenizer.interfaces.ICategorizer;
  */
 public class StringNormalizerLetterNumber implements IStringNormalizer {
 
-    private static Logger LOG = Logger.getLogger(StringNormalizerLetterNumber.class.getName());
+    private static Logger LOG = LoggerFactory.getLogger(StringNormalizerLetterNumber.class);
     private final IStringNormalizer impl;
     private final ICategorizer cat = new CategorizerWordDft();
 
@@ -37,7 +36,7 @@ public class StringNormalizerLetterNumber implements IStringNormalizer {
             }
         }
         String res = impl != null ? impl.normalize(sb.toString()) : sb.toString();
-        LOG.log(Level.FINER, "change '" + string + "' to '" + res + "'");
+        LOG.trace("change '{}' to '{}'",string,res);
         return res;
     }
 }

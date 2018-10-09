@@ -60,7 +60,7 @@ public class ErrorRateCalcer {
 
     private IErrorModule getErrorModule(Method method) {
         Boolean detailed = Boolean.FALSE;
-        ICostCalculator cc = new CostCalculatorDft();
+//        ICostCalculator cc = new CostCalculatorDft();
 
         IStringNormalizer sn = null;
         switch (method) {
@@ -97,7 +97,7 @@ public class ErrorRateCalcer {
             case WER:
             case CER_ALNUM:
             case WER_ALNUM:
-                return new ErrorModuleDynProg(cc, tok, sn, detailed);
+                return new ErrorModuleDynProg(tok, sn, detailed);
             case BOT:
             case BOT_ALNUM:
                 return new ErrorModuleBagOfTokens(tok, sn, detailed);

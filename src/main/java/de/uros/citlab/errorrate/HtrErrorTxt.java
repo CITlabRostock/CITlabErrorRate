@@ -134,7 +134,7 @@ public class HtrErrorTxt {
             IStringNormalizer sn = cmd.hasOption('l') ? new StringNormalizerLetterNumber(snd) : snd;
             boolean bagOfWords = cmd.hasOption('b');
             IErrorModule em = bagOfWords ? new ErrorModuleBagOfTokens(categorizer, sn, detailed)
-                    : new ErrorModuleDynProg(new CostCalculatorDft(), categorizer, sn, detailed);
+                    : new ErrorModuleDynProg(categorizer, sn, detailed);
             Result res = null;
             if (bagOfWords) {
                 res = new Result(cmd.hasOption('l') ? Method.BOT_ALNUM : Method.BOT);
