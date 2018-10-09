@@ -6,41 +6,35 @@
 package de.uros.citlab.errorrate;
 
 //github.com/Transkribus/TranskribusErrorRate.git
-import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
+
 import de.uros.citlab.errorrate.aligner.BaseLineAligner;
 import de.uros.citlab.errorrate.aligner.IBaseLineAligner;
-import de.uros.citlab.errorrate.*;
-import java.io.File;
-import java.io.IOException;
-import java.text.Normalizer;
-import java.util.List;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.io.FileUtils;
-
 import de.uros.citlab.errorrate.costcalculator.CostCalculatorDft;
+import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDftConfigurable;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
-import eu.transkribus.interfaces.IStringNormalizer;
-import eu.transkribus.languageresources.extractor.xml.XMLExtractor;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterConfigurable;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
 import de.uros.citlab.tokenizer.categorizer.CategorizerWordDftConfigurable;
 import de.uros.citlab.tokenizer.categorizer.CategorizerWordMergeGroups;
 import de.uros.citlab.tokenizer.interfaces.ICategorizer;
-import java.awt.Polygon;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
+import eu.transkribus.interfaces.IStringNormalizer;
+import eu.transkribus.languageresources.extractor.xml.XMLExtractor;
+import org.apache.commons.cli.*;
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.awt.*;
+import java.io.File;
+import java.io.IOException;
+import java.text.Normalizer;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Parser to make {@link ErrorModuleDynProg} accessible for the console.
@@ -153,7 +147,8 @@ public class Text2ImageError {
             if (cmd.hasOption('t')) {
                 threshold = Double.parseDouble(cmd.getOptionValue('t'));
             } else {
-                LOG.warn("threshold not set, use {} as default", threshold);;
+                LOG.warn("threshold not set, use {} as default", threshold);
+                ;
             }
             //ouput calculate pagewise
             boolean pagewise = cmd.hasOption('p');
@@ -311,10 +306,10 @@ public class Text2ImageError {
         formater.printHelp(
                 "java -cp errorrate.jar de.uros.citlab.errorrate.text2image.Text2ImageParser <list_pageXml_groundtruth> <list_pageXml_hypothesis>",
                 "This method calculates the precision and recall between two lists of PAGE-XML-files, assuming that the Hypthesis is the result of a Text2Image alignment"
-                + " As input it requires two lists of PAGE-XML-files. The first one is the ground truth, the second one is the hypothesis/alignment."
-                + " The programm returns the number of manipulations (corrects, substitution, insertion or deletion)"
-                + " and the corresponding percentage to come from the hypothesis to the ground truth."
-                + " The order of the xml-files in both lists has to be the same.",
+                        + " As input it requires two lists of PAGE-XML-files. The first one is the ground truth, the second one is the hypothesis/alignment."
+                        + " The programm returns the number of manipulations (corrects, substitution, insertion or deletion)"
+                        + " and the corresponding percentage to come from the hypothesis to the ground truth."
+                        + " The order of the xml-files in both lists has to be the same.",
                 options,
                 suffix,
                 true

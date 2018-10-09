@@ -111,16 +111,17 @@ public class BaseLineAligner implements IBaseLineAligner {
         for (int i = 0; i < baseLineHyp.length; i++) {
             Polygon aBL_HYP = baseLineHyp[i];
             if (aBL_HYP == null || aBL_HYP.npoints == 0) {
+                res1[i] = new int[0];
                 continue;
             }
             int xS = aBL_HYP.xpoints[0];
             int yS = aBL_HYP.ypoints[0];
-            List<int[]> accGT_BL = new ArrayList<>();
             int[] tRes = null;
             if (baseLineGT == null || baseLineGT.length == 0) {
                 res1[i] = new int[0];
                 continue;
             }
+            List<int[]> accGT_BL = new ArrayList<>();
             for (int j = 0; j < baseLineGT.length; j++) {
                 Polygon aBL_GT = baseLineGT[j];
                 double aTol = tols[j];

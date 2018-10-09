@@ -10,17 +10,18 @@ import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.PathCalculatorGraph;
 import de.uros.citlab.errorrate.util.ObjectCounter;
-import eu.transkribus.interfaces.IStringNormalizer;
-import eu.transkribus.interfaces.ITokenizer;
 import de.uros.citlab.tokenizer.TokenizerCategorizer;
 import de.uros.citlab.tokenizer.interfaces.ICategorizer;
+import eu.transkribus.interfaces.IStringNormalizer;
+import eu.transkribus.interfaces.ITokenizer;
+import org.apache.commons.math3.util.Pair;
+
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import org.apache.commons.math3.util.Pair;
 
 /**
- * Module, which uses the {@link PathCalculatorExpanded} to calculate the error
+ * Module, which uses the {@link PathCalculatorGraph} to calculate the error
  * rates between tokens. Some other classes are needed, to calculate the error
  * rate. See {@link ICostCalculator}, {@link ITokenizer} and
  * {@link IStringNormalizer} for more details.
@@ -28,11 +29,10 @@ import org.apache.commons.math3.util.Pair;
  * @author gundram
  */
 public class ErrorModuleDynProg implements IErrorModule {
-
-    private final PathCalculatorGraph<String, String> pathCalculator = new PathCalculatorGraph<>();
+    //    private final PathCalculatorGraph<String, String> pathCalculator = new PathCalculatorGraph<>();
     private final ObjectCounter<Count> counter = new ObjectCounter<>();
     private final ObjectCounter<RecoRef> counterSub = new ObjectCounter<>();
-//    private final ICostCalculator costCalculatorCharacter;
+    //    private final ICostCalculator costCalculatorCharacter;
 //    private final ICategorizer categorizer;
     private final ITokenizer tokenizer;
     private final Boolean detailed;
@@ -54,9 +54,98 @@ public class ErrorModuleDynProg implements IErrorModule {
         }
         this.tokenizer = tokenizer;
         this.stringNormalizer = stringNormalizer;
-        pathCalculator.addCostCalculator(new CostCalculatorIntern(costCalculator, "SUB"));
-        pathCalculator.addCostCalculator(new CostCalculatorIntern(costCalculator, "INS"));
-        pathCalculator.addCostCalculator(new CostCalculatorIntern(costCalculator, "DEL"));
+//            pathCalculator.addCostCalculator(new CostCalculatorIntern(costCalculator, "SUB"));
+//            pathCalculator.addCostCalculator(new CostCalculatorIntern(costCalculator, "INS"));
+//            pathCalculator.addCostCalculator(new CostCalculatorIntern(costCalculator, "DEL"));
+    }
+
+    private void calcBestPathFast(String[] recos, String[] refs) {
+        int[][] costs = new int[recos.length + 1][refs.length + 1];
+        Count[][] predecessor = new Count[recos.length + 1][refs.length + 1];
+        int[] costsStart = costs[0];
+        Count[] predecessorStart = predecessor[0];
+        predecessorStart[0] = Count.ERR;
+        for (int i = 1; i < costsStart.length; i++) {
+            costsStart[i] = i;
+            predecessorStart[i] = Count.INS;
+        }
+        for (int i = 1; i < costs.length; i++) {
+            final int[] costVec = costs[i];
+            final int[] costVecB = costs[i - 1];
+            final Count[] predecessorVec = predecessor[i];
+            costVec[0] = i;
+            predecessorVec[0] = Count.DEL;
+            String reco = recos[i - 1];
+            for (int j = 1; j < costVec.length; j++) {
+                final int sub = costVecB[j - 1];
+                final int del = costVecB[j];
+                final int ins = costVec[j - 1];
+                if (del < sub) {
+                    if (del < ins) {
+                        costVec[j] = del + 1;
+                        predecessorVec[j] = Count.DEL;
+                    } else {
+                        costVec[j] = ins + 1;
+                        predecessorVec[j] = Count.INS;
+                    }
+                } else {//sub <= del
+                    if (ins < sub) {
+                        costVec[j] = ins + 1;
+                        predecessorVec[j] = Count.INS;
+                    } else { // sub <= ins,
+                        if (reco.equals(refs[j - 1])) {
+                            costVec[j] = sub;
+                            predecessorVec[j] = Count.COR;
+                        } else {
+                            costVec[j] = sub + 1;
+                            predecessorVec[j] = Count.SUB;
+                        }
+                    }
+                }
+            }
+        }
+        LinkedList<PathCalculatorGraph.IDistance<String, String>> res = new LinkedList<>();
+        int i = costs.length - 1;
+        int j = costs[0].length - 1;
+        Count manipulation = predecessor[i][j];
+        String[] empty = new String[0];
+        while (manipulation != Count.ERR) {
+            counter.add(manipulation);
+            switch (manipulation) {
+                case INS:
+                    counter.add(Count.ERR);
+                    if (detailed == null || detailed == true) {
+                        counterSub.add(new RecoRef(empty, new String[]{refs[j - 1]}));
+                    }
+                    j--;
+                    break;
+                case DEL:
+                    counter.add(Count.ERR);
+                    if (detailed == null || detailed == true) {
+                        counterSub.add(new RecoRef(new String[]{recos[i - 1]}, empty));
+                    }
+                    i--;
+                    break;
+                case SUB:
+                    counter.add(Count.ERR);
+                    if (detailed == null || detailed == true) {
+                        counterSub.add(new RecoRef(new String[]{recos[i - 1]}, new String[]{refs[j - 1]}));
+                    }
+                    i--;
+                    j--;
+                    break;
+                case COR:
+                    if (detailed != null && detailed == true) {
+                        counterSub.add(new RecoRef(new String[]{recos[i - 1]}, new String[]{refs[j - 1]}));
+                    }
+                    i--;
+                    j--;
+                    break;
+            }
+            manipulation = predecessor[i][j];
+        }
+        counter.add(Count.GT, refs.length);
+        counter.add(Count.HYP, recos.length);
     }
 
     /**
@@ -66,7 +155,7 @@ public class ErrorModuleDynProg implements IErrorModule {
      * detailed==True, confusion/substitution map is filled.
      *
      * @param reco hypothesis
-     * @param ref reference
+     * @param ref  reference
      */
     @Override
     public void calculate(String reco, String ref) {
@@ -79,33 +168,8 @@ public class ErrorModuleDynProg implements IErrorModule {
         String[] recos = tokenizer.tokenize(reco).toArray(new String[0]);
         String[] refs = tokenizer.tokenize(ref).toArray(new String[0]);
         //use dynamic programming to calculate the cheapest path through the dynamic programming tabular
-        List<PathCalculatorGraph.IDistance<String, String>> calcBestPath = pathCalculator.calcBestPath(recos, refs);
-        //go through the path...
-        for (PathCalculatorGraph.IDistance<String, String> iDistance : calcBestPath) {
-            //count the manipulation, which have to be done at the specific position (Insertion, Deletion, Substitution, Correct)
-            Count manipulation = Count.valueOf(iDistance.getManipulation());
-            counter.add(manipulation);
-            boolean isCorrect = manipulation.equals(Count.COR);
-            if (!isCorrect) {
-                counter.add(Count.ERR);
-            }
-            //for a detailed output, add tokens to the substitution/confusion map
-            if (detailed == null && !isCorrect) {
-                //if only errors should be put into the confusion map
-                counterSub.add(new RecoRef(iDistance.getRecos(), iDistance.getReferences()));
-                if (iDistance.getRecos().length == 0 && iDistance.getReferences().length == 0) {
-                    throw new RuntimeException("error here in the normal mode");
-                }
-            } else if (detailed != null && detailed) {
-                //if everything should be put in the substitution map (also correct manipulation)
-                counterSub.add(new RecoRef(iDistance.getRecos(), iDistance.getReferences()));
-                if (iDistance.getRecos().length == 0 && iDistance.getReferences().length == 0) {
-                    throw new RuntimeException("error here in the other mode");
-                }
-            }
-        }
-        counter.add(Count.HYP, recos.length);
-        counter.add(Count.GT, refs.length);
+        calcBestPathFast(recos, refs);
+//        List<PathCalculatorGraph.IDistance<String, String>> calcBestPath = pathCalculator.calcBestPath(recos, refs);
     }
 
     @Override
