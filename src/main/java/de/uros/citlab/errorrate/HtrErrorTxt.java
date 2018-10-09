@@ -5,7 +5,6 @@
  */
 package de.uros.citlab.errorrate;
 
-import de.uros.citlab.errorrate.costcalculator.CostCalculatorDft;
 import de.uros.citlab.errorrate.htr.ErrorModuleBagOfTokens;
 import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;

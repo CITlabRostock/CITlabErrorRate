@@ -5,7 +5,6 @@
  */
 package de.uros.citlab.errorrate.htr;
 
-import de.uros.citlab.errorrate.interfaces.ICostCalculator;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.PathCalculatorGraph;
@@ -23,7 +22,7 @@ import java.util.List;
 /**
  * Module, which uses the {@link PathCalculatorGraph} to calculate the error
  * rates between tokens. Some other classes are needed, to calculate the error
- * rate. See {@link ICostCalculator}, {@link ITokenizer} and
+ * rate. See {@link ITokenizer} and
  * {@link IStringNormalizer} for more details.
  *
  * @author gundram
@@ -228,12 +227,10 @@ public class ErrorModuleDynProg implements IErrorModule {
         private List<String> recos;
         private List<String> refs;
         private PathCalculatorGraph.DistanceMat<String, String> mat;
-        private final ICostCalculator cc;
         private final String manipulation;
         private final String[] emptyList = new String[0];
 
-        public CostCalculatorIntern(ICostCalculator cc, String manipulation) {
-            this.cc = cc;
+        public CostCalculatorIntern(String manipulation) {
             this.manipulation = manipulation;
         }
 
@@ -248,7 +245,7 @@ public class ErrorModuleDynProg implements IErrorModule {
                     if (yy >= recos.size() || xx >= refs.size()) {
                         return null;
                     }
-                    final double cost = cc.getCostSubstitution(recos.get(yy), refs.get(xx));
+                    final double cost = recos.get(yy).equals(refs.get(xx))?0:1;
                     return new PathCalculatorGraph.Distance<>(cost == 0 ? "COR" : "SUB",
                             cost, mat.get(point).getCostsAcc() + cost,
                             new int[]{yy, xx},
@@ -260,7 +257,7 @@ public class ErrorModuleDynProg implements IErrorModule {
                     if (xx >= refs.size()) {
                         return null;
                     }
-                    final double cost = cc.getCostInsertion(refs.get(xx));
+                    final double cost = 1;
                     return new PathCalculatorGraph.Distance<>("INS",
                             cost, mat.get(point).getCostsAcc() + cost,
                             new int[]{y, xx},
@@ -272,7 +269,7 @@ public class ErrorModuleDynProg implements IErrorModule {
                     if (yy >= recos.size()) {
                         return null;
                     }
-                    final double cost = cc.getCostDeletion(recos.get(yy));
+                    final double cost = 1;
                     return new PathCalculatorGraph.Distance<>("DEL",
                             cost, mat.get(point).getCostsAcc() + cost,
                             new int[]{yy, x},

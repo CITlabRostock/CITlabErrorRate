@@ -9,7 +9,6 @@ package de.uros.citlab.errorrate;
 
 import de.uros.citlab.errorrate.aligner.BaseLineAligner;
 import de.uros.citlab.errorrate.aligner.IBaseLineAligner;
-import de.uros.citlab.errorrate.costcalculator.CostCalculatorDft;
 import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDftConfigurable;
@@ -155,7 +154,6 @@ public class Text2ImageError {
             //normalize to letter or to all codepoints?
             IStringNormalizer sn = cmd.hasOption('l') ? new StringNormalizerLetterNumber(snd) : snd;
             IErrorModule errorModule = new ErrorModuleDynProg(categorizer, sn, detailed);
-//            IErrorModule emRec = new ErrorModuleDynProg(new CostCalculatorDft(), categorizer, sn, detailed);
 //            IBaseLineAligner baseLineAligner = new BaseLineAlignerSameBaselines();
             IBaseLineAligner baseLineAligner = new BaseLineAligner();
             List<String> argList = cmd.getArgList();

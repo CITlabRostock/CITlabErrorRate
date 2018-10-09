@@ -37,8 +37,6 @@ public class ErrorModuleBagOfTokens implements IErrorModule {
     private final ObjectCounter<String> counterIntersect = new ObjectCounter<>();
     private final ObjectCounter<String> counterOnlyReco = new ObjectCounter<>();
     private final ObjectCounter<String> counterOnlyRef = new ObjectCounter<>();
-//    private final ICostCalculator costCalculatorCharacter;
-//    private final ICategorizer categorizer;
     private final ITokenizer tokenizer;
     private final Boolean detailed;
     private final IStringNormalizer stringNormalizer;

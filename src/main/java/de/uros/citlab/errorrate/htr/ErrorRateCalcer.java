@@ -5,28 +5,25 @@
  */
 package de.uros.citlab.errorrate.htr;
 
-import de.uros.citlab.errorrate.costcalculator.CostCalculatorDft;
-import de.uros.citlab.errorrate.interfaces.ICostCalculator;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.Method;
-import de.uros.citlab.errorrate.types.Metric;
 import de.uros.citlab.errorrate.types.Result;
 import de.uros.citlab.errorrate.util.ObjectCounter;
-import eu.transkribus.interfaces.IStringNormalizer;
-import eu.transkribus.interfaces.ITokenizer;
-import eu.transkribus.languageresources.extractor.pagexml.PAGEXMLExtractor;
 import de.uros.citlab.tokenizer.TokenizerCategorizer;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
 import de.uros.citlab.tokenizer.categorizer.CategorizerWordMergeGroups;
+import eu.transkribus.interfaces.IStringNormalizer;
+import eu.transkribus.interfaces.ITokenizer;
+import eu.transkribus.languageresources.extractor.pagexml.PAGEXMLExtractor;
+import org.apache.commons.math3.util.Pair;
+
 import java.io.File;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import org.apache.commons.math3.util.Pair;
 
 /**
  * Class to calculate different metrics on documents
@@ -60,7 +57,6 @@ public class ErrorRateCalcer {
 
     private IErrorModule getErrorModule(Method method) {
         Boolean detailed = Boolean.FALSE;
-//        ICostCalculator cc = new CostCalculatorDft();
 
         IStringNormalizer sn = null;
         switch (method) {
