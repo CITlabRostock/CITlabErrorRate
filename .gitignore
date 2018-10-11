@@ -30,3 +30,8 @@ hs_err_pid*
 
 # Maven 
 target/
+
+
+# other stuff
+*.tif
+doc.xml
