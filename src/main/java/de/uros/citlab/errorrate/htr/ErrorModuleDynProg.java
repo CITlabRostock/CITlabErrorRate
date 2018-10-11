@@ -235,7 +235,7 @@ public class ErrorModuleDynProg implements IErrorModule {
         }
 
         @Override
-        public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point) {
+        public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
             final int y = point[0];
             final int x = point[1];
             switch (manipulation) {
@@ -247,7 +247,7 @@ public class ErrorModuleDynProg implements IErrorModule {
                     }
                     final double cost = recos.get(yy).equals(refs.get(xx))?0:1;
                     return new PathCalculatorGraph.Distance<>(cost == 0 ? "COR" : "SUB",
-                            cost, mat.get(point).getCostsAcc() + cost,
+                            cost, dist.getCostsAcc() + cost,
                             new int[]{yy, xx},
                             point, new String[]{recos.get(yy)},
                             new String[]{refs.get(xx)});
@@ -259,7 +259,7 @@ public class ErrorModuleDynProg implements IErrorModule {
                     }
                     final double cost = 1;
                     return new PathCalculatorGraph.Distance<>("INS",
-                            cost, mat.get(point).getCostsAcc() + cost,
+                            cost, dist.getCostsAcc() + cost,
                             new int[]{y, xx},
                             point, emptyList,
                             new String[]{refs.get(xx)});
@@ -271,7 +271,7 @@ public class ErrorModuleDynProg implements IErrorModule {
                     }
                     final double cost = 1;
                     return new PathCalculatorGraph.Distance<>("DEL",
-                            cost, mat.get(point).getCostsAcc() + cost,
+                            cost, dist.getCostsAcc() + cost,
                             new int[]{yy, x},
                             point, new String[]{recos.get(yy)},
                             emptyList);

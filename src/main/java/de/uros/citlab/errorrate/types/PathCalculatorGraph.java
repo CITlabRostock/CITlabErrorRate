@@ -5,28 +5,19 @@
  */
 package de.uros.citlab.errorrate.types;
 
-import java.awt.Dimension;
-import java.awt.Point;
-import java.awt.Toolkit;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.TreeSet;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.JProgressBar;
 import org.apache.commons.math3.util.Pair;
 
+import javax.swing.*;
+import java.awt.*;
+import java.util.*;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
- * @author gundram
  * @param <Reco>
  * @param <Reference>
+ * @author gundram
  */
 public class PathCalculatorGraph<Reco, Reference> {
 
@@ -63,7 +54,7 @@ public class PathCalculatorGraph<Reco, Reference> {
 
         public void init(DistanceMat<Reco, Reference> mat, List<Reco> recos, List<Reference> refs);
 
-        public IDistance<Reco, Reference> getNeighbour(int[] point);
+        public IDistance<Reco, Reference> getNeighbour(int[] point, IDistance<Reco, Reference> dist);
 
     }
 
@@ -95,8 +86,9 @@ public class PathCalculatorGraph<Reco, Reference> {
         }
 
         @Override
-        public IDistance<Reco, Reference> getNeighbour(int[] point) {
-            IDistance<Reference, Reco> distance = cc.getNeighbour(transpose(point));
+        public IDistance<Reco, Reference> getNeighbour(int[] point, IDistance<Reco, Reference> dist) {
+            int[] transpose = transpose(point);
+            IDistance<Reference, Reco> distance = cc.getNeighbour(transpose, mat.get(transpose));
             return new Distance<>(distance.getManipulation(), distance.getCosts(), distance.getCostsAcc(), transpose(distance.getPoint()), distance.getPointPrevious(), distance.getReferences(), distance.getRecos());
         }
 
@@ -177,7 +169,7 @@ public class PathCalculatorGraph<Reco, Reference> {
 
     }
 
-//    public static enum Manipulation {
+    //    public static enum Manipulation {
 //
 //        INS, DEL, SUB, COR, SPECIAL;
 //    }
@@ -364,7 +356,7 @@ public class PathCalculatorGraph<Reco, Reference> {
         distMat.set(startPoint, start);
         QSortedCostAcc.add(start);
 //        G.add(start);
-        distMat.set(startPoint, start);
+//        distMat.set(startPoint, start);
         Pair<JFrame, JProgressBar> bar = useProgressBar ? getProgressBar("calculating Dynamic Matrix") : null;
         while (!QSortedCostAcc.isEmpty()) {
             IDistance<Reco, Reference> pollLastEntry = QSortedCostAcc.pollFirst();
@@ -383,7 +375,7 @@ public class PathCalculatorGraph<Reco, Reference> {
             }
             //all Neighbours v of u
             for (ICostCalculator<Reco, Reference> costCalculator : costCalculators) {
-                IDistance<Reco, Reference> distance = costCalculator.getNeighbour(pos);
+                IDistance<Reco, Reference> distance = costCalculator.getNeighbour(pos, pollLastEntry);
                 cnt += handleDistance(distance, distMat, QSortedCostAcc, filter);
             }
             for (ICostCalculatorMulti<Reco, Reference> costCalculator : costCalculatorsMutli) {
@@ -441,7 +433,7 @@ public class PathCalculatorGraph<Reco, Reference> {
 
     public static class Distance<Reco, Reference> implements IDistance<Reco, Reference> {
 
-//        private final Distance previousDistance;
+        //        private final Distance previousDistance;
         private final String manipulation;
         private final double costs;
         private final double costsAcc;
@@ -500,7 +492,7 @@ public class PathCalculatorGraph<Reco, Reference> {
             return "cost=" + costs + ";manipulation=" + manipulation + ";costAcc=" + costsAcc + ";" + Arrays.deepToString(recos) + ";" + Arrays.deepToString(references);
         }
 
-//        @Override
+        //        @Override
 //        public int compareTo(IDistance<Reco, Reference> o) {
 //            return Double.compare(getCostsAcc(), o.getCostsAcc());
 //        }
