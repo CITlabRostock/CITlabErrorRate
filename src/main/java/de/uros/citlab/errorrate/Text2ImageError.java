@@ -241,7 +241,7 @@ public class Text2ImageError {
                         cntLinesCorErr += idsGT.length;
                     }
                     //TODO: check if order ist okay: gt-hyp vs. reco-ref
-                    errorModule.calculate(textHyp,gtText);
+                    errorModule.calculate(textHyp, gtText);
                 }
                 //calculate couverage of GT-lines by HYP-lines. If the HYP couver all GT-lines, sumCur=sumAllCur
                 double[] recValue = alignment.getRecallsLA();
@@ -267,12 +267,16 @@ public class Text2ImageError {
                 cntLinesErr += cntLinesCorErr;
                 cntLinesGt += cntLinesGtCur;
             }
+            if(LOG.isDebugEnabled()){
+                LOG.debug("sum = {} sumAll = {} emErr = {} emGT = {} emHyp = {}", sum,sumAll,emErr,emGt,emHyp);
+                LOG.debug("lines: err = {} sum = {}", cntLinesErr,cntLinesGt);
+            }
             HashMap res = new HashMap();
-            res.put("P_text", 1.0-emErr / emGt);
-            res.put("R_text", 1.0-emErr / emHyp);
+            res.put("P_text", 1.0 - emErr / emGt);
+            res.put("R_text", 1.0 - emErr / emHyp);
             res.put("R_geom", sum / sumAll);
             res.put("LER", ((double) cntLinesErr) / cntLinesGt);
-            res.put("CER",  emErr / emGt);
+            res.put("CER", emErr / emGt);
             return res;
         } catch (ParseException e) {
             help("Failed to parse comand line properties", e);

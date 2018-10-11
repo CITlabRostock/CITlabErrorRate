@@ -6,13 +6,13 @@
 package de.uros.citlab.errorrate.text2image;
 
 import de.uros.citlab.errorrate.Text2ImageError;
+import de.uros.citlab.errorrate.aligner.BaseLineAligner;
 import de.uros.citlab.errorrate.htr.ErrorRateCalcer;
+
+import java.awt.*;
 import java.io.File;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedList;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 import de.uros.citlab.errorrate.types.Result;
 import org.apache.commons.io.FileUtils;
@@ -47,7 +47,9 @@ public class Text2ImageErrorCalcerTest {
 
     private static File[] setUpFolder(File folder) {
         assertTrue("cannot find resources in " + folder.getPath(), folder.exists());
-        File[] res = FileUtils.listFiles(folder, "xml".split(" "), true).toArray(new File[0]);
+        List<File> files = new ArrayList<>(FileUtils.listFiles(folder, "xml".split(" "), true));
+        files.removeIf(file -> file.getName().equals("doc.xml"));
+        File[] res = files.toArray(new File[0]);
         Arrays.sort(res);
         return res;
     }
@@ -72,6 +74,25 @@ public class Text2ImageErrorCalcerTest {
         for (String string : keys) {
             System.out.println(String.format("%10s: %.4f", string, run.get(string)));
         }
+    }
+    @Test
+    public void testLAHTR() {
+        System.out.println("testLAHTR");
+        Text2ImageError instance = new Text2ImageError();
+        Map<String, Double> run = instance.run("-p -t 0.9".split(" "), listGT, listBot);
+        List<String> keys = new LinkedList<>(run.keySet());
+        Collections.sort(keys);
+        for (String string : keys) {
+            System.out.println(String.format("%10s: %.4f", string, run.get(string)));
+        }
+    }
+
+    @Test
+    public void testCouverage(){
+        Polygon gt = new Polygon(new int[]{0,10,20,30},new int[]{3,3,3,3},4);
+        Polygon hyp = new Polygon(new int[]{0,10,20,30},new int[]{7,7,7,7},4);
+        double couverage = BaseLineAligner.couverage(gt, hyp, 5);
+        System.out.println(couverage);
     }
 
 }

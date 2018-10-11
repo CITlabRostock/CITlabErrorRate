@@ -6,9 +6,10 @@ package de.uros.citlab.errorrate.aligner;
  * and open the template in the editor.
  */
 ////////////////////////////////////////////////
+
 import de.uros.citlab.errorrate.util.PolygonUtil;
-import java.awt.Polygon;
-import java.awt.Rectangle;
+
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -18,10 +19,11 @@ import java.util.List;
 /// Created:    18.07.2017  14:21:02
 /// Encoding:   UTF-8
 ////////////////////////////////////////////////
+
 /**
  * Desciption of BaseLineAlignerSameBaselines
- *
- *
+ * <p>
+ * <p>
  * Since 18.07.2017
  *
  * @author Tobias Gruening tobias.gruening.hro@gmail.com
@@ -33,20 +35,20 @@ public class BaseLineAligner implements IBaseLineAligner {
     private double relTol = 0.25;
     private int maxD = 250;
 
-    private static double couverage(Polygon toHit, Polygon hypo, double tol) {
+    public static double couverage(Polygon toHit, Polygon hypo, double tol) {
         double cnt = 0.0;
         Rectangle toCntBB = toHit.getBounds();
+        Rectangle hypoBB = hypo.getBounds();
+        Rectangle inter = toCntBB.intersection(hypoBB);
         for (int i = 0; i < toHit.npoints; i++) {
             int xA = toHit.xpoints[i];
             int yA = toHit.ypoints[i];
-            double minDist = Double.MAX_VALUE;
-            Rectangle refBB = hypo.getBounds();
-            Rectangle inter = toCntBB.intersection(refBB);
             int minI = Math.min(inter.width, inter.height);
             //Early stopping criterion
             if (minI < -3.0 * tol) {
                 continue;
             }
+            double minDist = Double.MAX_VALUE;
             for (int j = 0; j < hypo.npoints; j++) {
                 int xC = hypo.xpoints[j];
                 int yC = hypo.ypoints[j];
@@ -110,27 +112,24 @@ public class BaseLineAligner implements IBaseLineAligner {
         final int[][] res1 = new int[baseLineHyp.length][];
         for (int i = 0; i < baseLineHyp.length; i++) {
             Polygon aBL_HYP = baseLineHyp[i];
-            if (aBL_HYP == null || aBL_HYP.npoints == 0) {
+            if (aBL_HYP == null || aBL_HYP.npoints == 0 || baseLineGT == null || baseLineGT.length == 0) {
                 res1[i] = new int[0];
                 continue;
             }
+            int[] tRes = null;
             int xS = aBL_HYP.xpoints[0];
             int yS = aBL_HYP.ypoints[0];
-            int[] tRes = null;
-            if (baseLineGT == null || baseLineGT.length == 0) {
-                res1[i] = new int[0];
-                continue;
-            }
             List<int[]> accGT_BL = new ArrayList<>();
             for (int j = 0; j < baseLineGT.length; j++) {
                 Polygon aBL_GT = baseLineGT[j];
                 double aTol = tols[j];
                 double recall = couverage(aBL_HYP, aBL_GT, aTol);
-                double recall2 = couverage(aBL_HYP, aBL_GT, aTol);
+//                double recall2 = couverage(aBL_HYP, aBL_GT, aTol);
                 if (recall > thresh) {
                     if (sortByConfidence) {
                         accGT_BL.add(new int[]{j, (int) (-recall * 100000)});
                     } else {
+                        //TODO: do not compare beginning-points - take direction of GT and compare "Center-points"
                         int minD = 1000000;
                         for (int k = 0; k < aBL_GT.npoints; k++) {
                             int aD = Math.abs(aBL_GT.xpoints[k] - xS) + Math.abs(aBL_GT.ypoints[k] - yS);
@@ -286,7 +285,6 @@ public class BaseLineAligner implements IBaseLineAligner {
     }
 
     /**
-     *
      * @param p
      * @return #0 - angle #1 - absVal
      */
