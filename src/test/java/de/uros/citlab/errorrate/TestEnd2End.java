@@ -41,81 +41,132 @@ import java.util.Map;
  */
 public class TestEnd2End {
 
+
     @Test
     public void testLineBreak() {
-        Assert.assertEquals(new Long(4), getCount(false, true, false, false, "\n this is \n with\n linebreaks\n ", "this is with linebreaks").get(Count.COR));
+        Assert.assertEquals(new Long(4), getCount(false, true, ErrorModuleEnd2End.Mode.READINGORDER, false, "\n this is \n with\n linebreaks\n ", "this is with linebreaks").get(Count.COR));
     }
 
     @Test
     public void testOrder() {
-        Assert.assertEquals(new Long(1), getCount(false, true, false, false, "this is text ", "is this text").get(Count.COR));
+        Assert.assertEquals(new Long(1), getCount(false, true, ErrorModuleEnd2End.Mode.READINGORDER, false, "this is text ", "is this text").get(Count.COR));
 //        Assert.assertEquals(new Long(3), getCount(false, true, true, false, "this is text ", "is this text").get(Count.TP));
     }
 
     @Test
     public void testComposition() {
-        Assert.assertEquals(new Long(1), getCount(false, true, false, false, "sa\u0308ße", "säße").get(Count.COR));
-        Assert.assertEquals(new Long(1), getCount(true, true, false, false, "SA\u0308SSE", "säße").get(Count.COR));
+        Assert.assertEquals(new Long(1), getCount(false, true, ErrorModuleEnd2End.Mode.READINGORDER, false, "sa\u0308ße", "säße").get(Count.COR));
+        Assert.assertEquals(new Long(1), getCount(true, true, ErrorModuleEnd2End.Mode.READINGORDER, false, "SA\u0308SSE", "säße").get(Count.COR));
     }
 
     @Test
     public void testTokenizer() {
-        Assert.assertEquals(new Long(1), getCount(false, true, false, false, "it's wrong", "its wrong").get(Count.COR));
-        Assert.assertEquals(new Long(2), getCount(false, true, false, false, "its wrong", "its wrong").get(Count.COR));
-        Assert.assertEquals(new Long(3), getCount(false, true, false, false, "its, wrong", "its, wrong").get(Count.COR));
+        Assert.assertEquals(new Long(1), getCount(false, true, ErrorModuleEnd2End.Mode.READINGORDER, false, "it's wrong", "its wrong").get(Count.COR));
+        Assert.assertEquals(new Long(2), getCount(false, true, ErrorModuleEnd2End.Mode.READINGORDER, false, "its wrong", "its wrong").get(Count.COR));
+        Assert.assertEquals(new Long(3), getCount(false, true, ErrorModuleEnd2End.Mode.READINGORDER, false, "its, wrong", "its, wrong").get(Count.COR));
 //        Assert.assertEquals(2, get(false, true, false, true, "COR", "it's wrong", "its wrong"));
     }
 
     @Test
     public void testErrorType() {
-        Assert.assertEquals(new Long(1), getCount(false, true, false, false, "its, wrong", "its wrong").get(Count.INS));
-        Assert.assertEquals(new Long(1), getCount(false, true, false, false, "its, wrong", "its. wrong").get(Count.SUB));//substitution
-        Assert.assertEquals(new Long(2), getCount(false, true, false, false, "its, wrong", "its. wrong").get(Count.COR));//correct
+        Assert.assertEquals(new Long(1), getCount(false, true, ErrorModuleEnd2End.Mode.READINGORDER, false, "its, wrong", "its wrong").get(Count.INS));
+        Assert.assertEquals(new Long(1), getCount(false, true, ErrorModuleEnd2End.Mode.READINGORDER, false, "its, wrong", "its. wrong").get(Count.SUB));//substitution
+        Assert.assertEquals(new Long(2), getCount(false, true, ErrorModuleEnd2End.Mode.READINGORDER, false, "its, wrong", "its. wrong").get(Count.COR));//correct
 //        Assert.assertEquals(new Long(2), getCount(false, true, true, false, "its, wrong", "its. wrong").get(Count.TP));//true positive
 //        Assert.assertEquals(new Long(1), getCount(false, true, true, false, "its, wrong", "its. wrong").get(Count.FN));//false negative
 //        Assert.assertEquals(new Long(1), getCount(false, true, true, false, "its, wrong", "its. wrong").get(Count.FP));//false positive
-        Assert.assertEquals(new Long(2), getCount(false, true, false, false, "wrong", "its, wrong").get(Count.DEL));
+        Assert.assertEquals(new Long(2), getCount(false, true, ErrorModuleEnd2End.Mode.READINGORDER, false, "wrong", "its, wrong").get(Count.DEL));
 //        Assert.assertEquals(new Long(2), getCount(false, true, true, false, "wrong", "its, wrong").get(Count.FP));
 //        Assert.assertEquals(2, get(false, true, false, true, "COR", "it's wrong", "its wrong"));
     }
 
-    @Test
-    public void testCER() {
-        Assert.assertEquals(new Long(1), getCount(false, false, false, false, "its, wrong", "its wrong").get(Count.INS));
-        Assert.assertEquals(new Long(0), getCount(false, false, false, false, "its, wrong", "its wrong").get(Count.DEL));
-        Assert.assertEquals(new Long(0), getCount(false, false, false, false,
+    public void testCases(ErrorModuleEnd2End.Mode mode, int bestCase,
+                          int swapLines,
+                          int deleteLine,
+                          int splitLine,
+                          int mergeLine,
+                          int addStart,
+                          int deleteStart,
+                          int deleteEnd,
+                          int addEnd,
+                          int reverseLines
+    ) {
+        //best case
+        Assert.assertEquals(new Long(bestCase), getCount(false, false, mode, false,
                 "line 1\nline 2\nline 3",
                 "line 1\nline 2\nline 3").get(Count.ERR));
-        Assert.assertEquals(new Long(4), getCount(false, false, false, false,
+        //change two lines ==> 2*2 errors
+        Assert.assertEquals(new Long(swapLines), getCount(false, false, mode, false,
                 "ab\ncd\nef\ngh",
                 "ab\nef\ncd\ngh").get(Count.ERR));
-        Assert.assertEquals(new Long(2), getCount(false, false, false, false,
-                "ab\ncd\ngh",
-                "ab\nef\ncd\ngh").get(Count.ERR));
-        Assert.assertEquals(new Long(5), getCount(false, false, false, false,
+        //delete one line ==> 2 errors
+        Assert.assertEquals(new Long(deleteLine), getCount(false, false, mode, false,
+                "ab\ncd",
+                "ab\nef\ncd").get(Count.ERR));
+        //split one line ==> "cd ef" to "cd" and "" to "ef" ==> 3 + 2 = 5 errors
+        Assert.assertEquals(new Long(splitLine), getCount(false, false, mode, false,
                 "ab\ncd ef\ngh",
                 "ab\ncd\nef\ngh").get(Count.ERR));
+        //merge two line ==> "cd ef" to "cd" and "" to "ef" ==> 3 + 2 = 5 errors
+        Assert.assertEquals(new Long(mergeLine), getCount(false, false, mode, false,
+                "ab\ncd\nef",
+                "ab\ncd ef").get(Count.ERR));
+        Assert.assertEquals(new Long(mergeLine), getCount(false, false, mode, false,
+                "ab\ncd\nef\ngh",
+                "ab\ncd ef\ngh").get(Count.ERR));
+        //test if start works
+        Assert.assertEquals(new Long(addStart), getCount(false, false, mode, false,
+                "cd\nef\ngh",
+                "ab\ncd\nef\ngh").get(Count.ERR));
+        Assert.assertEquals(new Long(deleteStart), getCount(false, false, mode, false,
+                "ab\ncd",
+                "cd").get(Count.ERR));
+        Assert.assertEquals(new Long(deleteStart), getCount(false, false, mode, false,
+                "ab\ncd\nef",
+                "cd\nef").get(Count.ERR));
+        Assert.assertEquals(new Long(deleteStart), getCount(false, false, mode, false,
+                "ab\ncd\nef\ngh",
+                "cd\nef\ngh").get(Count.ERR));
+        //test if end works
+        Assert.assertEquals(new Long(deleteEnd), getCount(false, false, mode, false,
+                "ab\ncd\nef\ngh",
+                "ab\ncd\nef").get(Count.ERR));
+        Assert.assertEquals(new Long(addEnd), getCount(false, false, mode, false,
+                "ab\ncd\nef",
+                "ab\ncd\nef\ngh").get(Count.ERR));
+        //reverse lines
+        Assert.assertEquals(new Long(reverseLines), getCount(false, false, mode, false,
+                "ab\ncd\nef",
+                "ef\ncd\nab").get(Count.ERR));
+
+    }
+
+    @Test
+    public void testWithReadingOrder() {
+        testCases(ErrorModuleEnd2End.Mode.READINGORDER, 0, 4, 2, 5, 5, 2, 2, 2, 2,4);
+    }
+
+    @Test
+    public void testIgnoreReadingOrder() {
+        testCases(ErrorModuleEnd2End.Mode.IGNORE_READINGORDER, 0, 0, 2, 5, 5, 2, 2, 2, 2,0);
     }
 
     @Test
     public void testLetter() {
-        Assert.assertEquals(new Long(1), getCount(false, true, false, false, "it's wrong", "its wrong").get(Count.COR));
-        Assert.assertEquals(new Long(2), getCount(false, true, false, true, "it's wrong", "its wrong").get(Count.COR));
-        Assert.assertEquals(new Long(3), getCount(false, true, false, false, "its, wrong", "its, wrong").get(Count.COR));
+        Assert.assertEquals(new Long(1), getCount(false, true, ErrorModuleEnd2End.Mode.READINGORDER, false, "it's wrong", "its wrong").get(Count.COR));
+        Assert.assertEquals(new Long(2), getCount(false, true, ErrorModuleEnd2End.Mode.READINGORDER, true, "it's wrong", "its wrong").get(Count.COR));
+        Assert.assertEquals(new Long(3), getCount(false, true, ErrorModuleEnd2End.Mode.READINGORDER, false, "its, wrong", "its, wrong").get(Count.COR));
 //        Assert.assertEquals(new Long(4), getCount(true, true, true, true, "30 examples, just some...", "('just') <SOME> 30examples??;:").get(Count.TP));
     }
 
-    public Map<Count, Long> getCount(boolean upper, boolean word, boolean bagoftokens, boolean letterNumber, String gt, String hyp) {
-        if (bagoftokens) {
-            throw new RuntimeException("not implemented so far");
-        }
+    public Map<Count, Long> getCount(boolean upper, boolean word, ErrorModuleEnd2End.Mode mode, boolean letterNumber, String gt, String hyp) {
         System.out.println("\"" + gt + "\" vs \"" + hyp + "\"");
         ITokenizer tokenizer = new TokenizerCategorizer(word ? new CategorizerWordMergeGroups() : new CategorizerCharacterDft());
         IStringNormalizer sn = new StringNormalizerDft(Normalizer.Form.NFKC, upper);
         if (letterNumber) {
             sn = new StringNormalizerLetterNumber(sn);
         }
-        IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, false);
+        IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, mode, false);
         impl.calculate(hyp, gt);
         return impl.getCounter().getMap();
     }

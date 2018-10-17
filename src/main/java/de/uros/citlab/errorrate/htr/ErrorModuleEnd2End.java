@@ -15,6 +15,7 @@ import de.uros.citlab.tokenizer.interfaces.ICategorizer;
 import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
 import org.apache.commons.math3.util.Pair;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.util.Arrays;
@@ -36,21 +37,39 @@ public class ErrorModuleEnd2End implements IErrorModule {
     private final Boolean detailed;
     private final IStringNormalizer stringNormalizer;
     private final PathCalculatorGraph<String, String> pathCalculator = new PathCalculatorGraph<>();
+    private final Mode mode;
+    private final Voter voter = new Voter();
 
-    public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Boolean detailed) {
-        this(new TokenizerCategorizer(categorizer), stringNormalizer, detailed);
+    public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed) {
+        this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, detailed);
     }
 
-    public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Boolean detailed) {
+    public enum Mode {
+        READINGORDER,
+        IGNORE_READINGORDER,
+        IGNORE_SEGMENTATION
+    }
+
+    public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed) {
         this.detailed = detailed;
+        this.mode = mode;
         if (tokenizer == null) {
             throw new RuntimeException("no tokenizer given (is null)");
         }
         this.tokenizer = tokenizer;
         this.stringNormalizer = stringNormalizer;
-        pathCalculator.addCostCalculator(new CCDeletion());
-        pathCalculator.addCostCalculator(new CCInsertion());
-        pathCalculator.addCostCalculator(new CCSubOrCor());
+        pathCalculator.addCostCalculator(new CCDeletion(voter));
+        pathCalculator.addCostCalculator(new CCInsertion(voter));
+        pathCalculator.addCostCalculator(new CCSubOrCor(voter));
+        switch (mode) {
+            case IGNORE_READINGORDER:
+                pathCalculator.addCostCalculator((PathCalculatorGraph.ICostCalculatorMulti<String, String>) new LineLineBreakRecoJump(voter));
+                break;
+            case READINGORDER:
+                break;
+            default:
+                throw new RuntimeException("not implemented yet");
+        }
     }
 
     /**
@@ -95,17 +114,47 @@ public class ErrorModuleEnd2End implements IErrorModule {
             double[] outV = out[i];
             for (int j = 0; j < outV.length; j++) {
                 PathCalculatorGraph.IDistance<String, String> dist = mat.get(i, j);
-                outV[j] = dist == null ? -1 : dist.getCostsAcc();
+                outV[j] = dist == null ? 0 : dist.getCostsAcc();
             }
         }
-        HeatMapUtil.save(HeatMapUtil.getHeatMap(out, 2), new File("out.png"));
         List<PathCalculatorGraph.IDistance<String, String>> calcBestPath = pathCalculator.calcBestPath(mat);
+        if (calcBestPath != null) {
+            double max = calcBestPath.get(calcBestPath.size()-1).getCostsAcc();
+//            for (int i = 0; i < out.length; i++) {
+//                double[] vec = out[i];
+//                for (int j = 0; j < vec.length; j++) {
+//                    max = Math.max(max, vec[j]);
+//                }
+//            }
+            for (int i = 0; i < out.length; i++) {
+                double[] vec = out[i];
+                for (int j = 0; j < vec.length; j++) {
+                    if(vec[j]>max+1e-6){
+                        vec[j]=max;
+                    }
+                }
+            }
+
+            max *= 0.5;
+            for (PathCalculatorGraph.IDistance<String, String> dist : calcBestPath) {
+                int y = dist.getPoint()[0];
+                int x = dist.getPoint()[1];
+//                if (y > 0 && x > 0) {
+                out[y][x] = out[y][x] +  max;
+                System.out.println(dist);
+//                }
+            }
+        }
+        HeatMapUtil.save(HeatMapUtil.getHeatMap(out, 3), new File("out.png"));
         if (calcBestPath == null) {
             return;
         }
         for (Count c : Count.values()) {
             counter.add(c, 0L);
         }
+        //plus 1 because we add a \n
+        //TODO: clean handling of \n
+        int[] usedReco = new int[recos.length];
         for (PathCalculatorGraph.IDistance<String, String> dist : calcBestPath) {
             String m = dist.getManipulation();
             if (m == null) {
@@ -118,14 +167,69 @@ public class ErrorModuleEnd2End implements IErrorModule {
                     counter.add(Count.ERR);
                 case COR:
                     counter.add(Count.valueOf(dist.getManipulation()));
+//                    if(dist.getPoint()[0] - 1>=usedReco.length){
+//                        throw new RuntimeException("not in bound");
+//                    }
+                    //do not count INS because no reco-chars are use while INS.
+                    if (dist.getRecos() != null) {
+                        usedReco[dist.getPoint()[0] - 1] += dist.getRecos().length;
+                    }
+                    break;
+                case COR_LINEBREAK:
+                    break;
+                case JUMP_RECO:
                     break;
                 default:
                     System.out.println("found type '" + dist.getManipulation() + "'");
             }
         }
+        String s = Arrays.toString(usedReco);
+        System.out.println("------------------------------------------");
+        System.out.println(reco.replace("\n", "\\n"));
+        System.out.println(s);
+        System.out.println(Arrays.toString(recos).replace("\n", "*"));
+        System.out.println("------------------------------------------");
+        int i = countUnusedChars(usedReco, recos);
+        if (!hasMultiUse(usedReco)) {
+            i -= countMultiplyChars(usedReco, recos);
+        }
+        counter.add(Count.DEL, i);
+        counter.add(Count.ERR, i);
+        if (hasMultiUse(usedReco)) {
+            System.out.println("stop");
+        }
         counter.add(Count.GT, refs.length);
         counter.add(Count.HYP, recos.length);
 
+    }
+
+    private int countUnusedChars(int[] usage, String[] out) {
+        int count = 0;
+        for (int i = 0; i < usage.length; i++) {
+            if (usage[i] == 0 && !voter.isLineBreak(out[i])) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int countMultiplyChars(int[] usage, String[] out) {
+        int count = 0;
+        for (int i = 0; i < usage.length; i++) {
+            if (usage[i] > 0 && !voter.isLineBreak(out[i])) {
+                count += usage[i] - 1;
+            }
+        }
+        return count;
+    }
+
+    private boolean hasMultiUse(int[] array) {
+        for (int i = 0; i < array.length; i++) {
+            if (array[i] > 1) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -276,7 +380,13 @@ public class ErrorModuleEnd2End implements IErrorModule {
         PathCalculatorGraph.DistanceMat<String, String> mat;
         List<String> recos;
         List<String> refs;
-        private Voter voter = new Voter();
+        final private Voter voter;
+        int[] lineBreaksReco;
+        int[] lineBreaksRef;
+
+        public CCAbstract(Voter voter) {
+            this.voter = voter;
+        }
 
         boolean isSpaceRef(int pos) {
             return voter.isSpace(refs.get(pos));
@@ -299,6 +409,21 @@ public class ErrorModuleEnd2End implements IErrorModule {
             this.mat = mat;
             this.recos = recos;
             this.refs = refs;
+            lineBreaksReco = getLineBreaks(recos);
+            lineBreaksRef = getLineBreaks(refs);
+        }
+
+        private int[] getLineBreaks(List<String> text) {
+            int[] tmp = new int[text.size()];
+            int cnt = 0;
+            for (int i = 0; i < text.size(); i++) {
+                if (voter.isLineBreak(text.get(i))) {
+                    tmp[cnt++] = i;
+                }
+            }
+            int[] res = new int[cnt];
+            System.arraycopy(tmp, 0, res, 0, cnt);
+            return res;
         }
 
     }
@@ -314,7 +439,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
             this.point = point;
         }
 
-        private enum TYPE {INS, DEL, SUB, COR, INS_WORD, DEL_WORD}
+        private enum TYPE {INS, DEL, SUB, COR, JUMP_RECO, COR_LINEBREAK}
 
         private final TYPE type;
         private final double costAcc;
@@ -322,6 +447,18 @@ public class ErrorModuleEnd2End implements IErrorModule {
         private final String ref;
         private final int[] pointPrevious;
         private final int[] point;
+
+        @Override
+        public String toString() {
+            return "DistanceStrStr{" +
+                    "type=" + type +
+                    ", costAcc=" + costAcc +
+                    ", reco='" + (reco == null ? reco : reco.replace("\n", "\\n")) + '\'' +
+                    ", ref='" + (ref == null ? ref : ref.replace("\n", "\\n")) + '\'' +
+                    ", pointPrevious=" + Arrays.toString(pointPrevious) +
+                    ", point=" + Arrays.toString(point) +
+                    '}';
+        }
 
         @Override
         public double getCosts() {
@@ -342,12 +479,12 @@ public class ErrorModuleEnd2End implements IErrorModule {
 
         @Override
         public String[] getRecos() {
-            return new String[]{reco};
+            return reco == null ? null : new String[]{reco};
         }
 
         @Override
         public String[] getReferences() {
-            return new String[]{ref};
+            return ref == null ? null : new String[]{ref};
         }
 
         @Override
@@ -378,6 +515,10 @@ public class ErrorModuleEnd2End implements IErrorModule {
 
     private static class CCInsertion extends CCAbstract {
 
+        public CCInsertion(Voter voter) {
+            super(voter);
+        }
+
         @Override
         public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
             final int x = point[1] + 1;
@@ -388,7 +529,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
                 final int y = point[0];
                 if (isLineBreakReco(y)) {
                     int[] next = new int[]{point[0], x};
-                    return new DistanceStrStr(null, dist.getCostsAcc(), null, refs.get(x), point, next);
+                    return new DistanceStrStr(DistanceStrStr.TYPE.COR_LINEBREAK, dist.getCostsAcc(), null, refs.get(x), point, next);
                 }
                 return null;
             }
@@ -400,6 +541,10 @@ public class ErrorModuleEnd2End implements IErrorModule {
 
     private static class CCDeletion extends CCAbstract {
 
+        public CCDeletion(Voter voter) {
+            super(voter);
+        }
+
         @Override
         public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
             final int y = point[0] + 1;
@@ -410,7 +555,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
                 final int x = point[1];
                 if (isLineBreakRef(x)) {
                     int[] next = new int[]{y, point[1]};
-                    return new DistanceStrStr(null, dist.getCostsAcc(), recos.get(y), null, point, next);
+                    return new DistanceStrStr(DistanceStrStr.TYPE.COR_LINEBREAK, dist.getCostsAcc(), recos.get(y), null, point, next);
                 }
                 return null;
             }
@@ -421,6 +566,10 @@ public class ErrorModuleEnd2End implements IErrorModule {
     }
 
     private static class CCSubOrCor extends CCAbstract {
+
+        public CCSubOrCor(Voter voter) {
+            super(voter);
+        }
 
         @Override
         public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
@@ -434,7 +583,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
                 if (cor) {
                     if (isLineBreakReco(y)) {
                         //line break characters are no real characters - so they do not have to be count!
-                        return new DistanceStrStr(null, dist.getCostsAcc(), null, null, point, next);
+                        return new DistanceStrStr(DistanceStrStr.TYPE.COR_LINEBREAK, dist.getCostsAcc(), null, null, point, next);
                     }
                     //normal case: characters are equal
                     return new DistanceStrStr(DistanceStrStr.TYPE.COR, dist.getCostsAcc(), reco, ref, point, next);
@@ -452,11 +601,32 @@ public class ErrorModuleEnd2End implements IErrorModule {
         }
     }
 
-    private static class LineBreakJump extends CCAbstract {
+    private static class LineLineBreakRecoJump extends CCAbstract implements PathCalculatorGraph.ICostCalculatorMulti<String, String> {
+
+        public LineLineBreakRecoJump(Voter voter) {
+            super(voter);
+        }
 
         @Override
         public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
-            return null;
+            throw new NotImplementedException();
+        }
+
+        @Override
+        public List<PathCalculatorGraph.IDistance<String, String>> getNeighbours(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
+            int x = point[1] + 1;
+            int y = point[0] + 1;
+            if (x >= refs.size() || !isLineBreakRef(x) || y >= recos.size() || !isLineBreakReco(y)) {
+                return null;
+            }
+            List<PathCalculatorGraph.IDistance<String, String>> res = new LinkedList<>();
+            for (int i = 0; i < this.lineBreaksReco.length; i++) {
+                final int target = lineBreaksReco[i];
+                if (target != y) {
+                    res.add(new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, dist.getCostsAcc(), recos.get(y), refs.get(x), point, new int[]{target, x}));
+                }
+            }
+            return res;
         }
     }
 

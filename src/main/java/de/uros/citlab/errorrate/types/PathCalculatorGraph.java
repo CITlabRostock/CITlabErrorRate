@@ -50,19 +50,19 @@ public class PathCalculatorGraph<Reco, Reference> {
         costCalculatorsMutli.clear();
     }
 
-    public static interface ICostCalculator<Reco, Reference> {
+    public interface ICostCalculator<Reco, Reference> {
 
-        public void init(DistanceMat<Reco, Reference> mat, List<Reco> recos, List<Reference> refs);
+        void init(DistanceMat<Reco, Reference> mat, List<Reco> recos, List<Reference> refs);
 
-        public IDistance<Reco, Reference> getNeighbour(int[] point, IDistance<Reco, Reference> dist);
+        IDistance<Reco, Reference> getNeighbour(int[] point, IDistance<Reco, Reference> dist);
 
     }
 
-    public static interface ICostCalculatorMulti<Reco, Reference> {
+    public interface ICostCalculatorMulti<Reco, Reference> {
 
-        public void init(DistanceMat<Reco, Reference> mat, List<Reco> recos, List<Reference> refs);
+        void init(DistanceMat<Reco, Reference> mat, List<Reco> recos, List<Reference> refs);
 
-        public List<IDistance<Reco, Reference>> getNeighbours(int[] point);
+        List<IDistance<Reco, Reference>> getNeighbours(int[] point, IDistance<Reco, Reference> dist);
 
     }
 
@@ -379,7 +379,7 @@ public class PathCalculatorGraph<Reco, Reference> {
                 cnt += handleDistance(distance, distMat, QSortedCostAcc, filter);
             }
             for (ICostCalculatorMulti<Reco, Reference> costCalculator : costCalculatorsMutli) {
-                List<IDistance<Reco, Reference>> distances = costCalculator.getNeighbours(pos);
+                List<IDistance<Reco, Reference>> distances = costCalculator.getNeighbours(pos, pollLastEntry);
                 if (distances == null) {
                     continue;
                 }
