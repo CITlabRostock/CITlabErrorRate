@@ -167,6 +167,67 @@ public class TestEnd2End {
         testCases(ErrorModuleEnd2End.Mode.NO_RO_SEG, 0, 0, 2, 0, 0, 2, 2, 2, 2, 0);
     }
 
+    @Test
+    public void testLongerText() {
+//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+
+        String reference = "ein zwei drei\nvier fünf sechs\nsieben\nacht\nneun zehn elf zwölf";
+        String recognition = "ein zwei drei\nsieben acht\nvier fünf sechs\nneun ze\nhn elf zwölf";
+        //11 DEL (sieben acht), 3 INS (sie), 6 SUB/INS  7 INS (neun ze)=27
+        Assert.assertEquals(new Long(29), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, reference, recognition).get(Count.ERR));
+        //one more than substituting "\n" by " ": zehn vs. "ze\nhn"
+        Long count = getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference.replace("\n", " "), recognition.replace("\n", " ")).get(Count.ERR);
+        Assert.assertEquals(new Long(19), count);
+        Assert.assertEquals(new Long(count - 1), getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference, recognition).get(Count.ERR));
+        // 5 DEL ("sieben acht" => "sieben"), 4 SUB + 3 DEL ("neun se" => "acht"), 7 INS ("" => "neun ze")
+        Assert.assertEquals(new Long(19), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO, false, reference, recognition).get(Count.ERR));
+        //zero - can repair everything!!
+        Assert.assertEquals(new Long(0), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
+    }
+
+    @Test
+    public void testVeryLongerText() {
+//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+
+        String reference = "ein zwei drei\nvier fünf sechs\nsieben\nacht\nneun zehn elf zwölf";
+        String recognition = "ein zwei drei\nsieben acht\nvier fünf sechs\nneun ze\nhn elf zwölf";
+        for (int i = 0; i < 3; i++) {
+            reference += "\n" + reference;
+            recognition += "\n" + recognition;
+        }
+        //11 DEL (sieben acht), 3 INS (sie), 6 SUB/INS  7 INS (neun ze)=27
+        Assert.assertEquals(new Long(232), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, reference, recognition).get(Count.ERR));
+        //one more than substituting "\n" by " ": zehn vs. "ze\nhn"
+        Long count = getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference.replace("\n", " "), recognition.replace("\n", " ")).get(Count.ERR);
+        Assert.assertEquals(new Long(152), count);
+        Assert.assertEquals(new Long(count - 8), getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference, recognition).get(Count.ERR));
+        // 3 INS (sie), 3 DEL (sie), 7 INS (neun ze), 7 DEL (neun ze)
+        Assert.assertEquals(new Long(152), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO, false, reference, recognition).get(Count.ERR));
+        //zero - can repair everything!!
+        Assert.assertEquals(new Long(0), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
+    }
+
+    @Test
+    public void testVeryLongerTextWord() {
+//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+
+        String reference = "ein zwei drei\nvier fünf sechs\nsieben\nacht\nneun zehn elf zwölf";
+        String recognition = "ein zwei drei\nsieben acht\nvier fünf sechs\nneun ze\nhn elf zwölf";
+        for (int i = 0; i < 3; i++) {
+            reference += "\n" + reference;
+            recognition += "\n" + recognition;
+        }
+        //11 DEL (sieben acht), 3 INS (sie), 6 SUB/INS  7 INS (neun ze)=27
+        Assert.assertEquals(new Long(6 * 8), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, reference, recognition).get(Count.ERR));
+        //one more than substituting "\n" by " ": zehn vs. "ze\nhn"
+        Long count = getCount(false, true, ErrorModuleEnd2End.Mode.RO_SEG, false, reference.replace("\n", " "), recognition.replace("\n", " ")).get(Count.ERR);
+        Assert.assertEquals(new Long(6 * 8), count);
+        Assert.assertEquals(new Long(count), getCount(false, true, ErrorModuleEnd2End.Mode.RO_SEG, false, reference, recognition).get(Count.ERR));
+        // 3 INS (sie), 3 DEL (sie), 7 INS (neun ze), 7 DEL (neun ze)
+        Assert.assertEquals(new Long(6 * 8), getCount(false, true, ErrorModuleEnd2End.Mode.NO_RO, false, reference, recognition).get(Count.ERR));
+        //zero - can repair everything!!
+        Assert.assertEquals(new Long(6 * 8), getCount(false, true, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
+    }
 
     @Test
     public void testLetter() {
@@ -174,6 +235,23 @@ public class TestEnd2End {
         Assert.assertEquals(new Long(2), getCount(false, true, ErrorModuleEnd2End.Mode.RO, true, "it's wrong", "its wrong").get(Count.COR));
         Assert.assertEquals(new Long(3), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "its, wrong", "its, wrong").get(Count.COR));
 //        Assert.assertEquals(new Long(4), getCount(true, true, true, true, "30 examples, just some...", "('just') <SOME> 30examples??;:").get(Count.TP));
+    }
+
+    private class CategorizerWordMergeGroupsLeaveSpaces extends CategorizerWordMergeGroups {
+        @Override
+        public String getCategory(char c) {
+            return super.getCategory(c);
+        }
+
+        @Override
+        public boolean isDelimiter(char c) {
+            return false;
+        }
+
+        @Override
+        public boolean isIsolated(char c) {
+            return super.isIsolated(c);
+        }
     }
 
     public Map<Count, Long> getCount(boolean upper, boolean word, ErrorModuleEnd2End.Mode mode, boolean letterNumber, String gt, String hyp) {

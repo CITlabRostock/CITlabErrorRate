@@ -9,6 +9,7 @@ import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.PathCalculatorGraph;
 import de.uros.citlab.errorrate.util.GroupUtil;
+import de.uros.citlab.errorrate.util.HeatMapUtil;
 import de.uros.citlab.errorrate.util.ObjectCounter;
 import de.uros.citlab.errorrate.util.VectorUtil;
 import de.uros.citlab.tokenizer.TokenizerCategorizer;
@@ -20,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -188,7 +190,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
                     LOG.debug(dist.toString());
                 }
             }
-//            HeatMapUtil.save(HeatMapUtil.getHeatMap(out, 3), new File("out.png"));
+            HeatMapUtil.save(HeatMapUtil.getHeatMap(out, 3), new File("out.png"));
 
         }
     }
@@ -196,7 +198,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
     private void calculate(String[] recos, String[] refs) {
         //use dynamic programming to calculate the cheapest path through the dynamic programming tabular
 //        calcBestPathFast(recos, refs);
-        pathCalculator.setUpdateScheme(PathCalculatorGraph.UpdateScheme.ALL);
+        pathCalculator.setUpdateScheme(PathCalculatorGraph.UpdateScheme.LAZY);
         PathCalculatorGraph.DistanceMat<String, String> mat = pathCalculator.calcDynProg(Arrays.asList(recos), Arrays.asList(refs));
 
         List<PathCalculatorGraph.IDistance<String, String>> calcBestPath = pathCalculator.calcBestPath(mat);
@@ -334,16 +336,22 @@ public class ErrorModuleEnd2End implements IErrorModule {
             PathQuality toDeletePath = grouping.get(0);
             LOG.error("delete part" + toDeletePath);
             LOG.debug("found multiply usage of path - delete " + toDeletePath);
-            int lengthDelete = toDeletePath.endReco - toDeletePath.startReco + 1;//include one \n
-            String[] recosShorter = new String[recos.length - lengthDelete];
-            System.arraycopy(recos, 0, recosShorter, 0, toDeletePath.startReco);
-            System.arraycopy(recos, toDeletePath.endReco + 1, recosShorter, toDeletePath.startReco, recos.length - toDeletePath.endReco - 1);
-            LOG.error("new sequence reco to test is " + Arrays.toString(recosShorter).replace("\n", "\\n") + ".");
-            int lengthDelete2 = toDeletePath.endRef - toDeletePath.startRef + 1;//include one \n
-            String[] refShorter = new String[refs.length - lengthDelete2];
-            System.arraycopy(refs, 0, refShorter, 0, toDeletePath.startRef);
-            System.arraycopy(refs, toDeletePath.endRef + 1, refShorter, toDeletePath.startRef, refs.length - toDeletePath.endRef - 1);
-            LOG.error("new sequence ref to test is " + Arrays.toString(refShorter).replace("\n", "\\n") + ".");
+//            int lengthDelete = toDeletePath.endReco - toDeletePath.startReco + 1;//include one \n
+//            String[] recosShorter = new String[recos.length - lengthDelete];
+//            try {
+//                System.arraycopy(recos, 0, recosShorter, 0, toDeletePath.startReco);
+//            } catch (ArrayIndexOutOfBoundsException ex) {
+//                System.out.println("stop");
+//            }
+//            System.arraycopy(recos, toDeletePath.endReco + 1, recosShorter, toDeletePath.startReco, recos.length - toDeletePath.endReco - 1);
+//            LOG.error("new sequence reco to test is " + Arrays.toString(recosShorter).replace("\n", "\\n") + ".");
+//            int lengthDelete2 = toDeletePath.endRef - toDeletePath.startRef + 1;//include one \n
+//            String[] refShorter = new String[refs.length - lengthDelete2];
+//            System.arraycopy(refs, 0, refShorter, 0, toDeletePath.startRef);
+//            System.arraycopy(refs, toDeletePath.endRef + 1, refShorter, toDeletePath.startRef, refs.length - toDeletePath.endRef - 1);
+//            LOG.error("new sequence ref to test is " + Arrays.toString(refShorter).replace("\n", "\\n") + ".");
+            String[] refShorter = getSubProblem(refs, toDeletePath.startRef, toDeletePath.endRef);
+            String[] recosShorter = getSubProblem(recos, toDeletePath.startReco, toDeletePath.endReco);
             count(toDeletePath.path, usedReco, recos, toDeletePath.endRef - toDeletePath.startRef, toDeletePath.endReco - toDeletePath.startReco);
             if (refShorter.length <= 1) {
                 int i = countChars(recosShorter);
@@ -367,6 +375,33 @@ public class ErrorModuleEnd2End implements IErrorModule {
             System.out.println("stop");
         }
 
+    }
+
+    private String[] getSubProblem(String[] transcripts, int start, int end) {
+        LinkedList<String> res = new LinkedList<>();
+        for (int i = 0; i < start; i++) {
+            res.add(transcripts[i]);
+        }
+        if (!voter.isLineBreak(res.getLast())) {
+            String transcript = transcripts[start];
+            if (voter.isLineBreak(transcript)) {
+                res.add(transcript);
+            }
+        }
+        if (end < transcripts.length) {
+            if (voter.isLineBreak(transcripts[end])) {
+                end++;
+            }
+            if (end < transcripts.length) {
+                if (voter.isLineBreak(transcripts[end])) {
+                    throw new RuntimeException("tow line breaks after each other");
+                }
+                for (int i = end; i < transcripts.length; i++) {
+                    res.add(transcripts[i]);
+                }
+            }
+        }
+        return res.toArray(new String[0]);
     }
 
     private void count(List<PathCalculatorGraph.IDistance<String, String>> path, int[] usedReco, String[] recos, int lenRefs, int lenRecos) {
