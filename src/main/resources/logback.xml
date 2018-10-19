@@ -44,7 +44,7 @@
 	</root>
  	<logger name="com.achteck.misc" level="INFO" />
  	<logger name="de.uros" level="DEBUG" />
- 	<logger name="de.uros.citlab.errorrate.htr.ErrorModuleEnd2End" level="DEBUG" />
+ 	<logger name="de.uros.citlab.errorrate.htr.ErrorModuleEnd2End" level="TRACE" />
  	<logger name="de.uros.citlab.errorrate.normalizer.StringNormalizerDft" level="ERROR" />
  	<logger name="eu.transkribus.core.util.PageXmlUtils" level="INFO" />
  	<logger name="eu.transkribus.interfaces.types.util.ImageUtils" level="INFO" />
