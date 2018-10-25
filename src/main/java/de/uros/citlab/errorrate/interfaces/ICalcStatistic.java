@@ -1,12 +1,42 @@
 package de.uros.citlab.errorrate.interfaces;
 
 
+/**
+ * With classes implementing this interface it is possible to calculate confidence intervals for a CER calculated from
+ * text line samples.<br/>
+ * First, {@link #setAlpha(double)} have to be set to configure the confidence level.
+ * Typical values are 0.05 or 0.01.<br/>
+ * Second, the {@link #setEndPoints(Endpoints)} have to be set. If one want to have a statement
+ * "With the probability of (1-alpha) the CER of the given recognition is in the interval [lower, upper]",
+ * set {@link Endpoints#BOTH} and use [{@link IStatResult#getLowerProbability()},{@link IStatResult#getUpperProbability()}].
+ * For a statement "With the probability of (1-alpha) the CER is lower than VALUE, set  {@link Endpoints#UPPER} and use
+ * VALUE={@link IStatResult#getUpperProbability()}<br/>
+ * After having initialized these both parameters, the method {@link #process(String, String)} have to be applied.
+ * The return structure {@link IStatResult} can be used to further process the result.
+ */
 public interface ICalcStatistic {
 
+    /**
+     * sets the confidence level that the real probability is in this interval for the given processed data
+     *
+     * @param alpha
+     */
     void setAlpha(double alpha);
 
+    /**
+     * calculates the error between recognition and ground truth and returns a result file.
+     *
+     * @param reco  recognition / hypothesis of HTR for a line (not null)
+     * @param truth ground truth / reference for a line (not null)
+     * @return result structure
+     */
     IStatResult process(String reco, String truth);
 
+    /**
+     * set end points for confidence intervall.
+     *
+     * @param endPoints
+     */
     void setEndPoints(Endpoints endPoints);
 
     /**
@@ -21,10 +51,12 @@ public interface ICalcStatistic {
         /**
          * algorithm return a confidence interval with bound on the right side (p < p_upper)
          */
-        , LOWER/**
+        ,
+        LOWER/**
          * algorithm return a confidence interval with bounds on both sides (p_lower < p < p_upper)
          */
-        , BOTH
+        ,
+        BOTH
     }
 
     interface IStatResult {
@@ -54,7 +86,7 @@ public interface ICalcStatistic {
         String getText();
 
         /**
-         * @return true is statistic is large enough
+         * @return true if statistic is large enough
          */
         boolean isValid();
 
