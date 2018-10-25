@@ -357,7 +357,7 @@ public class PathCalculatorGraph<Reco, Reference> {
         QSortedCostAcc.add(start);
 //        G.add(start);
 //        distMat.set(startPoint, start);
-        Pair<JFrame, JProgressBar> bar = useProgressBar ? getProgressBar("calculating Dynamic Matrix") : null;
+        Pair<JFrame, JProgressBar> bar = true ? getProgressBar("calculating Dynamic Matrix") : null;
         while (!QSortedCostAcc.isEmpty()) {
             IDistance<Reco, Reference> pollLastEntry = QSortedCostAcc.pollFirst();
             if (updateScheme.equals(UpdateScheme.LAZY) && distMat.getLastElement() == pollLastEntry) {

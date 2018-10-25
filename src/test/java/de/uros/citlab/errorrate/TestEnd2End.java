@@ -10,15 +10,30 @@ import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
+import de.uros.citlab.errorrate.util.ObjectCounter;
 import de.uros.citlab.tokenizer.TokenizerCategorizer;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
 import de.uros.citlab.tokenizer.categorizer.CategorizerWordMergeGroups;
 import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
+import org.apache.commons.math3.util.Pair;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.rules.Stopwatch;
+import org.primaresearch.dla.page.Page;
+import org.primaresearch.dla.page.layout.physical.Region;
+import org.primaresearch.dla.page.layout.physical.text.LowLevelTextObject;
+import org.primaresearch.dla.page.layout.physical.text.impl.TextLine;
+import org.primaresearch.dla.page.layout.physical.text.impl.TextRegion;
+import org.primaresearch.io.UnsupportedFormatVersionException;
 
+import java.awt.*;
+import java.io.File;
+import java.io.IOException;
 import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -41,6 +56,24 @@ import java.util.Map;
  */
 public class TestEnd2End {
 
+    private enum Result {
+        F1_ATR1("ATR_1/page_f1"),
+        F1_ATR2("ATR_2/page_f1"),
+        F2_ATR1("ATR_1/page_f2"),
+        F2_ATR2("ATR_2/page_f2"),
+        F3_ATR1("ATR_1/page_f3"),
+        F3_ATR2("ATR_2/page_f3"),
+        GT("ATR_1/page_f1");
+        private String path;
+
+        Result(String path) {
+            this.path = path;
+        }
+
+        File getPath() {
+            return new File("src/test/resources/end2end/" + path);
+        }
+    }
 
     @Test
     public void testLineBreak() {
@@ -197,7 +230,7 @@ public class TestEnd2End {
             reference += "\n" + reference;
             recognition += "\n" + recognition;
         }
-        System.out.println("testVeryLongText with length "+reference.length());
+        System.out.println("testVeryLongText with length " + reference.length());
 //        System.exit(-1);
 //        232 116*2 58*4 29*8
 //        152 76*2 38*4 19*8
@@ -205,10 +238,10 @@ public class TestEnd2End {
         Assert.assertEquals(new Long(29 * factor), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, reference, recognition).get(Count.ERR));
         //one more than substituting "\n" by " ": zehn vs. "ze\nhn"
         Long count = getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference.replace("\n", " "), recognition.replace("\n", " ")).get(Count.ERR);
-        Assert.assertEquals(new Long(19*factor), count);
+        Assert.assertEquals(new Long(19 * factor), count);
         Assert.assertEquals(new Long(count - factor), getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference, recognition).get(Count.ERR));
         // 3 INS (sie), 3 DEL (sie), 7 INS (neun ze), 7 DEL (neun ze)
-        Assert.assertEquals(new Long(19*factor), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO, false, reference, recognition).get(Count.ERR));
+        Assert.assertEquals(new Long(19 * factor), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO, false, reference, recognition).get(Count.ERR));
 //        zero - can repair everything!!
         Assert.assertEquals(new Long(0), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
     }
@@ -285,9 +318,168 @@ public class TestEnd2End {
         return impl.getCounter().getMap();
     }
 
-    @Test
-    public void testCaseSensitive() {
-        System.out.println("CaseSensitive");
+    static String concat(List<Pair<String, Polygon>> lines) {
+        StringBuilder sb = new StringBuilder();
+        for (Pair<String, Polygon> line : lines) {
+            if (!line.getFirst().isEmpty()) {
+                if (sb.length() > 0) {
+                    sb.append("\n");
+                }
+                sb.append(line.getFirst());
+            }
+        }
+        return sb.toString();
+    }
 
+    public static Polygon getPolygon(org.primaresearch.maths.geometry.Polygon baseline) {
+        Polygon p = new Polygon();
+        for (int i = 0; i < baseline.getSize(); i++) {
+            p.addPoint(baseline.getPoint(i).x, baseline.getPoint(i).y);
+        }
+        return p;
+    }
+
+    public static List<Pair<String, Polygon>> getTranscriptsAndPolyFromLines(String fileName) {
+        if (fileName.endsWith(".xml")) {
+            Page aPage;
+            try {
+                List<Pair<String, Polygon>> res = new ArrayList<>();
+//                aPage = reader.read(new FileInput(new File(fileName)));
+                aPage = org.primaresearch.dla.page.io.xml.PageXmlInputOutput.readPage(fileName);
+                if (aPage == null) {
+                    System.out.println("Error while parsing xml-File.");
+                    return null;
+                }
+                List<Region> regionsSorted = aPage.getLayout().getRegionsSorted();
+                for (Region reg : regionsSorted)
+                    if (reg instanceof TextRegion) {
+                        TextRegion textregion = (TextRegion) reg;
+                        List<LowLevelTextObject> textObjectsSorted = textregion.getTextObjectsSorted();
+                        for (LowLevelTextObject line : textObjectsSorted) {
+                            if (line instanceof TextLine) {
+                                String text = line.getText();
+                                Polygon polygon = getPolygon(((TextLine) line).getBaseline());
+                                if (text == null || polygon.npoints < 1) {
+                                    System.out.println("transciption is '" + text + "' and polygon is '" + polygon + "'");
+                                } else {
+                                    res.add(new Pair<>(text, polygon));
+                                }
+                            }
+                        }
+                    }
+                return res;
+            } catch (UnsupportedFormatVersionException ex) {
+                throw new RuntimeException("Error while parsing xml-file.", ex);
+            }
+        }
+        return null;
+    }
+    @Test
+    public void testGermania0_RO() throws IOException {
+        testGermania0(ErrorModuleEnd2End.Mode.RO);
+    }
+    @Test
+    public void testGermania0_NO_RO() throws IOException {
+        testGermania0(ErrorModuleEnd2End.Mode.NO_RO);
+    }
+    @Test
+    public void testGermania0_NO_RO_SEG() throws IOException {
+        testGermania0(ErrorModuleEnd2End.Mode.NO_RO_SEG);
+    }
+    @Test
+    public void testGermania0_RO_SEG() throws IOException {
+        testGermania0(ErrorModuleEnd2End.Mode.RO_SEG);
+    }
+
+    public void testGermania0(ErrorModuleEnd2End.Mode mode) throws IOException {
+            ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, mode, false);
+            Result gtResult = Result.GT;
+            Result hypResult = Result.F1_ATR2;
+            System.out.println(mode);
+            File[] gts = new File(gtResult.getPath().getPath()).listFiles();
+            File[] hyps = new File(hypResult.getPath().getPath()).listFiles();
+            Arrays.sort(gts);
+            Arrays.sort(hyps);
+//        for (int i = 0; i < 1; i++) {
+            File hyp = hyps[0];
+            File gt = gts[0];
+            List<Pair<String, Polygon>> hypLines = getTranscriptsAndPolyFromLines(hyp.getPath());
+            List<Pair<String, Polygon>> gtLines = getTranscriptsAndPolyFromLines(gt.getPath());
+            end2End.calculate(concat(hypLines), concat(gtLines));
+            ObjectCounter<Count> counter = end2End.getCounter();
+            System.out.println(((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT));
+            System.out.println(counter);
+
+//        }
+    }
+
+    @Test
+    public void testGermania1() throws IOException {
+        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false);
+        Result gtResult = Result.GT;
+        Result hypResult = Result.F1_ATR2;
+
+        File[] gts = new File(gtResult.getPath().getPath()).listFiles();
+        File[] hyps = new File(hypResult.getPath().getPath()).listFiles();
+        Arrays.sort(gts);
+        Arrays.sort(hyps);
+        for (int i = 1; i < 2; i++) {
+            File hyp = hyps[i];
+            File gt = gts[i];
+            List<Pair<String, Polygon>> hypLines = getTranscriptsAndPolyFromLines(hyp.getPath());
+            List<Pair<String, Polygon>> gtLines = getTranscriptsAndPolyFromLines(gt.getPath());
+            end2End.calculate(concat(hypLines), concat(gtLines));
+            ObjectCounter<Count> counter = end2End.getCounter();
+            System.out.println(((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT));
+            System.out.println(counter);
+
+        }
+    }
+
+    @Test
+    public void testGermania2() throws IOException {
+        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false);
+        Result gtResult = Result.GT;
+        Result hypResult = Result.F1_ATR2;
+
+        File[] gts = new File(gtResult.getPath().getPath()).listFiles();
+        File[] hyps = new File(hypResult.getPath().getPath()).listFiles();
+        Arrays.sort(gts);
+        Arrays.sort(hyps);
+        for (int i = 2; i < 3; i++) {
+            File hyp = hyps[i];
+            File gt = gts[i];
+            List<Pair<String, Polygon>> hypLines = getTranscriptsAndPolyFromLines(hyp.getPath());
+            List<Pair<String, Polygon>> gtLines = getTranscriptsAndPolyFromLines(gt.getPath());
+            end2End.calculate(concat(hypLines), concat(gtLines));
+            ObjectCounter<Count> counter = end2End.getCounter();
+            System.out.println(((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT));
+            System.out.println(counter);
+
+        }
+    }
+
+    @Test
+    public void testGermania3() throws IOException {
+        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false);
+        Result gtResult = Result.GT;
+        Result hypResult = Result.F1_ATR2;
+
+        File[] gts = new File(gtResult.getPath().getPath()).listFiles();
+        File[] hyps = new File(hypResult.getPath().getPath()).listFiles();
+        Arrays.sort(gts);
+        Arrays.sort(hyps);
+
+        for (int i = 3; i < 4; i++) {
+            File hyp = hyps[i];
+            File gt = gts[i];
+            List<Pair<String, Polygon>> hypLines = getTranscriptsAndPolyFromLines(hyp.getPath());
+            List<Pair<String, Polygon>> gtLines = getTranscriptsAndPolyFromLines(gt.getPath());
+            end2End.calculate(concat(hypLines), concat(gtLines));
+            ObjectCounter<Count> counter = end2End.getCounter();
+            System.out.println(((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT));
+            System.out.println(counter);
+
+        }
     }
 }

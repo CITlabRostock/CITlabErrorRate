@@ -22,10 +22,7 @@ import org.slf4j.LoggerFactory;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Module, which uses the {@link PathCalculatorGraph} to calculate the error
@@ -86,6 +83,67 @@ public class ErrorModuleEnd2End implements IErrorModule {
                 break;
             default:
                 throw new RuntimeException("not implemented yet");
+        }
+//        pathCalculator.setFilter(new FilterHorizontal(5));
+    }
+
+    private static class FilterHorizontal implements PathCalculatorGraph.PathFilter<String, String> {
+        private HashMap<Integer, Double> map = new LinkedHashMap<>();
+        private final double offset;
+
+        private FilterHorizontal(double offset) {
+            this.offset = offset;
+        }
+
+        @Override
+        public void init(Comparator<PathCalculatorGraph.IDistance<String, String>> comparator) {
+            map.clear();
+        }
+
+        @Override
+        public boolean addDistance(PathCalculatorGraph.IDistance<String, String> newDistance) {
+            String[] refs = newDistance.getReferences();
+            if (refs == null || refs.length < 1 || !(refs[0].equals(" ") || refs[0].equals("\n"))) {
+                return true;
+            }
+            final int x = newDistance.getPoint()[1];
+            Double aDouble = map.get(x);
+            final double after = newDistance.getCostsAcc();
+            if (aDouble == null) {
+                map.put(x, after);
+                return true;
+            }
+            final double before = aDouble.doubleValue();
+            if (after < before) {
+                map.put(x, after);
+                return true;
+            }
+            if (before + offset < after) {
+                return true;
+            }
+            //before + offset > after : gap is too large!
+            return false;
+        }
+
+        @Override
+        public boolean followDistance(PathCalculatorGraph.IDistance<String, String> bestDistance) {
+            String[] refs = bestDistance.getReferences();
+            if (refs == null || refs.length < 1 || !(refs[0].equals(" ") || refs[0].equals("\n"))) {
+                return true;
+            }
+            final int x = bestDistance.getPoint()[1];
+            Double aDouble = map.get(x);
+            final double after = bestDistance.getCostsAcc();
+            if (aDouble == null) {
+                map.put(x, after);
+                return true;
+            }
+            final double before = aDouble.doubleValue();
+            if (after < before) {
+                map.put(x, after);
+                return true;
+            }
+            return after < before + offset;
         }
     }
 
