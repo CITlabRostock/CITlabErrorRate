@@ -10,12 +10,8 @@ import de.uros.citlab.errorrate.aligner.BaseLineAligner;
 import de.uros.citlab.errorrate.types.KWS;
 import java.awt.Polygon;
 import java.io.File;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -66,7 +62,9 @@ public class KeywordExtractorTest {
 
     private static File[] setUpFolder(File folder) {
         assertTrue("cannot find resources in " + folder.getPath(), folder.exists());
-        File[] res = FileUtils.listFiles(folder, "xml".split(" "), true).toArray(new File[0]);
+        Collection<File> files = FileUtils.listFiles(folder, "xml".split(" "), true);
+        files.removeIf(file -> file.getName().equals("doc.xml"));
+        File[] res = files.toArray(new File[0]);
         Arrays.sort(res);
         return res;
     }
@@ -156,9 +154,10 @@ public class KeywordExtractorTest {
         System.out.println("generateKWSGroundTruth");
         KeywordExtractor kwe = new KeywordExtractor();
         List<String> keywords = Arrays.asList("der", "und");
-        String[] idList = getStringList(listGT);
-        KWS.GroundTruth keywordGroundTruth = kwe.getKeywordGroundTruth(getStringList(listGT), idList, keywords);
-        KWS.Result keyWordErr = GT2Hyp(kwe.getKeywordGroundTruth(getStringList(listBot), idList, keywords));
+        String[] idListGT = getStringList(listGT);
+        String[] idListBot = getStringList(listBot);
+        KWS.GroundTruth keywordGroundTruth = kwe.getKeywordGroundTruth(getStringList(listGT), idListGT, keywords);
+        KWS.Result keyWordErr = GT2Hyp(kwe.getKeywordGroundTruth(getStringList(listBot), idListBot, keywords));
         KWSEvaluationMeasure kem = new KWSEvaluationMeasure(new BaseLineAligner());
         kem.setGroundtruth(keywordGroundTruth);
         kem.setResults(keyWordErr);

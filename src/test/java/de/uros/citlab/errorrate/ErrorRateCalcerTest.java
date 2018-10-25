@@ -18,6 +18,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -48,8 +49,13 @@ public class ErrorRateCalcerTest {
 
     private static File[] setUpFolder(File folder) {
         assertTrue("cannot find resources in " + folder.getPath(), folder.exists());
-        File[] res = FileUtils.listFiles(folder, "xml".split(" "), true).toArray(new File[0]);
+        Collection<File> files = FileUtils.listFiles(folder, "xml".split(" "), true);
+        files.removeIf(file -> file.getName().equals("doc.xml"));
+        File[] res = files.toArray(new File[0]);
         Arrays.sort(res);
+        if(res.length>28){
+            System.out.println("stop");
+        }
         return res;
     }
 
