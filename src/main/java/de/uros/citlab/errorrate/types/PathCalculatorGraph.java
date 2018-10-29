@@ -5,14 +5,19 @@
  */
 package de.uros.citlab.errorrate.types;
 
-import org.apache.commons.math3.util.Pair;
+import de.uros.citlab.errorrate.util.HeatMapUtil;
+import gnu.trove.TIntObjectHashMap;
+import gnu.trove.TIntObjectProcedure;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.util.*;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * @param <Reco>
@@ -23,7 +28,7 @@ public class PathCalculatorGraph<Reco, Reference> {
 
     private UpdateScheme updateScheme = UpdateScheme.LAZY;
     private boolean useProgressBar = false;
-    private static final Logger LOG = Logger.getLogger(PathCalculatorGraph.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(PathCalculatorGraph.class);
     private final List<ICostCalculator<Reco, Reference>> costCalculators = new ArrayList<>();
     private final List<ICostCalculatorMulti<Reco, Reference>> costCalculatorsMutli = new ArrayList<>();
     private PathFilter<Reco, Reference> filter = null;
@@ -208,22 +213,28 @@ public class PathCalculatorGraph<Reco, Reference> {
 
         public boolean equals(IDistance<Reco, Reference> obj);
 
+        public boolean isMarked();
+
+        public boolean mark(boolean mark);
+
+        public void dispose();
+
     }
 
     public static class DistanceMat<Reco, Reference> {
 
-        private final HashMap<Integer, IDistance<Reco, Reference>> distMap;
+        private final TIntObjectHashMap distMap;
         private final int sizeY;
         private final int sizeX;
 
         public DistanceMat(int y, int x) {
-            this.distMap = new LinkedHashMap<>();
+            this.distMap = new TIntObjectHashMap();
             sizeY = y;
             sizeX = x;
         }
 
         public IDistance<Reco, Reference> get(int y, int x) {
-            return distMap.get(y * sizeX + x);
+            return (IDistance<Reco, Reference>) distMap.get(y * sizeX + x);
         }
 
         public IDistance<Reco, Reference> get(int[] pos) {
@@ -253,11 +264,12 @@ public class PathCalculatorGraph<Reco, Reference> {
         public List<IDistance<Reco, Reference>> getBestPath() {
             IDistance<Reco, Reference> lastElement = getLastElement();
             if (lastElement == null) {
-                LOG.log(Level.WARNING, "Distance Matrix not completely calculated.");
+                LOG.warn("Distance Matrix not completely calculated.");
                 return null;
             }
             LinkedList<IDistance<Reco, Reference>> res = new LinkedList<>();
             res.add(lastElement);
+            int cnt = 0;
             int[] pos = lastElement.getPointPrevious();
             while (pos != null) {
                 lastElement = get(pos[0], pos[1]);
@@ -301,16 +313,61 @@ public class PathCalculatorGraph<Reco, Reference> {
             }
 
         }
-        if (LOG.isLoggable(Level.FINER)) {
+        if (LOG.isTraceEnabled()) {
             if (distOld == null) {
-                LOG.log(Level.FINER, "calculate at " + posNew[0] + ";" + posNew[1] + " distance " + distNew);
+                LOG.trace("calculate at " + posNew[0] + ";" + posNew[1] + " distance " + distNew);
             } else if (cmpCostsAcc.compare(distNew, distOld) < 0) {
-                LOG.log(Level.FINER, "calculate at " + posNew[0] + ";" + posNew[1] + " distance " + distNew);
+                LOG.trace("calculate at " + posNew[0] + ";" + posNew[1] + " distance " + distNew);
             } else {
-                LOG.log(Level.FINER, "calculate at " + posNew[0] + ";" + posNew[1] + " distance " + distOld);
+                LOG.trace("calculate at " + posNew[0] + ";" + posNew[1] + " distance " + distOld);
             }
         }
         return cnt;
+    }
+
+    public DistanceMat<Reco, Reference> cleanup(TreeSet<IDistance<Reco, Reference>> queue, DistanceMat<Reco, Reference> distMat) {
+        int res = 0;
+        for (IDistance<Reco, Reference> tail : queue) {
+            res += mark(tail, distMat, true);
+        }
+        int size = distMat.distMap.size();
+        LOG.debug("start point still in matrix = {}", distMat.get(0, 0) != null);
+        DistanceMat<Reco, Reference> res1 = new DistanceMat<>(distMat.getSizeY(), distMat.getSizeX());
+        distMat.distMap.forEachEntry(new TIntObjectProcedure() {
+            @Override
+            public boolean execute(int i, Object o) {
+                IDistance<Reco, Reference> o1 = (IDistance<Reco, Reference>) o;
+                if (o1 == null) {
+                    return true;
+                }
+                if (o1.isMarked()) {
+                    res1.distMap.put(i, o);
+                    o1.mark(false);
+                } else {
+                    o1.dispose();
+                }
+                return true;
+            }
+        });
+        int size2 = res1.distMap.size();
+        LOG.debug("before: {} now: {}", size, size2);
+        return res1;
+    }
+
+    private int mark(IDistance<Reco, Reference> dist, DistanceMat<Reco, Reference> distMat, boolean mark) {
+        if (mark == dist.isMarked()) {
+            return 0;
+        }
+        dist.mark(mark);
+        int[] pointPrevious = dist.getPointPrevious();
+        if (pointPrevious == null) {
+            return 1;
+        }
+        return 1 + mark(distMat.get(pointPrevious), distMat, mark);
+    }
+
+    private void updateBar() {
+
     }
 
     public DistanceMat<Reco, Reference> calcDynProg(List<Reco> reco, List<Reference> ref) {
@@ -348,7 +405,7 @@ public class PathCalculatorGraph<Reco, Reference> {
         for (ICostCalculatorMulti<Reco, Reference> costCalculator : costCalculatorsMutli) {
             costCalculator.init(distMat, reco, ref);
         }
-        int cnt = 0;
+        int cntEdges = 0;
         TreeSet<IDistance<Reco, Reference>> QSortedCostAcc = new TreeSet<>(cmpCostsAcc);
 //        HashSet<IDistance<Reco, Reference>> G = new LinkedHashSet<>();
         int[] startPoint = new int[]{0, 0};
@@ -357,45 +414,67 @@ public class PathCalculatorGraph<Reco, Reference> {
         QSortedCostAcc.add(start);
 //        G.add(start);
 //        distMat.set(startPoint, start);
-        Pair<JFrame, JProgressBar> bar = true ? getProgressBar("calculating Dynamic Matrix") : null;
+        int sizeOutput = 1600;
+        ProcessField bar = true ? new ProcessField("calculating Dynamic Matrix", sizeOutput) : null;
+        int factorNextCleanup = 10000;
+        int boundNextCleanup = factorNextCleanup;
+        int cntVerticies = 0;
+        int cntVerticiesSkip = 0;
+        boolean[][] isdead = new boolean[distMat.sizeY][distMat.sizeX];
         while (!QSortedCostAcc.isEmpty()) {
-            IDistance<Reco, Reference> pollLastEntry = QSortedCostAcc.pollFirst();
-            if (updateScheme.equals(UpdateScheme.LAZY) && distMat.getLastElement() == pollLastEntry) {
+            IDistance<Reco, Reference> distActual = QSortedCostAcc.pollFirst();
+            if (updateScheme.equals(UpdateScheme.LAZY) && distMat.getLastElement() == distActual) {
                 break;
             }
-            if (filter != null && !filter.followDistance(pollLastEntry)) {
+            if (isdead[distActual.getPoint()[0]][distActual.getPoint()[1]]) {
+//                System.out.println("vertical skip:" + cntVerticiesSkip++);
                 continue;
             }
-            final int[] pos = pollLastEntry.getPoint();
-            if (bar != null) {
-                int newProcess = (int) Math.round(((double) pos[0]) * pos[1] / recoLength / refLength * 1000);
-                if (bar.getSecond().getValue() < newProcess) {
-                    bar.getSecond().setValue(newProcess);
-                }
+            isdead[distActual.getPoint()[0]][distActual.getPoint()[1]] = true;
+            if (filter != null && !filter.followDistance(distActual)) {
+                continue;
             }
+            final int[] pos = distActual.getPoint();
+            if (bar != null) {
+                bar.update(pos, distMat, distActual);
+            }
+            cntVerticies++;
             //all Neighbours v of u
             for (ICostCalculator<Reco, Reference> costCalculator : costCalculators) {
-                IDistance<Reco, Reference> distance = costCalculator.getNeighbour(pos, pollLastEntry);
-                cnt += handleDistance(distance, distMat, QSortedCostAcc, filter);
+                IDistance<Reco, Reference> distance = costCalculator.getNeighbour(pos, distActual);
+                cntEdges += handleDistance(distance, distMat, QSortedCostAcc, filter);
             }
             for (ICostCalculatorMulti<Reco, Reference> costCalculator : costCalculatorsMutli) {
-                List<IDistance<Reco, Reference>> distances = costCalculator.getNeighbours(pos, pollLastEntry);
+                List<IDistance<Reco, Reference>> distances = costCalculator.getNeighbours(pos, distActual);
                 if (distances == null) {
                     continue;
                 }
                 for (IDistance<Reco, Reference> distance : distances) {
-                    cnt += handleDistance(distance, distMat, QSortedCostAcc, filter);
+                    cntEdges += handleDistance(distance, distMat, QSortedCostAcc, filter);
                 }
             }
+            if (cntVerticies > boundNextCleanup) {
+                distMat = cleanup(QSortedCostAcc, distMat);
+                boundNextCleanup = cntVerticies + factorNextCleanup;
+                factorNextCleanup *= 1.5;
+            }
+
         }
         if (bar != null) {
-            bar.getSecond().setValue(1000);
+            bar.setEnd();
+            BufferedImage image = bar.getImage();
+            try {
+                ImageIO.write(image, "png", new File("out.png"));
+            } catch (Throwable e) {
+                LOG.debug("cannot save debug image", e);
+
+            }
         }
         if (distMat.getLastElement() == null) {
-            LOG.log(Level.WARNING, "no path found from start to end with given cost calulators");
+            LOG.warn("no path found from start to end with given cost calulators");
         }
-        if (LOG.isLoggable(Level.FINE)) {
-            LOG.log(Level.FINE, "caculate " + cnt + " edges for " + ((reco.size() - 1) * (ref.size() - 1)) + " verticies");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("caculate " + cntEdges + " edges for " + ((reco.size() - 1) * (ref.size() - 1)) + "/" + cntVerticies + " verticies");
         }
         if (deleteFirstReco) {
             reco.remove(0);
@@ -404,8 +483,7 @@ public class PathCalculatorGraph<Reco, Reference> {
             ref.remove(0);
         }
         if (bar != null) {
-            bar.getFirst().setVisible(false);
-            bar.getFirst().dispose();
+            bar.dispose();
         }
         return distMat;
 
@@ -431,16 +509,17 @@ public class PathCalculatorGraph<Reco, Reference> {
         return calcDynProg(Arrays.asList(reco), Arrays.asList(ref)).getLastElement().getCostsAcc();
     }
 
-    public static class Distance<Reco, Reference> implements IDistance<Reco, Reference> {
+    public static class Distance<Reco, Reference> implements PathCalculatorGraph.IDistance<Reco, Reference> {
 
         //        private final Distance previousDistance;
         private final String manipulation;
         private final double costs;
         private final double costsAcc;
-        private final int[] previous;
-        private final int[] point;
-        private final Reco[] recos;
-        private final Reference[] references;
+        private int[] previous;
+        private int[] point;
+        private Reco[] recos;
+        private Reference[] references;
+        private boolean marked = false;
 
         public Distance(String manipulation, double costs, double costAcc, int[] point, int[] previous, Reco[] recos, Reference[] references) {
             this.manipulation = manipulation;
@@ -450,6 +529,27 @@ public class PathCalculatorGraph<Reco, Reference> {
             this.recos = recos;
             this.references = references;
             this.point = point;
+        }
+
+        @Override
+        public boolean isMarked() {
+            return marked;
+        }
+
+        @Override
+        public boolean mark(boolean mark) {
+            this.marked = mark;
+            return mark;
+        }
+
+        @Override
+        public void dispose() {
+            if (!isMarked()) {
+                previous = null;
+                point = null;
+                recos = null;
+                references = null;
+            }
         }
 
         @Override
@@ -507,28 +607,93 @@ public class PathCalculatorGraph<Reco, Reference> {
         }
     }
 
-    public static Pair<JFrame, JProgressBar> getProgressBar(String title) {
-        JFrame meinJFrame = new JFrame();
-        meinJFrame.setSize(400, 100);
-        meinJFrame.setTitle(title);
-        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        JPanel meinPanel = new JPanel();
+    private static class ProcessField {
+        private JFrame mainFrame;
+        private JProgressBar progressBar;
+        private JLabel image;
+        private int size;
+        private boolean isDebug = false;
+        private double[][] mat = null;
+        private final int steps = 100;
 
-        // JProgressBar-Objekt wird erzeugt
-        JProgressBar meinLadebalken = new JProgressBar(0, 1000);
+        public ProcessField(String title, int size) {
+            this.size = size;
+            mainFrame = new JFrame();
+//        meinJFrame.setSize(size, size + 300);
+            mainFrame.setTitle(title);
+            Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+            JPanel meinPanel = new JPanel();
+            meinPanel.setLayout(new BoxLayout(meinPanel, BoxLayout.Y_AXIS));
 
-        // Wert für den Ladebalken wird gesetzt
-        meinLadebalken.setValue(0);
-        // Der aktuelle Wert wird als 
-        // Text in Prozent angezeigt
-        meinLadebalken.setStringPainted(true);
+            // JProgressBar-Objekt wird erzeugt
+            progressBar = new JProgressBar(0, steps);
 
-        // JProgressBar wird Panel hinzugefügt
-        meinPanel.add(meinLadebalken);
-        meinJFrame.add(meinPanel);
-        meinJFrame.setLocation(new Point((int) (screenSize.getWidth() - meinJFrame.getWidth()) / 2, (int) (screenSize.getHeight() - meinJFrame.getHeight()) / 2));
-        meinJFrame.setVisible(true);
-        return new Pair(meinJFrame, meinLadebalken);
+            // Wert für den Ladebalken wird gesetzt
+            progressBar.setValue(0);
+            // Der aktuelle Wert wird als
+            // Text in Prozent angezeigt
+            progressBar.setStringPainted(true);
+
+            image = new JLabel();
+            image.setIcon(new ImageIcon(HeatMapUtil.getHeatMap(new double[size][size], 2)));
+            image.setAlignmentX(Component.CENTER_ALIGNMENT);
+            progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
+            meinPanel.add(image);
+            // JProgressBar wird Panel hinzugefügt
+            meinPanel.add(progressBar);
+            mainFrame.add(meinPanel);
+            mainFrame.setLocation(new Point((int) (screenSize.getWidth() - mainFrame.getWidth()) / 2, (int) (screenSize.getHeight() - mainFrame.getHeight()) / 2));
+            mainFrame.setVisible(true);
+            mainFrame.pack();
+        }
+
+        private void setEnd() {
+            progressBar.setValue(steps);
+        }
+
+        private void dispose() {
+            mainFrame.setVisible(false);
+            mainFrame.dispose();
+
+        }
+
+        void update(int[] pos, DistanceMat distMat, IDistance actual) {
+            int sizeX = isDebug ? size : distMat.getSizeX();
+            int sizeY = isDebug ? size : distMat.getSizeY();
+            int newProcess = (int) Math.round(((double) pos[1] / sizeX * steps));
+            if (progressBar.getValue() < newProcess || isDebug) {
+                progressBar.setValue(newProcess);
+                int factorX = Math.max(1, sizeX / size);
+                int factorY = Math.max(1, sizeY / size);
+                if (mat == null) {
+                    mat = new double[sizeY / factorY][sizeX / factorX];
+                }
+                for (int i = 0; i < mat.length; i++) {
+                    double[] vec = mat[i];
+                    for (int j = 0; j < vec.length; j++) {
+                        IDistance dist = distMat.get(i * factorY, j * factorX);
+                        if (dist == null) {
+                            vec[j] = vec[j] > 0 ? vec[j] : isDebug ? -5 : 0;
+                        } else {
+                            vec[j] = vec[j] > 0 ? Math.min(dist.getCostsAcc(), vec[j]) : dist.getCostsAcc();
+                        }
+//                        vec[j] = dist == null ? isDebug ? -5 : 0 : dist.getCostsAcc();
+                    }
+                }
+                BufferedImage heatMap = HeatMapUtil.getHeatMap(mat, 2);
+                image.setIcon(new ImageIcon(heatMap));
+                mainFrame.invalidate();
+                mainFrame.revalidate();
+                mainFrame.repaint();
+//                System.out.println("done");
+            }
+
+        }
+
+        public BufferedImage getImage() {
+            return HeatMapUtil.getHeatMap(mat, 7);
+        }
 
     }
+
 }

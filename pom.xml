@@ -77,6 +77,11 @@
             <version>1.2-URO</version>
         </dependency>
         <dependency>
+            <groupId>trove</groupId>
+            <artifactId>trove</artifactId>
+            <version>1.1-beta-5</version>
+        </dependency>
+        <dependency>
             <groupId>eu.transkribus</groupId>
             <artifactId>TranskribusBaseLineMetricTool</artifactId>
             <version>0.0.2</version>
