@@ -226,6 +226,7 @@ public class PathCalculatorGraph<Reco, Reference> {
         private final TIntObjectHashMap distMap;
         private final int sizeY;
         private final int sizeX;
+//        boolean doublestruct = true;
 
         public DistanceMat(int y, int x) {
             this.distMap = new TIntObjectHashMap();
@@ -234,6 +235,13 @@ public class PathCalculatorGraph<Reco, Reference> {
         }
 
         public IDistance<Reco, Reference> get(int y, int x) {
+//            if (doublestruct) {
+//                Object o = distMap.get(y);
+//                if (o == null) {
+//                    return null;
+//                }
+//                return (IDistance<Reco, Reference>) ((TIntObjectHashMap) o).get(x);
+//            }
             return (IDistance<Reco, Reference>) distMap.get(y * sizeX + x);
         }
 
@@ -242,6 +250,15 @@ public class PathCalculatorGraph<Reco, Reference> {
         }
 
         public void set(int y, int x, IDistance<Reco, Reference> distance) {
+//            if (doublestruct) {
+//                Object o = distMap.get(y);
+//                if (o == null) {
+//                    o = new TIntObjectHashMap();
+//                    distMap.put(y, o);
+//                }
+//                ((TIntObjectHashMap) o).put(x, distance);
+//                return;
+//            }
             distMap.put(y * sizeX + x, distance);
         }
 
@@ -269,7 +286,6 @@ public class PathCalculatorGraph<Reco, Reference> {
             }
             LinkedList<IDistance<Reco, Reference>> res = new LinkedList<>();
             res.add(lastElement);
-            int cnt = 0;
             int[] pos = lastElement.getPointPrevious();
             while (pos != null) {
                 lastElement = get(pos[0], pos[1]);
@@ -279,6 +295,89 @@ public class PathCalculatorGraph<Reco, Reference> {
             res.removeFirst();
             return res;
         }
+
+        private int getElements() {
+//            int cnt = 0;
+//            if (doublestruct) {
+//                for (Object value : distMap.getValues()) {
+//                    if (value != null) {
+//                        cnt += ((TIntObjectHashMap) value).size();
+//                    }
+//                }
+//                return cnt;
+//            }
+            return distMap.size();
+        }
+
+        public DistanceMat<Reco, Reference> cleanup(TreeSet<IDistance<Reco, Reference>> queue) {
+            int cnt = 0;
+            for (IDistance<Reco, Reference> tail : queue) {
+                cnt += mark(tail, true);
+            }
+            int size = getElements();
+            DistanceMat<Reco, Reference> res = new DistanceMat<Reco, Reference>(getSizeY(), getSizeX());
+//            if (doublestruct) {
+//                distMap.forEachEntry(new TIntObjectProcedure() {
+//                    @Override
+//                    public boolean execute(int i, Object o) {
+//                        if (o != null) {
+//                            TIntObjectHashMap o1 = (TIntObjectHashMap) o;
+//                            return o1.forEachEntry(new TIntObjectProcedure() {
+//                                @Override
+//                                public boolean execute(int j, Object o) {
+//                                    IDistance<Reco, Reference> o2 = (IDistance<Reco, Reference>) o;
+//                                    if (o2 == null) {
+//                                        return true;
+//                                    }
+//                                    if (o2.isMarked()) {
+//                                        res.set(i, j, o2);
+//                                        o2.mark(false);
+//                                    } else {
+//                                        o2.dispose();
+//                                    }
+//                                    return true;
+//                                }
+//                            });
+//                        }
+//                        return true;
+//                    }
+//                });
+//            } else {
+            distMap.forEachEntry(new TIntObjectProcedure() {
+                @Override
+                public boolean execute(int i, Object o) {
+                    IDistance<Reco, Reference> o1 = (IDistance<Reco, Reference>) o;
+                    if (o1 == null) {
+                        return true;
+                    }
+                    if (o1.isMarked()) {
+                        res.set(o1.getPoint()[0], o1.getPoint()[1], o1);
+                        o1.mark(false);
+                    } else {
+                        o1.dispose();
+                    }
+                    return true;
+                }
+            });
+//            }
+            LOG.debug("start point still in matrix = {}", res.get(0, 0) != null);
+            int size2 = res.getElements();
+            LOG.debug("#Edges before: {} now: {}", size, size2);
+            return res;
+        }
+
+        private int mark(IDistance<Reco, Reference> dist, boolean mark) {
+            if (mark == dist.isMarked()) {
+                return 0;
+            }
+            dist.mark(mark);
+            int[] pointPrevious = dist.getPointPrevious();
+            if (pointPrevious == null) {
+                return 1;
+            }
+            return 1 + mark(get(pointPrevious), mark);
+        }
+
 
     }
 
@@ -323,51 +422,6 @@ public class PathCalculatorGraph<Reco, Reference> {
             }
         }
         return cnt;
-    }
-
-    public DistanceMat<Reco, Reference> cleanup(TreeSet<IDistance<Reco, Reference>> queue, DistanceMat<Reco, Reference> distMat) {
-        int res = 0;
-        for (IDistance<Reco, Reference> tail : queue) {
-            res += mark(tail, distMat, true);
-        }
-        int size = distMat.distMap.size();
-        LOG.debug("start point still in matrix = {}", distMat.get(0, 0) != null);
-        DistanceMat<Reco, Reference> res1 = new DistanceMat<>(distMat.getSizeY(), distMat.getSizeX());
-        distMat.distMap.forEachEntry(new TIntObjectProcedure() {
-            @Override
-            public boolean execute(int i, Object o) {
-                IDistance<Reco, Reference> o1 = (IDistance<Reco, Reference>) o;
-                if (o1 == null) {
-                    return true;
-                }
-                if (o1.isMarked()) {
-                    res1.distMap.put(i, o);
-                    o1.mark(false);
-                } else {
-                    o1.dispose();
-                }
-                return true;
-            }
-        });
-        int size2 = res1.distMap.size();
-        LOG.debug("before: {} now: {}", size, size2);
-        return res1;
-    }
-
-    private int mark(IDistance<Reco, Reference> dist, DistanceMat<Reco, Reference> distMat, boolean mark) {
-        if (mark == dist.isMarked()) {
-            return 0;
-        }
-        dist.mark(mark);
-        int[] pointPrevious = dist.getPointPrevious();
-        if (pointPrevious == null) {
-            return 1;
-        }
-        return 1 + mark(distMat.get(pointPrevious), distMat, mark);
-    }
-
-    private void updateBar() {
-
     }
 
     public DistanceMat<Reco, Reference> calcDynProg(List<Reco> reco, List<Reference> ref) {
@@ -454,7 +508,7 @@ public class PathCalculatorGraph<Reco, Reference> {
                 }
             }
             if (cntVerticies > boundNextCleanup) {
-                distMat = cleanup(QSortedCostAcc, distMat);
+                distMat = distMat.cleanup(QSortedCostAcc);
                 boundNextCleanup = cntVerticies + factorNextCleanup;
                 factorNextCleanup *= 1.5;
             }
