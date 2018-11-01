@@ -107,7 +107,7 @@ class DistanceStrStr implements PathCalculatorGraph.IDistance<String, String> {
     }
 
     @Override
-    public int compareTo(PathCalculatorGraph.IDistance<String, String> o) {
+    public int compareTo(PathCalculatorGraph.IDistanceSmall<String, String> o) {
         return Double.compare(getCostsAcc(), o.getCostsAcc());
     }
 }

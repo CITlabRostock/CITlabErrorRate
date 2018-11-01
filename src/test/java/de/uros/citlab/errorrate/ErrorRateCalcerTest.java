@@ -6,13 +6,16 @@
 package de.uros.citlab.errorrate;
 
 import de.uros.citlab.errorrate.htr.ErrorRateCalcer;
+import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
 import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.Method;
 import de.uros.citlab.errorrate.types.Metric;
 import de.uros.citlab.errorrate.types.Result;
 import de.uros.citlab.errorrate.util.ObjectCounter;
+import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -80,6 +83,35 @@ public class ErrorRateCalcerTest {
         Map<Method, Result> results = instance.process(listErr, listGT, Method.values());
         for (Result result : results.values()) {
             printResult(result);
+        }
+    }
+
+    private File[] getSubList(File[] list,int idx){
+        if(idx<0){
+            return list;
+        }
+        return new File[]{list[idx]};
+    }
+
+    @Test
+    public void testCompareErrorRateAndEnd2EndRO() {
+        System.out.println("testHTR");
+        File[] hypSmall = getSubList(listErr, 0);
+        File[] gTSmall = getSubList(listGT, 0);
+        ErrorRateCalcer instance = new ErrorRateCalcer();
+        instance.setUseEnd2End(false);
+        Result stdMethod = instance.process(hypSmall, gTSmall, Method.CER);
+        instance.setUseEnd2End(true);
+        Result end2EndMethod = instance.process(hypSmall, gTSmall, Method.CER);
+        System.out.println("Std:");
+        printResult(stdMethod);
+        System.out.println("End2End:");
+        printResult(end2EndMethod);
+        Map<Metric, Double> metrics = stdMethod.getMetrics();
+        for (Metric m : metrics.keySet()) {
+        double cntStd = stdMethod.getMetric(m);
+        double cntEnd2End = end2EndMethod.getMetric(m);
+            Assert.assertEquals("different results for metric '"+m+"' for same tasks - probably end2end is wrong.",cntStd,cntEnd2End,0.00001);
         }
     }
 

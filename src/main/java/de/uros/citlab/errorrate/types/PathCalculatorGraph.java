@@ -20,6 +20,8 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
 import java.lang.reflect.Array;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.List;
 
@@ -30,6 +32,8 @@ import java.util.List;
  */
 public class PathCalculatorGraph<Reco, Reference> {
 
+    private Reco typeReco;
+    private Reference typeReference;
     private UpdateScheme updateScheme = UpdateScheme.LAZY;
     private boolean useProgressBar = false;
     private File folderDynMats = null;
@@ -206,11 +210,25 @@ public class PathCalculatorGraph<Reco, Reference> {
         public boolean followPathsFromBestEdge(IDistance<Reco, Reference> bestDistance);
     }
 
-    public static interface IDistance<Reco, Reference> extends Comparable<IDistance<Reco, Reference>> {
+    public static interface IDistanceSmall<Reco, Reference> extends Comparable<IDistanceSmall<Reco, Reference>> {
+        public double getCostsAcc();
+
+        public int[] getPointPrevious();
+
+        public int[] getPoint();
+
+        public boolean isMarked();
+
+        public boolean mark(boolean mark);
+
+        public void dispose();
+
+    }
+
+    public static interface IDistance<Reco, Reference> extends IDistanceSmall<Reco, Reference> {
 
         public double getCosts();
 
-        public double getCostsAcc();
 
         public Reco[] getRecos();
 
@@ -218,17 +236,9 @@ public class PathCalculatorGraph<Reco, Reference> {
 
         public String getManipulation();
 
-        public int[] getPointPrevious();
-
-        public int[] getPoint();
 
         public boolean equals(IDistance<Reco, Reference> obj);
 
-        public boolean isMarked();
-
-        public boolean mark(boolean mark);
-
-        public void dispose();
 
     }
 
@@ -436,7 +446,6 @@ public class PathCalculatorGraph<Reco, Reference> {
         return cnt;
     }
 
-
     public DistanceMat<Reco, Reference> calcDynProg(List<Reco> reco, List<Reference> ref) {
         if (ref == null || reco == null) {
             throw new RuntimeException("target or output is null");
@@ -466,7 +475,6 @@ public class PathCalculatorGraph<Reco, Reference> {
         if (filter != null) {
             filter.init(nativeReco, nativeRef);
         }
-        int cntEdges = 0;
         TreeSet<IDistance<Reco, Reference>> QSortedCostAcc = new TreeSet<>(cmpCostsAcc);
 //        HashSet<IDistance<Reco, Reference>> G = new LinkedHashSet<>();
         int[] startPoint = new int[]{0, 0};
@@ -479,19 +487,20 @@ public class PathCalculatorGraph<Reco, Reference> {
         ProcessField bar = useProgressBar || folderDynMats != null ? new ProcessField("calculating Dynamic Matrix", sizeOutput, useProgressBar, folderDynMats) : null;
         int factorNextCleanup = 500000;
         int boundNextCleanup = factorNextCleanup;
+        int cntEdges = 0;
         int cntVerticies = 0;
-        int cntVerticiesSkip = 0;
+//        int cntEdges = 0;
         boolean[][] isdead = new boolean[distMat.sizeY][distMat.sizeX];
         StopWatch swCalculators = new StopWatch("calculators");
         StopWatch swHandle = new StopWatch("handles");
         StopWatch swCleanup = new StopWatch("cleanup");
         while (!QSortedCostAcc.isEmpty()) {
+            cntVerticies++;
             IDistance<Reco, Reference> distActual = QSortedCostAcc.pollFirst();
             if (updateScheme.equals(UpdateScheme.LAZY) && distMat.getLastElement() == distActual) {
                 break;
             }
             if (isdead[distActual.getPoint()[0]][distActual.getPoint()[1]]) {
-//                System.out.println("vertical skip:" + cntVerticiesSkip++);
                 continue;
             }
             isdead[distActual.getPoint()[0]][distActual.getPoint()[1]] = true;
@@ -505,7 +514,6 @@ public class PathCalculatorGraph<Reco, Reference> {
             if (bar != null) {
                 bar.update(pos, distMat, distActual);
             }
-            cntVerticies++;
             //all Neighbours v of u
             for (ICostCalculator<Reco, Reference> costCalculator : costCalculators) {
                 StopWatch.start(costCalculator.getClass().getSimpleName());
@@ -673,7 +681,7 @@ public class PathCalculatorGraph<Reco, Reference> {
         }
 
         @Override
-        public int compareTo(IDistance<Reco, Reference> o) {
+        public int compareTo(IDistanceSmall<Reco, Reference> o) {
             return Double.compare(costsAcc, o.getCostsAcc());
         }
     }

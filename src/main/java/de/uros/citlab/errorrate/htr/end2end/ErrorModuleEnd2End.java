@@ -7,7 +7,9 @@ package de.uros.citlab.errorrate.htr.end2end;
 
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.types.Count;
+import de.uros.citlab.errorrate.types.Method;
 import de.uros.citlab.errorrate.types.PathCalculatorGraph;
+import de.uros.citlab.errorrate.types.Result;
 import de.uros.citlab.errorrate.util.GroupUtil;
 import de.uros.citlab.errorrate.util.HeatMapUtil;
 import de.uros.citlab.errorrate.util.ObjectCounter;
@@ -16,6 +18,7 @@ import de.uros.citlab.tokenizer.TokenizerCategorizer;
 import de.uros.citlab.tokenizer.interfaces.ICategorizer;
 import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
+import eu.transkribus.languageresources.extractor.pagexml.PAGEXMLExtractor;
 import gnu.trove.TIntDoubleHashMap;
 import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
@@ -56,7 +59,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
     }
 
     public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed) {
-        this(tokenizer, stringNormalizer, mode, detailed, 100);
+        this(tokenizer, stringNormalizer, mode, detailed, 300);
     }
 
     public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed, double filterOffset) {
@@ -78,6 +81,11 @@ public class ErrorModuleEnd2End implements IErrorModule {
                 pathCalculator.addCostCalculator(new CCSubOrCorNL(voter));
                 pathCalculator.addCostCalculator(new CCInsNL(voter));
                 pathCalculator.addCostCalculator(new CCDelNL(voter));
+                pathCalculator.addCostCalculator((PathCalculatorGraph.ICostCalculatorMulti<String, String>) new CCLineBreakRecoJump(voter));
+//                if (filterOffset > 0.0) {
+//                    pathCalculator.setFilter(new FilterHorizontalFixedLength(20, grid));
+//                }
+                break;
             case NO_RO:
                 CCLineBreakRecoJump jumper = new CCLineBreakRecoJump(voter);
                 pathCalculator.addCostCalculator((PathCalculatorGraph.ICostCalculatorMulti<String, String>) jumper);
@@ -408,7 +416,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
         int max = VectorUtil.max(usedReco);
         //if any reference is used, the resulting array "usedReco" should only conatain zeros.
         if (mode.equals(Mode.RO) || mode.equals(Mode.RO_SEG) || !(max > 1 || countUnusedChars(usedReco, recos) > 0)) {
-            ObjectCounter<Count> count = count(calcBestPath, usedReco, recos, refs.length, recos.length);
+            ObjectCounter<Count> count = count(calcBestPath, usedReco, countChars(recos), countChars(refs));
             LOG.debug("count = " + count);
             counter.addAll(count);
             return;
@@ -475,7 +483,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
             @Override
             public PathQuality map(List<PathCalculatorGraph.IDistance<String, String>> elements) {
                 return new PathQuality(
-                        elements.get(elements.size() - 1).getCostsAcc() - elements.get(0).getCostsAcc() + elements.get(0).getCosts(),
+                        (elements.get(elements.size() - 1).getCostsAcc() - elements.get(0).getCostsAcc() + elements.get(0).getCosts()),
                         elements.get(0).getPointPrevious()[0],
                         elements.get(elements.size() - 1).getPoint()[0],
                         elements.get(0).getPointPrevious()[1],
@@ -504,15 +512,15 @@ public class ErrorModuleEnd2End implements IErrorModule {
                 default:
                     throw new RuntimeException("not implemented yet");
             }
-            ErrorModuleEnd2End intern = new ErrorModuleEnd2End(tokenizer, null, modeFallback, detailed, 0.0);
+            ErrorModuleEnd2End fallback = new ErrorModuleEnd2End(tokenizer, null, modeFallback, detailed, 0.0);
             File outSubProblem = null;
             if (out != null) {
                 String path = out.getPath();
                 path = path.substring(0, path.lastIndexOf(".")) + "_" + path.substring(path.lastIndexOf("."));
                 outSubProblem = new File(path);
             }
-            intern.calculate(recos, refs, showProgressBar, outSubProblem);
-            counter.addAll(intern.getCounter());
+            fallback.calculate(recos, refs, showProgressBar, outSubProblem);
+            counter.addAll(fallback.getCounter());
             return;
         }
         boolean[] maskReco = new boolean[recos.length];
@@ -525,13 +533,17 @@ public class ErrorModuleEnd2End implements IErrorModule {
             if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
                 throw new RuntimeException("reference should be used only 1 time in bestPath");
             }
-            ObjectCounter<Count> count = count(toDeletePath.path, usedReco, recos, toDeletePath.endRef - toDeletePath.startRef, toDeletePath.endReco - toDeletePath.startReco);
+            int i = countChars(recos, toDeletePath.startReco, toDeletePath.endReco);
+            int j = toDeletePath.endReco - toDeletePath.startReco;
+            System.out.println("cntChars = "+i+" toDelete-diff = "+j);
+            ObjectCounter<Count> count = count(toDeletePath.path, usedReco, countChars(recos, toDeletePath.startReco, toDeletePath.endReco), countChars(refs, toDeletePath.startRef, toDeletePath.endRef));
+//            ObjectCounter<Count> count = count(toDeletePath.path, usedReco, recos, refs);
             LOG.debug("count {} for sub-task {}", count, toDeletePath);
             counter.addAll(count);
         }
         String[] refShorter = getSubProblem(refs, maskRef);
         String[] recosShorter = getSubProblem(recos, maskReco);
-        if (refShorter.length <= 1) {
+        if (countChars(refShorter) == 0) {
             int i = countChars(recosShorter);
             LOG.debug("add {} times DEL, ERR and HYP to count because ref == \"\"", i);
             counter.add(Count.DEL, i);
@@ -577,7 +589,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
         return res.toArray(new String[0]);
     }
 
-    private ObjectCounter<Count> count(List<PathCalculatorGraph.IDistance<String, String>> path, int[] usedReco, String[] recos, int lenRefs, int lenRecos) {
+    private ObjectCounter<Count> count(List<PathCalculatorGraph.IDistance<String, String>> path, int[] usedReco, int lengthRecos, int lengthRefs) {
         ObjectCounter<Count> res = new ObjectCounter<>();
         for (PathCalculatorGraph.IDistance<String, String> dist : path) {
             String m = dist.getManipulation();
@@ -609,8 +621,8 @@ public class ErrorModuleEnd2End implements IErrorModule {
                     throw new RuntimeException("found type '" + dist.getManipulation() + "'");
             }
         }
-        res.add(Count.GT, lenRefs);
-        res.add(Count.HYP, lenRecos);
+        res.add(Count.GT, lengthRefs);
+        res.add(Count.HYP, lengthRecos);
 
         return res;
 
@@ -627,30 +639,15 @@ public class ErrorModuleEnd2End implements IErrorModule {
     }
 
     private int countChars(String[] out) {
+        return countChars(out, 0, out.length);
+    }
+
+    private int countChars(String[] out, int start, int endExcl) {
         int count = 0;
-        for (int i = 0; i < out.length; i++) {
+        for (int i = start; i < endExcl; i++) {
             if (!voter.isLineBreak(out[i])) count++;
         }
         return count;
-    }
-
-    private int countMultiplyChars(int[] usage, String[] out) {
-        int count = 0;
-        for (int i = 0; i < usage.length; i++) {
-            if (usage[i] > 0 && !voter.isLineBreak(out[i])) {
-                count += usage[i] - 1;
-            }
-        }
-        return count;
-    }
-
-    private boolean hasMultiUse(int[] array) {
-        for (int i = 0; i < array.length; i++) {
-            if (array[i] > 1) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @Override
@@ -736,13 +733,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
 
     @Override
     public void calculate(List<String> reco, List<String> ref) {
-        if (reco.size() == ref.size()) {
-            for (int i = 0; i < ref.size(); i++) {
-                calculate(reco.get(i), ref.get(i));
-            }
-        } else {
-            calculate(toOneLine(reco), toOneLine(ref));
-        }
+        calculate(toOneLine(reco), toOneLine(ref));
     }
 
     private static class RecoRef {
@@ -785,5 +776,4 @@ public class ErrorModuleEnd2End implements IErrorModule {
         }
 
     }
-
 }

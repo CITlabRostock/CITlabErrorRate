@@ -11,7 +11,7 @@ class CCIns extends CCAbstract {
     @Override
     public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
         final int x = point[1] + 1;
-        if (x >= refs.length || isLineBreakRef[x]) {
+        if (x >= refs.length || isLineBreakRef[x] ) {
             return null;
         }
         final String part = refs[x];

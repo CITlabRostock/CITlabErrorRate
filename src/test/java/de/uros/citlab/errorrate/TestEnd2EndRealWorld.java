@@ -76,9 +76,9 @@ public class TestEnd2EndRealWorld {
     private static HashMap<ErrorModuleEnd2End.Mode, double[]> expecteds = new HashMap<>();
 
     static {
-        expecteds.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.25886898489638216, 0.24100800119644059, 0.20055517002081888, 0.30825070821529743});
-        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.182502689135891, 0.20423288508557458, 0.20629245620307474, 0.21745428209306536});
-        expecteds.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.24025289778714437, 0.23592312869214088, 0.1828591256072172, 0.2812795089707271});
+        expecteds.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.26434720229555236, 0.24629374904478069, 0.20664998212370397, 0.31553192774723615});
+        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.18256814921090386, 0.20426409903713894, 0.20629245620307474, 0.21767762203963267});
+        expecteds.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.24533715925394547, 0.24109735595292678, 0.18841616017161245, 0.28792363921947683});
         expecteds.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.1655011655011655, 0.199938856618771, 0.19749552772808587, 0.19270770347079452});
     }
 
@@ -118,7 +118,6 @@ public class TestEnd2EndRealWorld {
                 sb.append(line.getFirst());
             }
         }
-        System.out.println("lines have length " + sb.length());
         return sb.toString();
     }
 
@@ -183,8 +182,8 @@ public class TestEnd2EndRealWorld {
 
     @Test
     public void testSingle() throws IOException {
-        ErrorModuleEnd2End.Mode mode = ErrorModuleEnd2End.Mode.NO_RO;
-        int i = 3;
+        ErrorModuleEnd2End.Mode mode = ErrorModuleEnd2End.Mode.NO_RO_SEG;
+        int i = 1;
         double[] doubles = expecteds.get(mode);
         double expected = doubles[i];
 //                if (expected != 0.0) {
@@ -244,7 +243,7 @@ public class TestEnd2EndRealWorld {
         for (int i = 0; i < gtLines.size(); i++) {
             cnt += gtLines.get(i).getFirst().length();
         }
-        System.out.println(cnt);
+        System.out.println("test with mode "+mode+ " for "+cnt +" characters");
         end2End.calculate(concat(hypLines), concat(gtLines));
         ObjectCounter<Count> counter = end2End.getCounter();
         System.out.println(((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT));
