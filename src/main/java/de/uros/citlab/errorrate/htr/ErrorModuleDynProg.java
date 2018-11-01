@@ -224,8 +224,8 @@ public class ErrorModuleDynProg implements IErrorModule {
 
     private static class CostCalculatorIntern implements PathCalculatorGraph.ICostCalculator<String, String> {
 
-        private List<String> recos;
-        private List<String> refs;
+        private String[] recos;
+        private String[] refs;
         private PathCalculatorGraph.DistanceMat<String, String> mat;
         private final String manipulation;
         private final String[] emptyList = new String[0];
@@ -242,19 +242,19 @@ public class ErrorModuleDynProg implements IErrorModule {
                 case "SUB": {
                     int xx = x + 1;
                     int yy = y + 1;
-                    if (yy >= recos.size() || xx >= refs.size()) {
+                    if (yy >= recos.length || xx >= refs.length) {
                         return null;
                     }
-                    final double cost = recos.get(yy).equals(refs.get(xx))?0:1;
+                    final double cost = recos[yy].equals(refs[xx])?0:1;
                     return new PathCalculatorGraph.Distance<>(cost == 0 ? "COR" : "SUB",
                             cost, dist.getCostsAcc() + cost,
                             new int[]{yy, xx},
-                            point, new String[]{recos.get(yy)},
-                            new String[]{refs.get(xx)});
+                            point, new String[]{recos[yy]},
+                            new String[]{refs[xx]});
                 }
                 case "INS": {
                     int xx = x + 1;
-                    if (xx >= refs.size()) {
+                    if (xx >= refs.length) {
                         return null;
                     }
                     final double cost = 1;
@@ -262,18 +262,18 @@ public class ErrorModuleDynProg implements IErrorModule {
                             cost, dist.getCostsAcc() + cost,
                             new int[]{y, xx},
                             point, emptyList,
-                            new String[]{refs.get(xx)});
+                            new String[]{refs[xx]});
                 }
                 case "DEL": {
                     int yy = y + 1;
-                    if (yy >= recos.size()) {
+                    if (yy >= recos.length) {
                         return null;
                     }
                     final double cost = 1;
                     return new PathCalculatorGraph.Distance<>("DEL",
                             cost, dist.getCostsAcc() + cost,
                             new int[]{yy, x},
-                            point, new String[]{recos.get(yy)},
+                            point, new String[]{recos[yy]},
                             emptyList);
                 }
                 default:
@@ -282,7 +282,7 @@ public class ErrorModuleDynProg implements IErrorModule {
         }
 
         @Override
-        public void init(PathCalculatorGraph.DistanceMat<String, String> mat, List<String> recos, List<String> refs) {
+        public void init(PathCalculatorGraph.DistanceMat<String, String> mat, String[] recos, String[] refs) {
             this.mat = mat;
             this.recos = recos;
             this.refs = refs;

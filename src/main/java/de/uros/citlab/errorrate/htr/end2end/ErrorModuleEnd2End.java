@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package de.uros.citlab.errorrate.htr;
+package de.uros.citlab.errorrate.htr.end2end;
 
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.types.Count;
@@ -20,7 +20,6 @@ import gnu.trove.TIntDoubleHashMap;
 import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.util.*;
@@ -43,6 +42,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
     private final Mode mode;
     private final Voter voter = new Voter();
     private static final Logger LOG = LoggerFactory.getLogger(ErrorModuleEnd2End.class);
+    private double filterOffset;
 
     public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed) {
         this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, detailed);
@@ -56,6 +56,11 @@ public class ErrorModuleEnd2End implements IErrorModule {
     }
 
     public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed) {
+        this(tokenizer, stringNormalizer, mode, detailed, 100);
+    }
+
+    public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed, double filterOffset) {
+        this.filterOffset = filterOffset;
         this.detailed = detailed;
         this.mode = mode;
         if (tokenizer == null) {
@@ -67,29 +72,32 @@ public class ErrorModuleEnd2End implements IErrorModule {
         pathCalculator.addCostCalculator(new CCIns(voter));
         pathCalculator.addCostCalculator(new CCSubOrCor(voter));
         pathCalculator.addCostCalculator(new CCInsLine(voter));
-        int offset=20;
-        int grid = 15;
+        int grid = 20;
         switch (mode) {
             case NO_RO_SEG:
                 pathCalculator.addCostCalculator(new CCSubOrCorNL(voter));
                 pathCalculator.addCostCalculator(new CCInsNL(voter));
                 pathCalculator.addCostCalculator(new CCDelNL(voter));
             case NO_RO:
-                pathCalculator.addCostCalculator((PathCalculatorGraph.ICostCalculatorMulti<String, String>) new LineLineBreakRecoJump(voter));
+                CCLineBreakRecoJump jumper = new CCLineBreakRecoJump(voter);
+                pathCalculator.addCostCalculator((PathCalculatorGraph.ICostCalculatorMulti<String, String>) jumper);
+                if (filterOffset > 0.0) {
+                    pathCalculator.setFilter(jumper);
+                }
                 break;
             case RO_SEG:
                 pathCalculator.addCostCalculator(new CCSubOrCorNL(voter));
                 pathCalculator.addCostCalculator(new CCInsNL(voter));
                 pathCalculator.addCostCalculator(new CCDelNL(voter));
             case RO:
-                pathCalculator.addCostCalculator(new CCDelLine(voter));//this cost calculator is not needed for IGNORE_READINGORDER because LineLineBreakRecoJump is cheaper anyway
-                offset=100;
+                pathCalculator.addCostCalculator(new CCDelLine(voter));//this cost calculator is not needed for IGNORE_READINGORDER because CCLineBreakRecoJump is cheaper anyway
+                if (filterOffset > 0.0) {
+                    pathCalculator.setFilter(new FilterHorizontalFixedLength(filterOffset, grid));
+                }
                 break;
             default:
                 throw new RuntimeException("not implemented yet");
         }
-//        pathCalculator.setFilter(new FilterHorizontal(100));
-        pathCalculator.setFilter(new FilterHorizontalFixedLength(offset, grid));
     }
 
     private static class FilterHorizontal implements PathCalculatorGraph.PathFilter<String, String> {
@@ -101,12 +109,16 @@ public class ErrorModuleEnd2End implements IErrorModule {
         }
 
         @Override
-        public void init(Comparator<PathCalculatorGraph.IDistance<String, String>> comparator) {
+        public void setComparator(Comparator<PathCalculatorGraph.IDistance<String, String>> comparator) {
             map.clear();
         }
 
         @Override
-        public boolean addDistance(PathCalculatorGraph.IDistance<String, String> newDistance) {
+        public void init(String[] strings, String[] strings2) {
+        }
+
+        @Override
+        public boolean addNewEdge(PathCalculatorGraph.IDistance<String, String> newDistance) {
             String[] refs = newDistance.getReferences();
             if (refs == null || refs.length < 1 || !(refs[0].equals(" ") || refs[0].equals("\n"))) {
                 return true;
@@ -131,7 +143,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
         }
 
         @Override
-        public boolean followDistance(PathCalculatorGraph.IDistance<String, String> bestDistance) {
+        public boolean followPathsFromBestEdge(PathCalculatorGraph.IDistance<String, String> bestDistance) {
             String[] refs = bestDistance.getReferences();
             if (refs == null || refs.length < 1 || !(refs[0].equals(" ") || refs[0].equals("\n"))) {
                 return true;
@@ -152,6 +164,14 @@ public class ErrorModuleEnd2End implements IErrorModule {
         }
     }
 
+    public void setProcessViewer(boolean show) {
+        pathCalculator.useProgressBar(show);
+    }
+
+    public void setFileDynProg(File file) {
+        pathCalculator.setFileDynMat(file);
+    }
+
     private static class FilterHorizontalFixedLength implements PathCalculatorGraph.PathFilter<String, String> {
         private TIntDoubleHashMap map = new TIntDoubleHashMap();
         private final double offset;
@@ -163,12 +183,17 @@ public class ErrorModuleEnd2End implements IErrorModule {
         }
 
         @Override
-        public void init(Comparator<PathCalculatorGraph.IDistance<String, String>> comparator) {
+        public void setComparator(Comparator<PathCalculatorGraph.IDistance<String, String>> comparator) {
             map.clear();
         }
 
         @Override
-        public boolean addDistance(PathCalculatorGraph.IDistance<String, String> newDistance) {
+        public void init(String[] strings, String[] strings2) {
+
+        }
+
+        @Override
+        public boolean addNewEdge(PathCalculatorGraph.IDistance<String, String> newDistance) {
             final int x = newDistance.getPoint()[1];
             if (x % grid != 0) {
                 return true;
@@ -192,7 +217,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
         }
 
         @Override
-        public boolean followDistance(PathCalculatorGraph.IDistance<String, String> bestDistance) {
+        public boolean followPathsFromBestEdge(PathCalculatorGraph.IDistance<String, String> bestDistance) {
             final int x = bestDistance.getPoint()[1];
             int key = x / grid + 1;
             if (!map.containsKey(key)) {
@@ -284,7 +309,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
         //tokenize both strings
         String[] recos = tokenizer.tokenize(reco).toArray(new String[0]);
         String[] refs = tokenizer.tokenize(ref).toArray(new String[0]);
-        calculate(recos, refs);
+        calculate(recos, refs, false, null);
     }
 
     private void log(PathCalculatorGraph.DistanceMat<String, String> mat, List<PathCalculatorGraph.IDistance<String, String>> calcBestPath, String[] recos, String[] refs) {
@@ -361,17 +386,19 @@ public class ErrorModuleEnd2End implements IErrorModule {
         return usedReco;
     }
 
-    private void calculate(String[] recos, String[] refs) {
+    private void calculate(String[] recos, String[] refs, boolean showProgressBar, File out) {
         //use dynamic programming to calculate the cheapest path through the dynamic programming tabular
 //        calcBestPathFast(recos, refs);
         pathCalculator.setUpdateScheme(PathCalculatorGraph.UpdateScheme.LAZY);
+        pathCalculator.useProgressBar(showProgressBar);
+        pathCalculator.setFileDynMat(out);
         PathCalculatorGraph.DistanceMat<String, String> mat = pathCalculator.calcDynProg(Arrays.asList(recos), Arrays.asList(refs));
 //        pathCalculator.calcBestPath(mat);
         List<PathCalculatorGraph.IDistance<String, String>> calcBestPath = pathCalculator.calcBestPath(mat);
         log(mat, calcBestPath, recos, refs);
         if (calcBestPath == null) {
             //TODO: return maximal error? or Thorow RuntimeException?
-            LOG.warn("cannot find path between \n"+ Arrays.toString(recos).replace("\n", "\\n") + " and \n" + Arrays.toString(refs).replace("\n","\\n" ));
+            LOG.warn("cannot find path between \n" + Arrays.toString(recos).replace("\n", "\\n") + " and \n" + Arrays.toString(refs).replace("\n", "\\n"));
             throw new RuntimeException("cannot find path (see Logger.warn) for more information");
         }
         for (Count c : Count.values()) {
@@ -449,9 +476,9 @@ public class ErrorModuleEnd2End implements IErrorModule {
             public PathQuality map(List<PathCalculatorGraph.IDistance<String, String>> elements) {
                 return new PathQuality(
                         elements.get(elements.size() - 1).getCostsAcc() - elements.get(0).getCostsAcc() + elements.get(0).getCosts(),
-                        elements.get(0).getPoint()[0] - 1,
+                        elements.get(0).getPointPrevious()[0],
                         elements.get(elements.size() - 1).getPoint()[0],
-                        elements.get(0).getPoint()[1] - 1,
+                        elements.get(0).getPointPrevious()[1],
                         elements.get(elements.size() - 1).getPoint()[1],
                         elements);
             }
@@ -477,8 +504,14 @@ public class ErrorModuleEnd2End implements IErrorModule {
                 default:
                     throw new RuntimeException("not implemented yet");
             }
-            ErrorModuleEnd2End intern = new ErrorModuleEnd2End(tokenizer, null, modeFallback, detailed);
-            intern.calculate(recos, refs);
+            ErrorModuleEnd2End intern = new ErrorModuleEnd2End(tokenizer, null, modeFallback, detailed, 0.0);
+            File outSubProblem = null;
+            if (out != null) {
+                String path = out.getPath();
+                path = path.substring(0, path.lastIndexOf(".")) + "_" + path.substring(path.lastIndexOf("."));
+                outSubProblem = new File(path);
+            }
+            intern.calculate(recos, refs, showProgressBar, outSubProblem);
             counter.addAll(intern.getCounter());
             return;
         }
@@ -492,9 +525,8 @@ public class ErrorModuleEnd2End implements IErrorModule {
             if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
                 throw new RuntimeException("reference should be used only 1 time in bestPath");
             }
-            LOG.debug("found multiply usage of path - delete " + toDeletePath);
             ObjectCounter<Count> count = count(toDeletePath.path, usedReco, recos, toDeletePath.endRef - toDeletePath.startRef, toDeletePath.endReco - toDeletePath.startReco);
-            LOG.debug("count {} for sub-task {}", count, toDeletePath.path);
+            LOG.debug("count {} for sub-task {}", count, toDeletePath);
             counter.addAll(count);
         }
         String[] refShorter = getSubProblem(refs, maskRef);
@@ -507,8 +539,14 @@ public class ErrorModuleEnd2End implements IErrorModule {
             counter.add(Count.HYP, i);
             return;
         }
-        calculate(recosShorter, refShorter);
-        return;
+        File outSubProblem = null;
+        if (out != null) {
+            String path = out.getPath();
+            path = path.substring(0, path.lastIndexOf(".")) + "_" + path.substring(path.lastIndexOf("."));
+            outSubProblem = new File(path);
+        }
+
+        calculate(recosShorter, refShorter, showProgressBar, outSubProblem);
     }
 
     private boolean reduceMask(boolean[] mask, int start, int end) {
@@ -680,450 +718,6 @@ public class ErrorModuleEnd2End implements IErrorModule {
         return counter;
     }
 
-    private static class Voter {
-        private boolean isSpace(String s) {
-            return " ".equals(s);
-        }
-
-        private boolean isLineBreak(String s) {
-            return "\n".equals(s);
-        }
-
-        private boolean isLineBreakOrSpace(String s) {
-            return isSpace(s) || isLineBreak(s);
-        }
-    }
-
-    private static abstract class CCAbstract implements PathCalculatorGraph.ICostCalculator<String, String> {
-
-        PathCalculatorGraph.DistanceMat<String, String> mat;
-        List<String> recos;
-        List<String> refs;
-        final private Voter voter;
-        int[] lineBreaksReco;
-        int[] lineBreaksRef;
-
-        public CCAbstract(Voter voter) {
-            this.voter = voter;
-        }
-
-        boolean isSpaceRef(int pos) {
-            return voter.isSpace(refs.get(pos));
-        }
-
-        boolean isSpaceReco(int pos) {
-            return voter.isSpace(recos.get(pos));
-        }
-
-        boolean isLineBreakRef(int pos) {
-            return voter.isLineBreak(refs.get(pos));
-        }
-
-        boolean isLineBreakReco(int pos) {
-            return voter.isLineBreak(recos.get(pos));
-        }
-
-        @Override
-        public void init(PathCalculatorGraph.DistanceMat<String, String> mat, List<String> recos, List<String> refs) {
-            this.mat = mat;
-            this.recos = recos;
-            this.refs = refs;
-            lineBreaksReco = getLineBreaks(recos);
-            lineBreaksRef = getLineBreaks(refs);
-        }
-
-        private int[] getLineBreaks(List<String> text) {
-            int[] tmp = new int[text.size()];
-            int cnt = 0;
-            for (int i = 0; i < text.size(); i++) {
-                if (voter.isLineBreak(text.get(i))) {
-                    tmp[cnt++] = i;
-                }
-            }
-            int[] res = new int[cnt];
-            System.arraycopy(tmp, 0, res, 0, cnt);
-            return res;
-        }
-
-    }
-
-    private static class DistanceStrStr implements PathCalculatorGraph.IDistance<String, String> {
-
-        private DistanceStrStr(TYPE type, double costs, double costAcc, String reco, String ref, int[] pointPrevious, int[] point) {
-            this(type, costs, costAcc, reco == null ? null : new String[]{reco}, ref == null ? null : new String[]{ref}, pointPrevious, point);
-        }
-
-
-        private enum TYPE {
-            INS, DEL, SUB, COR,
-            JUMP_RECO, COR_LINEBREAK,
-            INS_LINE, DEL_LINE,
-            SPLIT_LINE, MERGE_LINE
-        }
-
-        private final TYPE type;
-        private final double costs;
-        private final double costAcc;
-        private final String[] recos;
-        private final String[] refs;
-        private int[] pointPrevious;
-        private int[] point;
-        private boolean marked;
-
-        @Override
-        public String toString() {
-            return ("DistanceStrStr{" +
-                    "type=" + type +
-                    ", costs=" + costs +
-                    ", costAcc=" + costAcc +
-                    ", recos=" + Arrays.toString(recos) +
-                    ", refs=" + Arrays.toString(refs) +
-                    ", pointPrevious=" + Arrays.toString(pointPrevious) +
-                    ", point=" + Arrays.toString(point) +
-                    '}').replace("\n", "\\n");
-        }
-
-        public DistanceStrStr(TYPE type, double costs, double costAcc, String[] recos, String[] refs, int[] pointPrevious, int[] point) {
-            this.type = type;
-            this.costs = costs;
-            this.costAcc = costAcc;
-            this.recos = recos;
-            this.refs = refs;
-            this.pointPrevious = pointPrevious;
-            this.point = point;
-        }
-
-        @Override
-        public double getCosts() {
-            return costs;
-        }
-
-        @Override
-        public double getCostsAcc() {
-            return costAcc;
-        }
-
-        @Override
-        public String[] getRecos() {
-            return recos;
-        }
-
-        @Override
-        public String[] getReferences() {
-            return refs;
-        }
-
-        @Override
-        public String getManipulation() {
-            return type == null ? null : type.toString();
-        }
-
-        @Override
-        public int[] getPointPrevious() {
-            return pointPrevious;
-        }
-
-        @Override
-        public int[] getPoint() {
-            return point;
-        }
-
-        @Override
-        public boolean equals(PathCalculatorGraph.IDistance<String, String> obj) {
-            return Arrays.equals(point, obj.getPoint()) && getManipulation().equals(obj.getManipulation()) && Arrays.equals(pointPrevious, obj.getPointPrevious());
-        }
-
-        @Override
-        public boolean isMarked() {
-            return marked;
-        }
-
-        @Override
-        public boolean mark(boolean mark) {
-            return this.marked = mark;
-        }
-
-        @Override
-        public void dispose() {
-            point = null;
-            pointPrevious = null;
-        }
-
-        @Override
-        public int compareTo(PathCalculatorGraph.IDistance<String, String> o) {
-            return Double.compare(getCostsAcc(), o.getCostsAcc());
-        }
-    }
-
-    private static class CCDelLine extends CCAbstract {
-        public CCDelLine(Voter voter) {
-            super(voter);
-        }
-
-        @Override
-        public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
-            final int start = point[0];
-            if (isLineBreakReco(start) && isLineBreakRef(point[1])) {
-                int idx = 0;
-                while (idx < lineBreaksReco.length) {
-                    if (lineBreaksReco[idx] > start) {
-                        break;
-                    }
-                    idx++;
-                }
-                if (idx == lineBreaksReco.length) {
-                    return null;
-                }
-                final int end = lineBreaksReco[idx];
-                String[] strings = recos.subList(start + 1, end).toArray(new String[0]);
-                return new DistanceStrStr(
-                        DistanceStrStr.TYPE.DEL_LINE,
-                        strings.length,
-                        dist.getCostsAcc() + strings.length,
-                        strings,
-                        null,
-                        point,
-                        new int[]{end, point[1]});
-            }
-            return null;
-        }
-    }
-
-    private static class CCInsLine extends CCAbstract {
-        public CCInsLine(Voter voter) {
-            super(voter);
-        }
-
-        @Override
-        public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
-            final int start = point[1];
-            if (isLineBreakReco(point[0]) && isLineBreakRef(start)) {
-                int idx = 0;
-                while (idx < lineBreaksRef.length) {
-                    if (lineBreaksRef[idx] > start) {
-                        break;
-                    }
-                    idx++;
-                }
-                if (idx == lineBreaksRef.length) {
-                    return null;
-                }
-                final int end = lineBreaksRef[idx];
-                String[] strings = refs.subList(start + 1, end).toArray(new String[0]);
-                return new DistanceStrStr(
-                        DistanceStrStr.TYPE.INS_LINE,
-                        strings.length,
-                        dist.getCostsAcc() + strings.length,
-                        null,
-                        strings,
-                        point,
-                        new int[]{point[0], end});
-            }
-            return null;
-        }
-    }
-
-    private static class CCIns extends CCAbstract {
-
-        public CCIns(Voter voter) {
-            super(voter);
-        }
-
-        @Override
-        public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
-            final int x = point[1] + 1;
-            if (x >= refs.size()) {
-                return null;
-            }
-            if (isLineBreakRef(x) && x < refs.size() - 1) {
-                return null;
-            }
-            final String part = refs.get(x);
-            int[] next = new int[]{point[0], x};
-            return new DistanceStrStr(DistanceStrStr.TYPE.INS, 1, dist.getCostsAcc() + 1, null, part, point, next);
-        }
-    }
-
-    private static class CCDel extends CCAbstract {
-
-        public CCDel(Voter voter) {
-            super(voter);
-        }
-
-        @Override
-        public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
-            final int y = point[0] + 1;
-            if (y >= recos.size()) {
-                return null;
-            }
-            if (isLineBreakReco(y)) {
-                return null;
-            }
-            final String part = recos.get(y);
-            int[] next = new int[]{y, point[1]};
-            return new DistanceStrStr(DistanceStrStr.TYPE.DEL, 1, dist.getCostsAcc() + 1, part, null, point, next);
-        }
-    }
-
-    private static class CCSubOrCor extends CCAbstract {
-
-        public CCSubOrCor(Voter voter) {
-            super(voter);
-        }
-
-        @Override
-        public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
-            if (point[0] + 1 < recos.size() && point[1] + 1 < refs.size()) {
-                final int y = point[0] + 1;
-                final int x = point[1] + 1;
-                final String reco = recos.get(y);
-                final String ref = refs.get(x);
-                final boolean cor = reco.equals(ref);
-                int[] next = new int[]{y, x};
-                if (cor) {
-                    if (isLineBreakReco(y)) {
-                        //line break characters are no real characters - so they do not have to be count!
-                        return new DistanceStrStr(DistanceStrStr.TYPE.COR_LINEBREAK, 0, dist.getCostsAcc(), (String) null, null, point, next);
-                    }
-                    //normal case: characters are equal
-                    return new DistanceStrStr(DistanceStrStr.TYPE.COR, 0, dist.getCostsAcc(), reco, ref, point, next);
-                }
-                if (isLineBreakReco(y) || isLineBreakRef(x)) {
-                    //if only one of these is a line break: it is not allowed to substitute one character against one line break!
-                    return null;
-                }
-                //normal case: characters are unequal
-                return new DistanceStrStr(
-                        DistanceStrStr.TYPE.SUB,
-                        1,
-                        dist.getCostsAcc() + 1,
-                        reco,
-                        ref,
-                        point,
-                        next);
-            }
-            return null;
-        }
-    }
-
-    //TODO: also allow INS and DEL of \n between non-spacing characters? "abcd" <=> "ab\ncd"
-    private static class CCSubOrCorNL extends CCAbstract {
-
-        public CCSubOrCorNL(Voter voter) {
-            super(voter);
-        }
-
-        @Override
-        public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
-            final int y = point[0] + 1;
-            final int x = point[1] + 1;
-            if (y < recos.size() && x < refs.size() && (isLineBreakReco(y) != isLineBreakRef(x)) && (isSpaceReco(y) != isSpaceRef(x))) {
-
-                final String reco = recos.get(y);
-                final String ref = refs.get(x);
-                return new DistanceStrStr(
-                        isLineBreakReco(y) ? DistanceStrStr.TYPE.MERGE_LINE : DistanceStrStr.TYPE.SPLIT_LINE,
-                        0,
-                        dist.getCostsAcc(),
-                        reco,
-                        ref,
-                        point,
-                        new int[]{y, x});
-            }
-            return null;
-        }
-    }
-
-    private static class CCInsNL extends CCAbstract {
-
-        public CCInsNL(Voter voter) {
-            super(voter);
-        }
-
-        @Override
-        public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
-            //should only be done between non-spacing and non-LB position in y-dimension and LB position in x-dimension
-            final int y1 = point[0];
-            final int y2 = point[0] + 1;
-            final int x = point[1] + 1;
-            if (y2 < recos.size() && x < refs.size() &&
-                    !isLineBreakReco(y1) && !isSpaceReco(y1) &&
-                    !isLineBreakReco(y2) && !isSpaceReco(y2) &&
-                    isLineBreakRef(x)) {
-
-                final String ref = refs.get(x);
-                return new DistanceStrStr(
-                        DistanceStrStr.TYPE.SPLIT_LINE,
-                        0,
-                        dist.getCostsAcc(),
-                        null,
-                        ref,
-                        point,
-                        new int[]{y1, x});
-            }
-            return null;
-        }
-    }
-
-    private static class CCDelNL extends CCAbstract {
-
-        public CCDelNL(Voter voter) {
-            super(voter);
-        }
-
-        @Override
-        public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
-            //should only be done between non-spacing and non-LB position in y-dimension and LB position in x-dimension
-            final int x1 = point[1];
-            final int x2 = point[1] + 1;
-            final int y = point[0] + 1;
-            if (x2 < refs.size() && y < recos.size() &&
-                    !isLineBreakRef(x1) && !isSpaceRef(x1) &&
-                    !isLineBreakRef(x2) && !isSpaceRef(x2) &&
-                    isLineBreakReco(y)) {
-
-                final String reco = recos.get(y);
-                return new DistanceStrStr(
-                        DistanceStrStr.TYPE.MERGE_LINE,
-                        0,
-                        dist.getCostsAcc(),
-                        reco,
-                        null,
-                        point,
-                        new int[]{y, x1});
-            }
-            return null;
-        }
-    }
-
-    private static class LineLineBreakRecoJump extends CCAbstract implements PathCalculatorGraph.ICostCalculatorMulti<String, String> {
-
-        public LineLineBreakRecoJump(Voter voter) {
-            super(voter);
-        }
-
-        @Override
-        public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
-            throw new NotImplementedException();
-        }
-
-        @Override
-        public List<PathCalculatorGraph.IDistance<String, String>> getNeighbours(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
-            int x = point[1] + 1;
-            int y = point[0] + 1;
-            if (x >= refs.size() || !isLineBreakRef(x) || y >= recos.size() || !isLineBreakReco(y)) {
-                return null;
-            }
-            List<PathCalculatorGraph.IDistance<String, String>> res = new LinkedList<>();
-            for (int i = 0; i < this.lineBreaksReco.length; i++) {
-                final int target = lineBreaksReco[i];
-                if (target != y) {
-                    res.add(new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, 0, dist.getCostsAcc(), recos.get(y), refs.get(x), point, new int[]{target, x}));
-                }
-            }
-            return res;
-        }
-    }
 
     private String toOneLine(List<String> lines) {
         if (lines == null || lines.isEmpty()) {

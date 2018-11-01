@@ -5,35 +5,21 @@
  */
 package de.uros.citlab.errorrate;
 
-import de.uros.citlab.errorrate.htr.ErrorModuleEnd2End;
+import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
-import de.uros.citlab.errorrate.util.ObjectCounter;
 import de.uros.citlab.tokenizer.TokenizerCategorizer;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
 import de.uros.citlab.tokenizer.categorizer.CategorizerWordMergeGroups;
 import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
-import org.apache.commons.math3.util.Pair;
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.rules.Stopwatch;
-import org.primaresearch.dla.page.Page;
-import org.primaresearch.dla.page.layout.physical.Region;
-import org.primaresearch.dla.page.layout.physical.text.LowLevelTextObject;
-import org.primaresearch.dla.page.layout.physical.text.impl.TextLine;
-import org.primaresearch.dla.page.layout.physical.text.impl.TextRegion;
-import org.primaresearch.io.UnsupportedFormatVersionException;
 
-import java.awt.*;
 import java.io.File;
-import java.io.IOException;
 import java.text.Normalizer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -178,6 +164,13 @@ public class TestEnd2End {
                 "ab\ncd\nef",
                 "ef\ncd\nab").get(Count.ERR));
 
+    }
+
+    @Test
+    public void testNormalLines() {
+        String reco = "Sujanterie an zablreicen Gtellen zum Eingriff vor. gum";
+        String ref = "Infanterie an zahlreichen Stellen zum A ngriff vor. Am";
+        Assert.assertEquals(new Long(10), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, ref, reco).get(Count.ERR));
     }
 
     @Test

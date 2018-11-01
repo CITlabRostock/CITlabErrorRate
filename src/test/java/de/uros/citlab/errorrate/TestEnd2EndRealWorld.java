@@ -5,7 +5,7 @@
  */
 package de.uros.citlab.errorrate;
 
-import de.uros.citlab.errorrate.htr.ErrorModuleEnd2End;
+import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
@@ -17,7 +17,9 @@ import de.uros.citlab.tokenizer.categorizer.CategorizerWordMergeGroups;
 import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
 import org.apache.commons.math3.util.Pair;
+import org.junit.Assert;
 import org.junit.Test;
+import org.junit.experimental.theories.suppliers.TestedOn;
 import org.primaresearch.dla.page.Page;
 import org.primaresearch.dla.page.layout.physical.Region;
 import org.primaresearch.dla.page.layout.physical.text.LowLevelTextObject;
@@ -29,10 +31,8 @@ import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.text.Normalizer;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Here every one can add groundtruth (GT) and hypothesis (HYP) text. Then some
@@ -72,6 +72,16 @@ public class TestEnd2EndRealWorld {
             return new File("src/test/resources/end2end/" + path);
         }
     }
+
+    private static HashMap<ErrorModuleEnd2End.Mode, double[]> expecteds = new HashMap<>();
+
+    static {
+        expecteds.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.25886898489638216, 0.24100800119644059, 0.20055517002081888, 0.30825070821529743});
+        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.182502689135891, 0.20423288508557458, 0.20629245620307474, 0.21745428209306536});
+        expecteds.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.24025289778714437, 0.23592312869214088, 0.1828591256072172, 0.2812795089707271});
+        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.1655011655011655, 0.199938856618771, 0.19749552772808587, 0.19270770347079452});
+    }
+
 
     public Map<Count, Long> getCount(boolean upper, boolean word, ErrorModuleEnd2End.Mode mode, boolean letterNumber, String gt, String hyp) {
         System.out.println((" test \"" + gt + "\" vs \"" + hyp + "\"").replace("\n", "\\n"));
@@ -157,26 +167,66 @@ public class TestEnd2EndRealWorld {
     }
 
     @Test
+    public void testAllPages() throws IOException {
+        for (ErrorModuleEnd2End.Mode mode : ErrorModuleEnd2End.Mode.values()) {
+            double[] doubles = expecteds.get(mode);
+            for (int i = 0; i < doubles.length; i++) {
+                double expected = doubles[i];
+//                if (expected != 0.0) {
+//                    continue;
+//                }
+                double cer = testGermania(mode, i);
+                Assert.assertEquals("CER of page " + i + " and mode " + mode + " is wrong", expected, cer, 0.00001);
+            }
+        }
+    }
+
+    @Test
+    public void testSingle() throws IOException {
+        ErrorModuleEnd2End.Mode mode = ErrorModuleEnd2End.Mode.NO_RO;
+        int i = 3;
+        double[] doubles = expecteds.get(mode);
+        double expected = doubles[i];
+//                if (expected != 0.0) {
+//                    continue;
+//                }
+        double cer = testGermania(mode, i);
+        Assert.assertEquals("CER of page " + i + " and mode " + mode + " is wrong", expected, cer, 0.00001);
+    }
+
+
+    @Test
     public void testGermania0_RO() throws IOException {
-        testGermania0(ErrorModuleEnd2End.Mode.RO);
+        double cer = testGermania(ErrorModuleEnd2End.Mode.RO, 0);
+        Assert.assertEquals("CER differs from previous", 0.24100800119644059, cer, 0.00001);
+        //0m 18s 022ms -> introduce static arrays in CCAbstract
+        //0m 21s 680ms -> with String[] as reco and ref
+        //2m 53s 392ms -> with List<String> as reco and ref
     }
 
     @Test
     public void testGermania0_NO_RO() throws IOException {
-        testGermania0(ErrorModuleEnd2End.Mode.NO_RO);
+        double cer = testGermania(ErrorModuleEnd2End.Mode.NO_RO, 0);
+        Assert.assertEquals("CER differs from previous", 0.20430929095354522, cer, 0.00001);
     }
 
     @Test
     public void testGermania0_NO_RO_SEG() throws IOException {
-        testGermania0(ErrorModuleEnd2End.Mode.NO_RO_SEG);
+        double cer = testGermania(ErrorModuleEnd2End.Mode.NO_RO_SEG, 0);
+        Assert.assertEquals("CER differs from previous", 0.19785330948121646, cer, 0.00001);
+//        Assert.assertEquals("CER differs from previous", 0.20232362607964535, cer, 0.00001);
     }
 
     @Test
     public void testGermania0_RO_SEG() throws IOException {
-        testGermania0(ErrorModuleEnd2End.Mode.RO_SEG);
+        double cer = testGermania(ErrorModuleEnd2End.Mode.RO_SEG, 0);
+        Assert.assertEquals("CER differs from previous", 0.23592312869214088, cer, 0.00001);
+        //0m 24s 564ms -> introduce static arrays in CCAbstract
+        //0m 30s 910ms -> with String[] as reco and ref
+        //6m 59s 357ms -> with List<String> as reco and ref
     }
 
-    public void testGermania0(ErrorModuleEnd2End.Mode mode) throws IOException {
+    public double testGermania(ErrorModuleEnd2End.Mode mode, int image) throws IOException {
         ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, mode, false);
         Result gtResult = Result.F1_ATR1;
         Result hypResult = Result.F3_ATR2;
@@ -186,19 +236,24 @@ public class TestEnd2EndRealWorld {
         Arrays.sort(gts);
         Arrays.sort(hyps);
 //        for (int i = 0; i < 1; i++) {
-        File hyp = hyps[1];
-        File gt = gts[1];
+        File hyp = hyps[image];
+        File gt = gts[image];
         List<Pair<String, Polygon>> hypLines = getTranscriptsAndPolyFromLines(hyp.getPath());
         List<Pair<String, Polygon>> gtLines = getTranscriptsAndPolyFromLines(gt.getPath());
+        int cnt = 0;
+        for (int i = 0; i < gtLines.size(); i++) {
+            cnt += gtLines.get(i).getFirst().length();
+        }
+        System.out.println(cnt);
         end2End.calculate(concat(hypLines), concat(gtLines));
         ObjectCounter<Count> counter = end2End.getCounter();
         System.out.println(((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT));
         System.out.println(counter);
-
+        return ((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT);
 //        }
     }
 
-    //    @Test
+    @Test
     public void testGermania1() throws IOException {
         ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false);
         Result gtResult = Result.F3_ATR1;
@@ -221,7 +276,7 @@ public class TestEnd2EndRealWorld {
         }
     }
 
-    //    @Test
+    @Test
     public void testGermania2() throws IOException {
         ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false);
         Result gtResult = Result.GT;
@@ -244,7 +299,7 @@ public class TestEnd2EndRealWorld {
         }
     }
 
-    //    @Test
+    @Test
     public void testGermania3() throws IOException {
         ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false);
         Result gtResult = Result.F1_ATR1;
