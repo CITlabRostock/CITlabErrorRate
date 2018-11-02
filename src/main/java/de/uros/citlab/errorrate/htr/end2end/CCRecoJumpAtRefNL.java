@@ -7,10 +7,10 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
-class CCLineBreakRecoJump extends CCAbstract implements PathCalculatorGraph.ICostCalculatorMulti<String, String>, PathCalculatorGraph.PathFilter<String, String> {
+class CCRecoJumpAtRefNL extends CCAbstract implements PathCalculatorGraph.ICostCalculatorMulti<String, String>, PathCalculatorGraph.PathFilter<String, String> {
     private int xMax = 0;
 
-    public CCLineBreakRecoJump(Voter voter) {
+    public CCRecoJumpAtRefNL(Voter voter) {
         super(voter);
     }
 
@@ -22,16 +22,17 @@ class CCLineBreakRecoJump extends CCAbstract implements PathCalculatorGraph.ICos
     @Override
     public List<PathCalculatorGraph.IDistance<String, String>> getNeighbours(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
         int x = point[1] + 1;
-        int y = point[0] + 1;
-        if (x >= refs.length || !isLineBreakRef[x] || y >= recos.length || !isLineBreakReco[y]) {
+        if (x >= refs.length || !isLineBreakRef[x]) {
             return null;
         }
         List<PathCalculatorGraph.IDistance<String, String>> res = new LinkedList<>();
-        for (int i = 0; i < this.lineBreaksReco.length; i++) {
-            final int target = lineBreaksReco[i];
-            if (target != y) {
-                res.add(new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, 0, dist.getCostsAcc(), (String) null, null, point, new int[]{target, x}));
+        String ref = refs[x];
+        int y = point[0] + 1;
+        for (int i = 1; i < recos.length; i++) {
+            if (y == i) {
+                continue;
             }
+            res.add(new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, 0, dist.getCostsAcc(), null, ref, point, new int[]{i, x}));
         }
         return res;
     }
@@ -52,7 +53,7 @@ class CCLineBreakRecoJump extends CCAbstract implements PathCalculatorGraph.ICos
 
     @Override
     public boolean followPathsFromBestEdge(PathCalculatorGraph.IDistance<String, String> bestEdge) {
-        int x = bestEdge.getPoint()[1];
+        final int x = bestEdge.getPoint()[1];
         if (x < refs.length && isLineBreakRef[x]) {
             if (xMax > x) {
                 return false;//already better alternative
@@ -60,6 +61,7 @@ class CCLineBreakRecoJump extends CCAbstract implements PathCalculatorGraph.ICos
             xMax = x;
             return true;
         }
+        //otherwise return addNewEdge(.)
         return x >= xMax;
     }
 }

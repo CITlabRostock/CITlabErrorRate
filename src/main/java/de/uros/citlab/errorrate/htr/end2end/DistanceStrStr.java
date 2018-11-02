@@ -96,18 +96,13 @@ class DistanceStrStr implements PathCalculatorGraph.IDistance<String, String> {
     }
 
     @Override
-    public boolean mark(boolean mark) {
-        return this.marked = mark;
+    public void mark(boolean mark) {
+        this.marked = mark;
     }
 
     @Override
     public void dispose() {
         point = null;
         pointPrevious = null;
-    }
-
-    @Override
-    public int compareTo(PathCalculatorGraph.IDistanceSmall<String, String> o) {
-        return Double.compare(getCostsAcc(), o.getCostsAcc());
     }
 }

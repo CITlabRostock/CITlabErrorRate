@@ -7,9 +7,7 @@ package de.uros.citlab.errorrate.htr.end2end;
 
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.types.Count;
-import de.uros.citlab.errorrate.types.Method;
 import de.uros.citlab.errorrate.types.PathCalculatorGraph;
-import de.uros.citlab.errorrate.types.Result;
 import de.uros.citlab.errorrate.util.GroupUtil;
 import de.uros.citlab.errorrate.util.HeatMapUtil;
 import de.uros.citlab.errorrate.util.ObjectCounter;
@@ -18,7 +16,6 @@ import de.uros.citlab.tokenizer.TokenizerCategorizer;
 import de.uros.citlab.tokenizer.interfaces.ICategorizer;
 import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
-import eu.transkribus.languageresources.extractor.pagexml.PAGEXMLExtractor;
 import gnu.trove.TIntDoubleHashMap;
 import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
@@ -46,6 +43,9 @@ public class ErrorModuleEnd2End implements IErrorModule {
     private final Voter voter = new Voter();
     private static final Logger LOG = LoggerFactory.getLogger(ErrorModuleEnd2End.class);
     private double filterOffset;
+    private int sizeProcessViewer = -1;
+    private File fileDynProg = null;
+
 
     public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed) {
         this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, detailed);
@@ -59,7 +59,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
     }
 
     public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed) {
-        this(tokenizer, stringNormalizer, mode, detailed, 300);
+        this(tokenizer, stringNormalizer, mode, detailed, 100);
     }
 
     public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed, double filterOffset) {
@@ -79,12 +79,15 @@ public class ErrorModuleEnd2End implements IErrorModule {
         switch (mode) {
             case NO_RO_SEG:
                 pathCalculator.addCostCalculator(new CCSubOrCorNL(voter));
-                pathCalculator.addCostCalculator(new CCInsNL(voter));
-                pathCalculator.addCostCalculator(new CCDelNL(voter));
-                pathCalculator.addCostCalculator((PathCalculatorGraph.ICostCalculatorMulti<String, String>) new CCLineBreakRecoJump(voter));
-//                if (filterOffset > 0.0) {
-//                    pathCalculator.setFilter(new FilterHorizontalFixedLength(20, grid));
-//                }
+//                pathCalculator.addCostCalculator(new CCInsNL(voter));
+//                pathCalculator.addCostCalculator(new CCDelNL(voter));
+                CCLineBreakAndSpaceRecoJump ccLineBreakAndSpaceRecoJump = new CCLineBreakAndSpaceRecoJump(voter);
+                pathCalculator.addCostCalculator((PathCalculatorGraph.ICostCalculatorMulti<String, String>) ccLineBreakAndSpaceRecoJump);
+//                CCRecoJumpAtRefNL jumper1 = new CCRecoJumpAtRefNL(voter);
+//                pathCalculator.addCostCalculator((PathCalculatorGraph.ICostCalculatorMulti<String, String>) jumper1);
+                if (filterOffset > 0.0) {
+                    pathCalculator.setFilter(ccLineBreakAndSpaceRecoJump);
+                }
                 break;
             case NO_RO:
                 CCLineBreakRecoJump jumper = new CCLineBreakRecoJump(voter);
@@ -95,8 +98,8 @@ public class ErrorModuleEnd2End implements IErrorModule {
                 break;
             case RO_SEG:
                 pathCalculator.addCostCalculator(new CCSubOrCorNL(voter));
-                pathCalculator.addCostCalculator(new CCInsNL(voter));
-                pathCalculator.addCostCalculator(new CCDelNL(voter));
+//                pathCalculator.addCostCalculator(new CCInsNL(voter));
+//                pathCalculator.addCostCalculator(new CCDelNL(voter));
             case RO:
                 pathCalculator.addCostCalculator(new CCDelLine(voter));//this cost calculator is not needed for IGNORE_READINGORDER because CCLineBreakRecoJump is cheaper anyway
                 if (filterOffset > 0.0) {
@@ -108,76 +111,12 @@ public class ErrorModuleEnd2End implements IErrorModule {
         }
     }
 
-    private static class FilterHorizontal implements PathCalculatorGraph.PathFilter<String, String> {
-        private HashMap<Integer, Double> map = new LinkedHashMap<>();
-        private final double offset;
-
-        private FilterHorizontal(double offset) {
-            this.offset = offset;
-        }
-
-        @Override
-        public void setComparator(Comparator<PathCalculatorGraph.IDistance<String, String>> comparator) {
-            map.clear();
-        }
-
-        @Override
-        public void init(String[] strings, String[] strings2) {
-        }
-
-        @Override
-        public boolean addNewEdge(PathCalculatorGraph.IDistance<String, String> newDistance) {
-            String[] refs = newDistance.getReferences();
-            if (refs == null || refs.length < 1 || !(refs[0].equals(" ") || refs[0].equals("\n"))) {
-                return true;
-            }
-            final int x = newDistance.getPoint()[1];
-            Double aDouble = map.get(x);
-            final double after = newDistance.getCostsAcc();
-            if (aDouble == null) {
-                map.put(x, after);
-                return true;
-            }
-            final double before = aDouble.doubleValue();
-            if (after < before) {
-                map.put(x, after);
-                return true;
-            }
-            if (before + offset < after) {
-                return true;
-            }
-            //before + offset > after : gap is too large!
-            return false;
-        }
-
-        @Override
-        public boolean followPathsFromBestEdge(PathCalculatorGraph.IDistance<String, String> bestDistance) {
-            String[] refs = bestDistance.getReferences();
-            if (refs == null || refs.length < 1 || !(refs[0].equals(" ") || refs[0].equals("\n"))) {
-                return true;
-            }
-            final int x = bestDistance.getPoint()[1];
-            Double aDouble = map.get(x);
-            final double after = bestDistance.getCostsAcc();
-            if (aDouble == null) {
-                map.put(x, after);
-                return true;
-            }
-            final double before = aDouble.doubleValue();
-            if (after < before) {
-                map.put(x, after);
-                return true;
-            }
-            return after < before + offset;
-        }
-    }
-
-    public void setProcessViewer(boolean show) {
-        pathCalculator.useProgressBar(show);
+    public void setSizeProcessViewer(int sizeImage) {
+        sizeProcessViewer = sizeImage;
     }
 
     public void setFileDynProg(File file) {
-        pathCalculator.setFileDynMat(file);
+        fileDynProg = file;
     }
 
     private static class FilterHorizontalFixedLength implements PathCalculatorGraph.PathFilter<String, String> {
@@ -317,7 +256,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
         //tokenize both strings
         String[] recos = tokenizer.tokenize(reco).toArray(new String[0]);
         String[] refs = tokenizer.tokenize(ref).toArray(new String[0]);
-        calculate(recos, refs, false, null);
+        calculate(recos, refs, sizeProcessViewer, fileDynProg);
     }
 
     private void log(PathCalculatorGraph.DistanceMat<String, String> mat, List<PathCalculatorGraph.IDistance<String, String>> calcBestPath, String[] recos, String[] refs) {
@@ -373,7 +312,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
 
     private int[] getUsedRecos(String[] recos, List<PathCalculatorGraph.IDistance<String, String>> calcBestPath) {
         //minus 1 because we add a \n
-        //TODO: clean handling of \n
+        //TODO: clean handling of \n and INS
         int[] usedReco = new int[recos.length];
         for (PathCalculatorGraph.IDistance<String, String> dist : calcBestPath) {
             String m = dist.getManipulation();
@@ -394,11 +333,11 @@ public class ErrorModuleEnd2End implements IErrorModule {
         return usedReco;
     }
 
-    private void calculate(String[] recos, String[] refs, boolean showProgressBar, File out) {
+    private void calculate(String[] recos, String[] refs, int sizeProcessViewer, File out) {
         //use dynamic programming to calculate the cheapest path through the dynamic programming tabular
 //        calcBestPathFast(recos, refs);
         pathCalculator.setUpdateScheme(PathCalculatorGraph.UpdateScheme.LAZY);
-        pathCalculator.useProgressBar(showProgressBar);
+        pathCalculator.setSizeProcessViewer(sizeProcessViewer);
         pathCalculator.setFileDynMat(out);
         PathCalculatorGraph.DistanceMat<String, String> mat = pathCalculator.calcDynProg(Arrays.asList(recos), Arrays.asList(refs));
 //        pathCalculator.calcBestPath(mat);
@@ -519,7 +458,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
                 path = path.substring(0, path.lastIndexOf(".")) + "_" + path.substring(path.lastIndexOf("."));
                 outSubProblem = new File(path);
             }
-            fallback.calculate(recos, refs, showProgressBar, outSubProblem);
+            fallback.calculate(recos, refs, sizeProcessViewer, outSubProblem);
             counter.addAll(fallback.getCounter());
             return;
         }
@@ -535,7 +474,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
             }
             int i = countChars(recos, toDeletePath.startReco, toDeletePath.endReco);
             int j = toDeletePath.endReco - toDeletePath.startReco;
-            System.out.println("cntChars = "+i+" toDelete-diff = "+j);
+            System.out.println("cntChars = " + i + " toDelete-diff = " + j);
             ObjectCounter<Count> count = count(toDeletePath.path, usedReco, countChars(recos, toDeletePath.startReco, toDeletePath.endReco), countChars(refs, toDeletePath.startRef, toDeletePath.endRef));
 //            ObjectCounter<Count> count = count(toDeletePath.path, usedReco, recos, refs);
             LOG.debug("count {} for sub-task {}", count, toDeletePath);
@@ -558,7 +497,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
             outSubProblem = new File(path);
         }
 
-        calculate(recosShorter, refShorter, showProgressBar, outSubProblem);
+        calculate(recosShorter, refShorter, sizeProcessViewer, outSubProblem);
     }
 
     private boolean reduceMask(boolean[] mask, int start, int end) {

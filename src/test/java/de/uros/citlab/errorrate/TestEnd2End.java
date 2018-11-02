@@ -103,7 +103,9 @@ public class TestEnd2End {
                           int swapLines,
                           int deleteLine,
                           int splitLine,
+                          int splitWord,
                           int mergeLine,
+                          int mergeWord,
                           int addStart,
                           int deleteStart,
                           int deleteEnd,
@@ -126,14 +128,14 @@ public class TestEnd2End {
         Assert.assertEquals(new Long(splitLine), getCount(false, false, mode, false,
                 "ab\ncd ef\ngh",
                 "ab\ncd\nef\ngh").get(Count.ERR));
-        Assert.assertEquals(new Long(Math.max(0, splitLine - 1)), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(splitWord), getCount(false, false, mode, false,
                 "ab\ncdef\ngh",
                 "ab\ncd\nef\ngh").get(Count.ERR));
         //merge two line ==> "cd ef" to "cd" and "" to "ef" ==> 3 + 2 = 5 errors
         Assert.assertEquals(new Long(mergeLine), getCount(false, false, mode, false,
                 "ab\ncd\nef",
                 "ab\ncd ef").get(Count.ERR));
-        Assert.assertEquals(new Long(Math.max(0, mergeLine - 1)), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(mergeWord), getCount(false, false, mode, false,
                 "ab\ncd\nef",
                 "ab\ncdef").get(Count.ERR));
         Assert.assertEquals(new Long(mergeLine), getCount(false, false, mode, false,
@@ -175,22 +177,22 @@ public class TestEnd2End {
 
     @Test
     public void testWithReadingOrder() {
-        testCases(ErrorModuleEnd2End.Mode.RO, 0, 4, 2, 5, 5, 2, 2, 2, 2, 4);
+        testCases(ErrorModuleEnd2End.Mode.RO, 0, 4, 2, 5, 4, 5, 4, 2, 2, 2, 2, 4);
     }
 
     @Test
     public void testIgnoreReadingOrder() {
-        testCases(ErrorModuleEnd2End.Mode.NO_RO, 0, 0, 2, 5, 5, 2, 2, 2, 2, 0);
+        testCases(ErrorModuleEnd2End.Mode.NO_RO, 0, 0, 2, 5, 4, 5, 4, 2, 2, 2, 2, 0);
     }
 
     @Test
     public void testIgnoreSegmentation() {
-        testCases(ErrorModuleEnd2End.Mode.RO_SEG, 0, 4, 2, 0, 0, 2, 2, 2, 2, 4);
+        testCases(ErrorModuleEnd2End.Mode.RO_SEG, 0, 4, 2, 0, 4, 0, 4, 2, 2, 2, 2, 4);
     }
 
     @Test
     public void testIgnoreReadingOrderSegmentation() {
-        testCases(ErrorModuleEnd2End.Mode.NO_RO_SEG, 0, 0, 2, 0, 0, 2, 2, 2, 2, 0);
+        testCases(ErrorModuleEnd2End.Mode.NO_RO_SEG, 0, 0, 2, 0, 4, 0, 4, 2, 2, 2, 2, 0);
     }
 
     @Test
@@ -201,14 +203,15 @@ public class TestEnd2End {
         String recognition = "ein zwei drei\nsieben acht\nvier fünf sechs\nneun ze\nhn elf zwölf";
         //11 DEL (sieben acht), 3 INS (sie), 6 SUB/INS  7 INS (neun ze)=27
         Assert.assertEquals(new Long(29), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, reference, recognition).get(Count.ERR));
-        //one more than substituting "\n" by " ": zehn vs. "ze\nhn"
+
         Long count = getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference.replace("\n", " "), recognition.replace("\n", " ")).get(Count.ERR);
         Assert.assertEquals(new Long(19), count);
-        Assert.assertEquals(new Long(count - 1), getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference, recognition).get(Count.ERR));
+        //+2 for deleting "ze" and +2 for insert "ze" in other line
+        Assert.assertEquals(new Long(count + 4), getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference, recognition).get(Count.ERR));
         // 5 DEL ("sieben acht" => "sieben"), 4 SUB + 3 DEL ("neun se" => "acht"), 7 INS ("" => "neun ze")
         Assert.assertEquals(new Long(19), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO, false, reference, recognition).get(Count.ERR));
-        //zero - can repair everything!!
-        Assert.assertEquals(new Long(0), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
+        //zero - can repair everything excepte zehn -> ze\nhn: +2 ins +2 del +1 del of Space (double-use fore space and lb not allowed
+        Assert.assertEquals(new Long(5), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
     }
 
     @Test
@@ -232,11 +235,11 @@ public class TestEnd2End {
         //one more than substituting "\n" by " ": zehn vs. "ze\nhn"
         Long count = getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference.replace("\n", " "), recognition.replace("\n", " ")).get(Count.ERR);
         Assert.assertEquals(new Long(19 * factor), count);
-        Assert.assertEquals(new Long(count - factor), getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference, recognition).get(Count.ERR));
+        Assert.assertEquals(new Long(count + 4 * factor), getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference, recognition).get(Count.ERR));
         // 3 INS (sie), 3 DEL (sie), 7 INS (neun ze), 7 DEL (neun ze)
         Assert.assertEquals(new Long(19 * factor), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO, false, reference, recognition).get(Count.ERR));
-//        zero - can repair everything!!
-        Assert.assertEquals(new Long(0), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
+//        zero - can repair everything except zehn -> ze\nhn: +2 ins +2 del +1 del NL
+        Assert.assertEquals(new Long(5 * factor), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
     }
 
 //    @Test
@@ -307,6 +310,7 @@ public class TestEnd2End {
         if (!gt.endsWith("\n")) {
             gt += "\n";
         }
+        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
         impl.calculate(hyp, gt);
         return impl.getCounter().getMap();
     }

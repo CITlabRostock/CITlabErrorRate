@@ -11,7 +11,6 @@ import gnu.trove.TIntObjectProcedure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -20,8 +19,6 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
 import java.lang.reflect.Array;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.*;
 import java.util.List;
 
@@ -35,7 +32,7 @@ public class PathCalculatorGraph<Reco, Reference> {
     private Reco typeReco;
     private Reference typeReference;
     private UpdateScheme updateScheme = UpdateScheme.LAZY;
-    private boolean useProgressBar = false;
+    private int sizeProcessViewer = -1;
     private File folderDynMats = null;
     private static final Logger LOG = LoggerFactory.getLogger(PathCalculatorGraph.class);
     private final List<ICostCalculator<Reco, Reference>> costCalculators = new ArrayList<>();
@@ -44,7 +41,7 @@ public class PathCalculatorGraph<Reco, Reference> {
     private final Comparator<IDistance<Reco, Reference>> cmpCostsAcc = new Comparator<IDistance<Reco, Reference>>() {
         @Override
         public int compare(IDistance<Reco, Reference> o1, IDistance<Reco, Reference> o2) {
-            int d = o1.compareTo(o2);
+            int d = Double.compare(o1.getCostsAcc(), o2.getCostsAcc());
             if (d != 0) {
                 return d;
             }
@@ -68,6 +65,8 @@ public class PathCalculatorGraph<Reco, Reference> {
 
         void init(DistanceMat<Reco, Reference> mat, Reco[] recos, Reference[] refs);
 
+//        IDistance<Reco, Reference> getNeighbour(int[] point, IDistance<Reco, Reference> dist);
+
         IDistance<Reco, Reference> getNeighbour(int[] point, IDistance<Reco, Reference> dist);
 
     }
@@ -76,91 +75,14 @@ public class PathCalculatorGraph<Reco, Reference> {
 
         void init(DistanceMat<Reco, Reference> mat, Reco[] recos, Reference[] refs);
 
+//        List<IDistance<Reco, Reference>> getNeighbours(int[] point, IDistance<Reco, Reference> dist);
+
         List<IDistance<Reco, Reference>> getNeighbours(int[] point, IDistance<Reco, Reference> dist);
 
     }
 
-    public static class CostCalculatorTranspose<Reco, Reference> implements ICostCalculator<Reco, Reference> {
-
-        private final ICostCalculator<Reference, Reco> cc;
-        private DistanceMat<Reference, Reco> mat;
-
-        public CostCalculatorTranspose(ICostCalculator<Reference, Reco> cc) {
-            this.cc = cc;
-        }
-
-        @Override
-        public void init(DistanceMat<Reco, Reference> mat, Reco[] recos, Reference[] refs) {
-            this.mat = new DistanceMatTranspose(mat);
-            cc.init(this.mat, refs, recos);
-        }
-
-        private int[] transpose(int[] point) {
-            return new int[]{point[1], point[0]};
-        }
-
-        @Override
-        public IDistance<Reco, Reference> getNeighbour(int[] point, IDistance<Reco, Reference> dist) {
-            int[] transpose = transpose(point);
-            IDistance<Reference, Reco> distance = cc.getNeighbour(transpose, mat.get(transpose));
-            return new Distance<>(distance.getManipulation(), distance.getCosts(), distance.getCostsAcc(), transpose(distance.getPoint()), distance.getPointPrevious(), distance.getReferences(), distance.getRecos());
-        }
-
-        private class DistanceMatTranspose<Reco, Reference> extends DistanceMat<Reco, Reference> {
-
-            private final DistanceMat<Reco, Reference> matInner;
-
-            public DistanceMatTranspose(DistanceMat<Reco, Reference> mat) {
-                super(0, 0);
-                matInner = mat;
-            }
-
-            @Override
-            public int getSizeX() {
-                return matInner.getSizeY();
-            }
-
-            @Override
-            public int getSizeY() {
-                return matInner.getSizeX();
-            }
-
-            @Override
-            public IDistance get(int y, int x) {
-                return matInner.get(x, y);
-            }
-
-            @Override
-            public void set(int y, int x, IDistance distance) {
-                matInner.set(x, y, distance);
-            }
-
-            @Override
-            public List<IDistance<Reco, Reference>> getBestPath() {
-                return matInner.getBestPath();
-            }
-
-            @Override
-            public IDistance<Reco, Reference> getLastElement() {
-                return matInner.getLastElement();
-            }
-
-            @Override
-            public String toString() {
-                return matInner.toString();
-            }
-
-            @Override
-            public int hashCode() {
-                return matInner.hashCode();
-            }
-
-        }
-
-    }
-
-    public void useProgressBar(boolean useProgressBar) {
-        this.useProgressBar = useProgressBar;
+    public void setSizeProcessViewer(int useProgressBar) {
+        this.sizeProcessViewer = useProgressBar;
     }
 
     public void addCostCalculator(ICostCalculator<Reco, Reference> costCalculator) {
@@ -169,10 +91,6 @@ public class PathCalculatorGraph<Reco, Reference> {
 
     public void addCostCalculator(ICostCalculatorMulti<Reco, Reference> costCalculator) {
         costCalculatorsMutli.add(costCalculator);
-    }
-
-    public void addCostCalculatorTransposed(ICostCalculator<Reference, Reco> costCalculator) {
-        costCalculators.add(new CostCalculatorTranspose<>(costCalculator));
     }
 
     public void setFileDynMat(File folderDynMats) {
@@ -199,47 +117,101 @@ public class PathCalculatorGraph<Reco, Reference> {
         LAZY, ALL;
     }
 
-    public static interface PathFilter<Reco, Reference> {
+    public interface PathFilter<Reco, Reference> {
 
-        public void setComparator(Comparator<IDistance<Reco, Reference>> comparator);
+        void setComparator(Comparator<IDistance<Reco, Reference>> comparator);
 
-        public void init(Reco[] recos, Reference[] references);
+        void init(Reco[] recos, Reference[] references);
 
-        public boolean addNewEdge(IDistance<Reco, Reference> newDistance);
+        boolean addNewEdge(IDistance<Reco, Reference> newDistance);
 
-        public boolean followPathsFromBestEdge(IDistance<Reco, Reference> bestDistance);
+        boolean followPathsFromBestEdge(IDistance<Reco, Reference> bestDistance);
     }
 
-    public static interface IDistanceSmall<Reco, Reference> extends Comparable<IDistanceSmall<Reco, Reference>> {
-        public double getCostsAcc();
+    public interface IDistanceSmall<Reco, Reference> {
+        double getCostsAcc();
 
-        public int[] getPointPrevious();
+        int[] getPointPrevious();
 
-        public int[] getPoint();
+        int[] getPoint();
 
-        public boolean isMarked();
+        boolean isMarked();
 
-        public boolean mark(boolean mark);
+        void mark(boolean mark);
 
-        public void dispose();
+        void dispose();
+
+//        IDistance<Reco, Reference> getLargeDistance(DistanceMat<Reco, Reference> mat);
 
     }
 
-    public static interface IDistance<Reco, Reference> extends IDistanceSmall<Reco, Reference> {
+    public static class DistanceSmall<Reco, Reference> implements IDistanceSmall<Reco, Reference> {
+        private final int[] pointPrevious;
+        private final int[] point;
+        private final double costsAcc;
+        private boolean marked = false;
+        private Object costCalculator;
 
-        public double getCosts();
+        public DistanceSmall(int[] pointPrevious, int[] point, double costsAcc, Object costCalculator) {
+            this.pointPrevious = pointPrevious;
+            this.point = point;
+            this.costsAcc = costsAcc;
+            this.costCalculator = costCalculator;
+        }
 
+        @Override
+        public double getCostsAcc() {
+            return costsAcc;
+        }
 
-        public Reco[] getRecos();
+        @Override
+        public int[] getPointPrevious() {
+            return pointPrevious;
+        }
 
-        public Reference[] getReferences();
+        @Override
+        public int[] getPoint() {
+            return point;
+        }
 
-        public String getManipulation();
+        @Override
+        public boolean isMarked() {
+            return marked;
+        }
 
+        @Override
+        public void mark(boolean mark) {
+            marked = mark;
+        }
 
-        public boolean equals(IDistance<Reco, Reference> obj);
+        @Override
+        public void dispose() {
+        }
 
+//        @Override
+//        public IDistance<Reco, Reference> getLargeDistance(DistanceMat<Reco, Reference> mat) {
+//            throw new RuntimeException("not implemented yet");
+////            if (costCalculator == null) {
+////                return new Distance<>(null, costsAcc, costsAcc, point, pointPrevious, null, null);
+////            }
+////            if (costCalculator instanceof ICostCalculator) {
+////                ICostCalculator<Reco, Reference> cc = (ICostCalculator<Reco, Reference>) costCalculator;
+////                return cc.getNeighbour(point, this);
+////            }
+//        }
+    }
 
+    public interface IDistance<Reco, Reference> extends IDistanceSmall<Reco, Reference> {
+
+        double getCosts();
+
+        Reco[] getRecos();
+
+        Reference[] getReferences();
+
+        String getManipulation();
+
+        boolean equals(IDistance<Reco, Reference> obj);
     }
 
     public static class DistanceMat<Reco, Reference> {
@@ -483,8 +455,7 @@ public class PathCalculatorGraph<Reco, Reference> {
         QSortedCostAcc.add(start);
 //        G.add(start);
 //        distMat.set(startPoint, start);
-        int sizeOutput = 800;
-        ProcessField bar = useProgressBar || folderDynMats != null ? new ProcessField("calculating Dynamic Matrix", sizeOutput, useProgressBar, folderDynMats) : null;
+        ProcessField bar = sizeProcessViewer > 0 || folderDynMats != null ? new ProcessField("calculating Dynamic Matrix", sizeProcessViewer, folderDynMats) : null;
         int factorNextCleanup = 500000;
         int boundNextCleanup = factorNextCleanup;
         int cntEdges = 0;
@@ -616,9 +587,8 @@ public class PathCalculatorGraph<Reco, Reference> {
         }
 
         @Override
-        public boolean mark(boolean mark) {
+        public void mark(boolean mark) {
             this.marked = mark;
-            return mark;
         }
 
         @Override
@@ -630,6 +600,11 @@ public class PathCalculatorGraph<Reco, Reference> {
                 references = null;
             }
         }
+
+//        @Override
+//        public IDistance<Reco, Reference> getLargeDistance(DistanceMat<Reco, Reference> mat) {
+//            return this;
+//        }
 
         @Override
         public double getCosts() {
@@ -680,10 +655,6 @@ public class PathCalculatorGraph<Reco, Reference> {
             return obj == this;
         }
 
-        @Override
-        public int compareTo(IDistanceSmall<Reco, Reference> o) {
-            return Double.compare(costsAcc, o.getCostsAcc());
-        }
     }
 
     private static class ProcessField {
@@ -694,12 +665,10 @@ public class PathCalculatorGraph<Reco, Reference> {
         private boolean isDebug = false;
         private double[][] mat = null;
         private final int steps = 100;
-        private boolean show;
         private File outFile;
 
-        public ProcessField(String title, int size, boolean show, File outFile) {
-            this.size = size;
-            this.show = show;
+        public ProcessField(String title, int sizeProcessViewer, File outFile) {
+            this.size = sizeProcessViewer;
             this.outFile = outFile;
             mainFrame = new JFrame();
 //        meinJFrame.setSize(size, size + 300);
@@ -725,7 +694,7 @@ public class PathCalculatorGraph<Reco, Reference> {
             // JProgressBar wird Panel hinzugefügt
             meinPanel.add(progressBar);
             mainFrame.add(meinPanel);
-            if (show) {
+            if (size > 0) {
                 mainFrame.setLocation(new Point((int) (screenSize.getWidth() - mainFrame.getWidth()) / 2, (int) (screenSize.getHeight() - mainFrame.getHeight()) / 2));
                 mainFrame.setVisible(true);
                 mainFrame.pack();
@@ -766,7 +735,7 @@ public class PathCalculatorGraph<Reco, Reference> {
                     for (int j = 0; j < vec.length; j++) {
                         IDistance dist = distMat.get(i * factorY, j * factorX);
                         if (dist == null) {
-                            vec[j] = 0;// vec[j] > 0 ? vec[j] : isDebug ? -5 : 0;
+                            vec[j] = vec[j] > 0 ? vec[j] : isDebug ? -5 : 0;
                         } else {
                             vec[j] = vec[j] > 0 ? Math.min(dist.getCostsAcc(), vec[j]) : dist.getCostsAcc();
                         }
