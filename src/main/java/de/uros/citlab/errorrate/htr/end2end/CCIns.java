@@ -9,13 +9,21 @@ class CCIns extends CCAbstract {
     }
 
     @Override
-    public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
+    public PathCalculatorGraph.DistanceSmall getNeighbourSmall(int[] point, PathCalculatorGraph.DistanceSmall dist) {
         final int x = point[1] + 1;
-        if (x >= refs.length || isLineBreakRef[x] ) {
+        if (x >= refs.length || isLineBreakRef[x]) {
             return null;
         }
         final String part = refs[x];
         int[] next = new int[]{point[0], x};
-        return new DistanceStrStr(DistanceStrStr.TYPE.INS, 1, dist.getCostsAcc() + 1, null, part, point, next);
+        return new PathCalculatorGraph.DistanceSmall(point, next,dist.costsAcc+1,this);
+    }
+
+    @Override
+    public PathCalculatorGraph.IDistance<String, String> getNeighbour(PathCalculatorGraph.DistanceSmall dist) {
+        int[] point = dist.pointPrevious;
+        final int x = point[1] + 1;
+        final String part = refs[x];
+        return new DistanceStrStr(DistanceStrStr.TYPE.INS, 1, dist.costsAcc, null, part, point, dist.point);
     }
 }

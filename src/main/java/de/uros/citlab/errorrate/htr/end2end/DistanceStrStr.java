@@ -4,7 +4,7 @@ import de.uros.citlab.errorrate.types.PathCalculatorGraph;
 
 import java.util.Arrays;
 
-class DistanceStrStr implements PathCalculatorGraph.IDistance<String, String> {
+class DistanceStrStr extends PathCalculatorGraph.DistanceSmall implements PathCalculatorGraph.IDistance<String, String> {
 
     DistanceStrStr(TYPE type, double costs, double costAcc, String reco, String ref, int[] pointPrevious, int[] point) {
         this(type, costs, costAcc, reco == null ? null : new String[]{reco}, ref == null ? null : new String[]{ref}, pointPrevious, point);
@@ -20,11 +20,8 @@ class DistanceStrStr implements PathCalculatorGraph.IDistance<String, String> {
 
     private final TYPE type;
     private final double costs;
-    private final double costAcc;
     private final String[] recos;
     private final String[] refs;
-    private int[] pointPrevious;
-    private int[] point;
     private boolean marked;
 
     @Override
@@ -32,32 +29,40 @@ class DistanceStrStr implements PathCalculatorGraph.IDistance<String, String> {
         return ("DistanceStrStr{" +
                 "type=" + type +
                 ", costs=" + costs +
-                ", costAcc=" + costAcc +
+                ", costAcc=" + super.costsAcc +
                 ", recos=" + Arrays.toString(recos) +
                 ", refs=" + Arrays.toString(refs) +
-                ", pointPrevious=" + Arrays.toString(pointPrevious) +
-                ", point=" + Arrays.toString(point) +
+                ", pointPrevious=" + Arrays.toString(super.pointPrevious) +
+                ", point=" + Arrays.toString(super.point) +
                 '}').replace("\n", "\\n");
     }
 
     public DistanceStrStr(TYPE type, double costs, double costAcc, String[] recos, String[] refs, int[] pointPrevious, int[] point) {
+        super(pointPrevious,point,costAcc,null);
         this.type = type;
         this.costs = costs;
-        this.costAcc = costAcc;
         this.recos = recos;
         this.refs = refs;
-        this.pointPrevious = pointPrevious;
-        this.point = point;
+    }
+
+    @Override
+    public int[] getPointPrevious() {
+        return super.pointPrevious;
+    }
+
+    @Override
+    public int[] getPoint() {
+        return super.point;
+    }
+
+    @Override
+    public double getCostsAcc() {
+        return super.costsAcc;
     }
 
     @Override
     public double getCosts() {
         return costs;
-    }
-
-    @Override
-    public double getCostsAcc() {
-        return costAcc;
     }
 
     @Override
@@ -75,34 +80,16 @@ class DistanceStrStr implements PathCalculatorGraph.IDistance<String, String> {
         return type == null ? null : type.toString();
     }
 
-    @Override
-    public int[] getPointPrevious() {
-        return pointPrevious;
-    }
-
-    @Override
-    public int[] getPoint() {
-        return point;
-    }
-
-    @Override
-    public boolean equals(PathCalculatorGraph.IDistance<String, String> obj) {
-        return Arrays.equals(point, obj.getPoint()) && getManipulation().equals(obj.getManipulation()) && Arrays.equals(pointPrevious, obj.getPointPrevious());
-    }
-
-    @Override
     public boolean isMarked() {
         return marked;
     }
 
-    @Override
     public void mark(boolean mark) {
         this.marked = mark;
     }
 
     @Override
-    public void dispose() {
-        point = null;
-        pointPrevious = null;
+    public PathCalculatorGraph.IDistance getLargeDistance() {
+        return this;
     }
 }

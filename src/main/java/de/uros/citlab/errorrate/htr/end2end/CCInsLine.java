@@ -10,7 +10,7 @@ class CCInsLine extends CCAbstract {
     }
 
     @Override
-    public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
+    public PathCalculatorGraph.DistanceSmall getNeighbourSmall(int[] point, PathCalculatorGraph.DistanceSmall dist) {
         final int start = point[1];
         if (isLineBreakReco[point[0]] && isLineBreakRef[start]) {
             int idx = 0;
@@ -31,7 +31,7 @@ class CCInsLine extends CCAbstract {
             return new DistanceStrStr(
                     DistanceStrStr.TYPE.INS_LINE,
                     costs,
-                    dist.getCostsAcc() + costs,
+                    dist.costsAcc + costs,
                     null,
                     subList,
                     point,

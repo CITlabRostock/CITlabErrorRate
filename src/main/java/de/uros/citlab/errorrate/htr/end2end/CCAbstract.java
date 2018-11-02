@@ -52,5 +52,9 @@ public abstract class CCAbstract implements PathCalculatorGraph.ICostCalculator<
         System.arraycopy(tmp, 0, res, 0, cnt);
         return res;
     }
+    @Override
+    public PathCalculatorGraph.IDistance<String, String> getNeighbour(PathCalculatorGraph.DistanceSmall dist) {
+        return (PathCalculatorGraph.IDistance<String, String>) dist;
+    }
 
 }

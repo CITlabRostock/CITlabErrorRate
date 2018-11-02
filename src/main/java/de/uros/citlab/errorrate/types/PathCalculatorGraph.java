@@ -38,21 +38,21 @@ public class PathCalculatorGraph<Reco, Reference> {
     private final List<ICostCalculator<Reco, Reference>> costCalculators = new ArrayList<>();
     private final List<ICostCalculatorMulti<Reco, Reference>> costCalculatorsMutli = new ArrayList<>();
     private PathFilter<Reco, Reference> filter = null;
-    private final Comparator<IDistance<Reco, Reference>> cmpCostsAcc = new Comparator<IDistance<Reco, Reference>>() {
+    private final Comparator<DistanceSmall> cmpCostsAcc = new Comparator<DistanceSmall>() {
         @Override
-        public int compare(IDistance<Reco, Reference> o1, IDistance<Reco, Reference> o2) {
-            int d = Double.compare(o1.getCostsAcc(), o2.getCostsAcc());
+        public int compare(DistanceSmall o1, DistanceSmall o2) {
+            int d = Double.compare(o1.costsAcc, o2.costsAcc);
             if (d != 0) {
                 return d;
             }
             if (o1 == o2) {
                 return 0;
             }
-            int d2 = Integer.compare(o2.getPoint()[0], o1.getPoint()[0]);
+            int d2 = Integer.compare(o2.point[0], o1.point[0]);
             if (d2 != 0) {
                 return d2;
             }
-            return Integer.compare(o2.getPoint()[1], o1.getPoint()[1]);
+            return Integer.compare(o2.point[1], o1.point[1]);
         }
     };
 
@@ -65,9 +65,9 @@ public class PathCalculatorGraph<Reco, Reference> {
 
         void init(DistanceMat<Reco, Reference> mat, Reco[] recos, Reference[] refs);
 
-//        IDistance<Reco, Reference> getNeighbour(int[] point, IDistance<Reco, Reference> dist);
+        DistanceSmall getNeighbourSmall(int[] point, DistanceSmall dist);
 
-        IDistance<Reco, Reference> getNeighbour(int[] point, IDistance<Reco, Reference> dist);
+        IDistance<Reco, Reference> getNeighbour(DistanceSmall dist);
 
     }
 
@@ -75,9 +75,9 @@ public class PathCalculatorGraph<Reco, Reference> {
 
         void init(DistanceMat<Reco, Reference> mat, Reco[] recos, Reference[] refs);
 
-//        List<IDistance<Reco, Reference>> getNeighbours(int[] point, IDistance<Reco, Reference> dist);
+        List<DistanceSmall> getNeighboursSmall(int[] point, DistanceSmall dist);
 
-        List<IDistance<Reco, Reference>> getNeighbours(int[] point, IDistance<Reco, Reference> dist);
+        IDistance<Reco, Reference> getNeighbour(DistanceSmall dist);
 
     }
 
@@ -99,16 +99,8 @@ public class PathCalculatorGraph<Reco, Reference> {
 
     public void setFilter(PathFilter<Reco, Reference> filter) {
         this.filter = filter;
-        if (filter != null) {
-            filter.setComparator(cmpCostsAcc);
-        }
-
     }
 
-    //    public static enum Manipulation {
-//
-//        INS, DEL, SUB, COR, SPECIAL;
-//    }
     public void setUpdateScheme(UpdateScheme updateScheme) {
         this.updateScheme = updateScheme;
     }
@@ -119,38 +111,19 @@ public class PathCalculatorGraph<Reco, Reference> {
 
     public interface PathFilter<Reco, Reference> {
 
-        void setComparator(Comparator<IDistance<Reco, Reference>> comparator);
-
         void init(Reco[] recos, Reference[] references);
 
-        boolean addNewEdge(IDistance<Reco, Reference> newDistance);
+        boolean addNewEdge(DistanceSmall newDistance);
 
-        boolean followPathsFromBestEdge(IDistance<Reco, Reference> bestDistance);
+        boolean followPathsFromBestEdge(DistanceSmall bestDistance);
     }
 
-    public interface IDistanceSmall<Reco, Reference> {
-        double getCostsAcc();
-
-        int[] getPointPrevious();
-
-        int[] getPoint();
-
-        boolean isMarked();
-
-        void mark(boolean mark);
-
-        void dispose();
-
-//        IDistance<Reco, Reference> getLargeDistance(DistanceMat<Reco, Reference> mat);
-
-    }
-
-    public static class DistanceSmall<Reco, Reference> implements IDistanceSmall<Reco, Reference> {
-        private final int[] pointPrevious;
-        private final int[] point;
-        private final double costsAcc;
-        private boolean marked = false;
-        private Object costCalculator;
+    public static class DistanceSmall {
+        public int[] pointPrevious;
+        public int[] point;
+        public final double costsAcc;
+        public boolean marked = false;
+        public Object costCalculator;
 
         public DistanceSmall(int[] pointPrevious, int[] point, double costsAcc, Object costCalculator) {
             this.pointPrevious = pointPrevious;
@@ -159,50 +132,28 @@ public class PathCalculatorGraph<Reco, Reference> {
             this.costCalculator = costCalculator;
         }
 
-        @Override
-        public double getCostsAcc() {
-            return costsAcc;
-        }
-
-        @Override
-        public int[] getPointPrevious() {
-            return pointPrevious;
-        }
-
-        @Override
-        public int[] getPoint() {
-            return point;
-        }
-
-        @Override
-        public boolean isMarked() {
-            return marked;
-        }
-
-        @Override
-        public void mark(boolean mark) {
-            marked = mark;
-        }
-
-        @Override
         public void dispose() {
+            point = null;
+            pointPrevious = null;
+            costCalculator = null;
         }
 
-//        @Override
-//        public IDistance<Reco, Reference> getLargeDistance(DistanceMat<Reco, Reference> mat) {
-//            throw new RuntimeException("not implemented yet");
-////            if (costCalculator == null) {
-////                return new Distance<>(null, costsAcc, costsAcc, point, pointPrevious, null, null);
-////            }
-////            if (costCalculator instanceof ICostCalculator) {
-////                ICostCalculator<Reco, Reference> cc = (ICostCalculator<Reco, Reference>) costCalculator;
-////                return cc.getNeighbour(point, this);
-////            }
-//        }
+        public IDistance getLargeDistance() {
+            if (costCalculator == null) {
+                return new Distance<>(null, costsAcc, costsAcc, point, pointPrevious, null, null);
+            }
+            if (costCalculator instanceof ICostCalculator) {
+                return ((ICostCalculator) costCalculator).getNeighbour(this);
+            }
+            if (costCalculator instanceof ICostCalculatorMulti) {
+                return ((ICostCalculatorMulti) costCalculator).getNeighbour(this);
+            }
+            throw new RuntimeException("cannot interprete class " + costCalculator.getClass().getName());
+        }
     }
 
-    public interface IDistance<Reco, Reference> extends IDistanceSmall<Reco, Reference> {
 
+    public interface IDistance<Reco, Reference> {
         double getCosts();
 
         Reco[] getRecos();
@@ -211,7 +162,11 @@ public class PathCalculatorGraph<Reco, Reference> {
 
         String getManipulation();
 
-        boolean equals(IDistance<Reco, Reference> obj);
+        int[] getPointPrevious();
+
+        int[] getPoint();
+
+        double getCostsAcc();
     }
 
     public static class DistanceMat<Reco, Reference> {
@@ -227,7 +182,7 @@ public class PathCalculatorGraph<Reco, Reference> {
             sizeX = x;
         }
 
-        public IDistance<Reco, Reference> get(int y, int x) {
+        public DistanceSmall get(int y, int x) {
 //            if (doublestruct) {
 //                Object o = distMap.get(y);
 //                if (o == null) {
@@ -235,14 +190,14 @@ public class PathCalculatorGraph<Reco, Reference> {
 //                }
 //                return (IDistance<Reco, Reference>) ((TIntObjectHashMap) o).get(x);
 //            }
-            return (IDistance<Reco, Reference>) distMap.get(y * sizeX + x);
+            return (DistanceSmall) distMap.get(y * sizeX + x);
         }
 
-        public IDistance<Reco, Reference> get(int[] pos) {
+        public DistanceSmall get(int[] pos) {
             return get(pos[0], pos[1]);
         }
 
-        public void set(int y, int x, IDistance<Reco, Reference> distance) {
+        public void set(int y, int x, DistanceSmall distance) {
 //            if (doublestruct) {
 //                Object o = distMap.get(y);
 //                if (o == null) {
@@ -255,7 +210,7 @@ public class PathCalculatorGraph<Reco, Reference> {
             distMap.put(y * sizeX + x, distance);
         }
 
-        public void set(int[] position, IDistance<Reco, Reference> distance) {
+        public void set(int[] position, DistanceSmall distance) {
             set(position[0], position[1], distance);
         }
 
@@ -267,23 +222,23 @@ public class PathCalculatorGraph<Reco, Reference> {
             return sizeX;
         }
 
-        public IDistance<Reco, Reference> getLastElement() {
+        public DistanceSmall getLastElement() {
             return get(getSizeY() - 1, getSizeX() - 1);
         }
 
         public List<IDistance<Reco, Reference>> getBestPath() {
-            IDistance<Reco, Reference> lastElement = getLastElement();
+            DistanceSmall lastElement = getLastElement();
             if (lastElement == null) {
                 LOG.warn("Distance Matrix not completely calculated.");
                 return null;
             }
             LinkedList<IDistance<Reco, Reference>> res = new LinkedList<>();
-            res.add(lastElement);
-            int[] pos = lastElement.getPointPrevious();
+            res.add(lastElement.getLargeDistance());
+            int[] pos = lastElement.pointPrevious;
             while (pos != null) {
                 lastElement = get(pos[0], pos[1]);
-                res.addFirst(lastElement);
-                pos = lastElement.getPointPrevious();
+                res.addFirst(lastElement.getLargeDistance());
+                pos = lastElement.pointPrevious;
             }
             res.removeFirst();
             return res;
@@ -302,50 +257,23 @@ public class PathCalculatorGraph<Reco, Reference> {
             return distMap.size();
         }
 
-        public DistanceMat<Reco, Reference> cleanup(TreeSet<IDistance<Reco, Reference>> queue) {
+        public DistanceMat<Reco, Reference> cleanup(TreeSet<DistanceSmall> queue) {
             int cnt = 0;
-            for (IDistance<Reco, Reference> tail : queue) {
+            for (DistanceSmall tail : queue) {
                 cnt += mark(tail, true);
             }
             int size = getElements();
             DistanceMat<Reco, Reference> res = new DistanceMat<Reco, Reference>(getSizeY(), getSizeX());
-//            if (doublestruct) {
-//                distMap.forEachEntry(new TIntObjectProcedure() {
-//                    @Override
-//                    public boolean execute(int i, Object o) {
-//                        if (o != null) {
-//                            TIntObjectHashMap o1 = (TIntObjectHashMap) o;
-//                            return o1.forEachEntry(new TIntObjectProcedure() {
-//                                @Override
-//                                public boolean execute(int j, Object o) {
-//                                    IDistance<Reco, Reference> o2 = (IDistance<Reco, Reference>) o;
-//                                    if (o2 == null) {
-//                                        return true;
-//                                    }
-//                                    if (o2.isMarked()) {
-//                                        res.set(i, j, o2);
-//                                        o2.mark(false);
-//                                    } else {
-//                                        o2.dispose();
-//                                    }
-//                                    return true;
-//                                }
-//                            });
-//                        }
-//                        return true;
-//                    }
-//                });
-//            } else {
             distMap.forEachEntry(new TIntObjectProcedure() {
                 @Override
                 public boolean execute(int i, Object o) {
-                    IDistance<Reco, Reference> o1 = (IDistance<Reco, Reference>) o;
+                    DistanceSmall o1 = (DistanceSmall) o;
                     if (o1 == null) {
                         return true;
                     }
-                    if (o1.isMarked()) {
-                        res.set(o1.getPoint()[0], o1.getPoint()[1], o1);
-                        o1.mark(false);
+                    if (o1.marked) {
+                        res.set(o1.point[0], o1.point[1], o1);
+                        o1.marked=false;
                     } else {
                         o1.dispose();
                     }
@@ -358,12 +286,12 @@ public class PathCalculatorGraph<Reco, Reference> {
             return res;
         }
 
-        private int mark(IDistance<Reco, Reference> dist, boolean mark) {
-            if (mark == dist.isMarked()) {
+        private int mark(DistanceSmall dist, boolean mark) {
+            if (mark == dist.marked) {
                 return 0;
             }
-            dist.mark(mark);
-            int[] pointPrevious = dist.getPointPrevious();
+            dist.marked=mark;
+            int[] pointPrevious = dist.pointPrevious;
             if (pointPrevious == null) {
                 return 1;
             }
@@ -373,13 +301,13 @@ public class PathCalculatorGraph<Reco, Reference> {
 
     }
 
-    private int handleDistance(IDistance<Reco, Reference> distNew, DistanceMat<Reco, Reference> distMat, TreeSet<IDistance<Reco, Reference>> QSortedCostAcc) {
+    private int handleDistance(DistanceSmall distNew, DistanceMat<Reco, Reference> distMat, TreeSet<DistanceSmall> QSortedCostAcc) {
         if (distNew == null) {
             return 0;
         }
         int cnt = 0;
-        final int[] posNew = distNew.getPoint();
-        IDistance<Reco, Reference> distOld = distMat.get(posNew);
+        final int[] posNew = distNew.point;
+        DistanceSmall distOld = distMat.get(posNew);
         StopWatch.start("Filter");
         boolean addDistance = filter == null || filter.addNewEdge(distNew);
         StopWatch.stop("Filter");
@@ -447,10 +375,10 @@ public class PathCalculatorGraph<Reco, Reference> {
         if (filter != null) {
             filter.init(nativeReco, nativeRef);
         }
-        TreeSet<IDistance<Reco, Reference>> QSortedCostAcc = new TreeSet<>(cmpCostsAcc);
+        TreeSet<DistanceSmall> QSortedCostAcc = new TreeSet<>(cmpCostsAcc);
 //        HashSet<IDistance<Reco, Reference>> G = new LinkedHashSet<>();
         int[] startPoint = new int[]{0, 0};
-        Distance<Reco, Reference> start = new Distance(null, 0, 0, startPoint, null, null, null);
+        DistanceSmall start = new DistanceSmall(null, startPoint, 0, null);
         distMat.set(startPoint, start);
         QSortedCostAcc.add(start);
 //        G.add(start);
@@ -467,21 +395,21 @@ public class PathCalculatorGraph<Reco, Reference> {
         StopWatch swCleanup = new StopWatch("cleanup");
         while (!QSortedCostAcc.isEmpty()) {
             cntVerticies++;
-            IDistance<Reco, Reference> distActual = QSortedCostAcc.pollFirst();
+            DistanceSmall distActual = QSortedCostAcc.pollFirst();
             if (updateScheme.equals(UpdateScheme.LAZY) && distMat.getLastElement() == distActual) {
                 break;
             }
-            if (isdead[distActual.getPoint()[0]][distActual.getPoint()[1]]) {
+            if (isdead[distActual.point[0]][distActual.point[1]]) {
                 continue;
             }
-            isdead[distActual.getPoint()[0]][distActual.getPoint()[1]] = true;
+            isdead[distActual.point[0]][distActual.point[1]] = true;
             StopWatch.start("FilterAllow");
             if (filter != null && !filter.followPathsFromBestEdge(distActual)) {
                 StopWatch.stop("FilterAllow");
                 continue;
             }
             StopWatch.stop("FilterAllow");
-            final int[] pos = distActual.getPoint();
+            final int[] pos = distActual.point;
             if (bar != null) {
                 bar.update(pos, distMat, distActual);
             }
@@ -489,7 +417,7 @@ public class PathCalculatorGraph<Reco, Reference> {
             for (ICostCalculator<Reco, Reference> costCalculator : costCalculators) {
                 StopWatch.start(costCalculator.getClass().getSimpleName());
                 swCalculators.start();
-                IDistance<Reco, Reference> distance = costCalculator.getNeighbour(pos, distActual);
+                DistanceSmall distance = costCalculator.getNeighbourSmall(pos, distActual);
                 swCalculators.stop();
                 StopWatch.stop(costCalculator.getClass().getSimpleName());
                 swHandle.start();
@@ -499,14 +427,14 @@ public class PathCalculatorGraph<Reco, Reference> {
             for (ICostCalculatorMulti<Reco, Reference> costCalculator : costCalculatorsMutli) {
                 StopWatch.start(costCalculator.getClass().getSimpleName());
                 swCalculators.start();
-                List<IDistance<Reco, Reference>> distances = costCalculator.getNeighbours(pos, distActual);
+                List<DistanceSmall> distances = costCalculator.getNeighboursSmall(pos, distActual);
                 swCalculators.stop();
                 StopWatch.stop(costCalculator.getClass().getSimpleName());
                 if (distances == null) {
                     continue;
                 }
                 swHandle.start();
-                for (IDistance<Reco, Reference> distance : distances) {
+                for (DistanceSmall distance : distances) {
                     cntEdges += handleDistance(distance, distMat, QSortedCostAcc);
                 }
                 swHandle.stop();
@@ -552,53 +480,50 @@ public class PathCalculatorGraph<Reco, Reference> {
     }
 
     public double calcCosts(List<Reco> reco, List<Reference> ref) {
-        return calcDynProg(reco, ref).getLastElement().getCostsAcc();
+        return calcDynProg(reco, ref).getLastElement().costsAcc;
     }
 
     public double calcCosts(Reco[] reco, Reference[] ref) {
-        return calcDynProg(Arrays.asList(reco), Arrays.asList(ref)).getLastElement().getCostsAcc();
+        return calcDynProg(Arrays.asList(reco), Arrays.asList(ref)).getLastElement().costsAcc;
     }
 
-    public static class Distance<Reco, Reference> implements PathCalculatorGraph.IDistance<Reco, Reference> {
+    public static class Distance<Reco, Reference> extends DistanceSmall implements PathCalculatorGraph.IDistance<Reco, Reference> {
 
         //        private final Distance previousDistance;
         private final String manipulation;
         private final double costs;
-        private final double costsAcc;
-        private int[] previous;
-        private int[] point;
         private Reco[] recos;
         private Reference[] references;
         private boolean marked = false;
 
         public Distance(String manipulation, double costs, double costAcc, int[] point, int[] previous, Reco[] recos, Reference[] references) {
+            super(previous, point, costAcc, null);
             this.manipulation = manipulation;
             this.costs = costs;
-            this.previous = previous;
-            this.costsAcc = costAcc;
             this.recos = recos;
             this.references = references;
-            this.point = point;
         }
 
-        @Override
         public boolean isMarked() {
             return marked;
         }
 
-        @Override
         public void mark(boolean mark) {
             this.marked = mark;
         }
 
         @Override
         public void dispose() {
+            super.dispose();
             if (!isMarked()) {
-                previous = null;
-                point = null;
                 recos = null;
                 references = null;
             }
+        }
+
+        @Override
+        public IDistance<Reco, Reference> getLargeDistance() {
+            return this;
         }
 
 //        @Override
@@ -609,11 +534,6 @@ public class PathCalculatorGraph<Reco, Reference> {
         @Override
         public double getCosts() {
             return costs;
-        }
-
-        @Override
-        public double getCostsAcc() {
-            return costsAcc;
         }
 
         @Override
@@ -632,27 +552,23 @@ public class PathCalculatorGraph<Reco, Reference> {
         }
 
         @Override
-        public int[] getPoint() {
-            return point;
+        public int[] getPointPrevious() {
+            return super.pointPrevious;
         }
 
         @Override
-        public int[] getPointPrevious() {
-            return previous;
+        public int[] getPoint() {
+            return super.point;
+        }
+
+        @Override
+        public double getCostsAcc() {
+            return super.costsAcc;
         }
 
         @Override
         public String toString() {
-            return "cost=" + costs + ";manipulation=" + manipulation + ";costAcc=" + costsAcc + ";" + Arrays.deepToString(recos) + ";" + Arrays.deepToString(references);
-        }
-
-        //        @Override
-//        public int compareTo(IDistance<Reco, Reference> o) {
-//            return Double.compare(getCostsAcc(), o.getCostsAcc());
-//        }
-        @Override
-        public boolean equals(IDistance<Reco, Reference> obj) {
-            return obj == this;
+            return "cost=" + costs + ";manipulation=" + manipulation + ";costAcc=" + getCostsAcc() + ";" + Arrays.deepToString(recos) + ";" + Arrays.deepToString(references);
         }
 
     }
@@ -716,7 +632,7 @@ public class PathCalculatorGraph<Reco, Reference> {
 
         MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
 
-        void update(int[] pos, DistanceMat distMat, IDistance actual) {
+        void update(int[] pos, DistanceMat distMat, DistanceSmall actual) {
             int sizeX = isDebug ? size : distMat.getSizeX();
             int sizeY = isDebug ? size : distMat.getSizeY();
             int newProcess = (int) Math.round(((double) pos[1] / sizeX * steps));
@@ -733,11 +649,11 @@ public class PathCalculatorGraph<Reco, Reference> {
                 for (int i = 0; i < mat.length; i++) {
                     double[] vec = mat[i];
                     for (int j = 0; j < vec.length; j++) {
-                        IDistance dist = distMat.get(i * factorY, j * factorX);
+                        DistanceSmall dist = distMat.get(i * factorY, j * factorX);
                         if (dist == null) {
                             vec[j] = vec[j] > 0 ? vec[j] : isDebug ? -5 : 0;
                         } else {
-                            vec[j] = vec[j] > 0 ? Math.min(dist.getCostsAcc(), vec[j]) : dist.getCostsAcc();
+                            vec[j] = vec[j] > 0 ? Math.min(dist.costsAcc, vec[j]) : dist.costsAcc;
                         }
 //                        vec[j] = dist == null ? isDebug ? -5 : 0 : dist.getCostsAcc();
                     }

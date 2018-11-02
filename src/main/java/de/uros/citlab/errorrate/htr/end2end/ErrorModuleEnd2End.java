@@ -48,7 +48,11 @@ public class ErrorModuleEnd2End implements IErrorModule {
 
 
     public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed) {
-        this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, detailed);
+        this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, detailed, 100);
+    }
+
+    public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed, double filterOffset) {
+        this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, detailed, filterOffset);
     }
 
     public enum Mode {
@@ -130,28 +134,23 @@ public class ErrorModuleEnd2End implements IErrorModule {
         }
 
         @Override
-        public void setComparator(Comparator<PathCalculatorGraph.IDistance<String, String>> comparator) {
+        public void init(String[] strings, String[] strings2) {
             map.clear();
         }
 
         @Override
-        public void init(String[] strings, String[] strings2) {
-
-        }
-
-        @Override
-        public boolean addNewEdge(PathCalculatorGraph.IDistance<String, String> newDistance) {
-            final int x = newDistance.getPoint()[1];
+        public boolean addNewEdge(PathCalculatorGraph.DistanceSmall newDistance) {
+            final int x = newDistance.point[1];
             if (x % grid != 0) {
                 return true;
             }
             int key = x / grid;
             if (!map.containsKey(key)) {
-                map.put(key, newDistance.getCostsAcc());
+                map.put(key, newDistance.costsAcc);
                 return true;
             }
             final double before = map.get(key);
-            double after = newDistance.getCostsAcc();
+            double after = newDistance.costsAcc;
             if (after < before) {
                 map.put(key, after);
                 return true;
@@ -164,14 +163,14 @@ public class ErrorModuleEnd2End implements IErrorModule {
         }
 
         @Override
-        public boolean followPathsFromBestEdge(PathCalculatorGraph.IDistance<String, String> bestDistance) {
-            final int x = bestDistance.getPoint()[1];
+        public boolean followPathsFromBestEdge(PathCalculatorGraph.DistanceSmall bestDistance) {
+            final int x = bestDistance.point[1];
             int key = x / grid + 1;
             if (!map.containsKey(key)) {
                 return true;
             }
             final double before = map.get(key);
-            double after = bestDistance.getCostsAcc();
+            double after = bestDistance.costsAcc;
             if (before + offset < after) {
                 return false;
             }
@@ -273,9 +272,9 @@ public class ErrorModuleEnd2End implements IErrorModule {
                 StringBuilder sb1 = new StringBuilder();
                 sb1.append(i == 0 ? "-----" : String.format("%5s", recos[i - 1].replace("\n", "\\n")));
                 for (int j = 0; j < outV.length; j++) {
-                    PathCalculatorGraph.IDistance<String, String> dist = mat.get(i, j);
-                    sb1.append(String.format(" %2d", (int) (dist == null ? 0 : dist.getCostsAcc() + 0.5)));
-                    outV[j] = dist == null ? 0 : dist.getCostsAcc();
+                    PathCalculatorGraph.DistanceSmall dist = mat.get(i, j);
+                    sb1.append(String.format(" %2d", (int) (dist == null ? 0 : dist.costsAcc + 0.5)));
+                    outV[j] = dist == null ? 0 : dist.costsAcc;
                 }
                 LOG.trace(sb1.toString());
             }

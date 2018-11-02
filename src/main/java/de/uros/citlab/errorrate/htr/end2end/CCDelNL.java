@@ -9,7 +9,7 @@ class CCDelNL extends CCAbstract {
     }
 
     @Override
-    public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
+    public PathCalculatorGraph.DistanceSmall getNeighbourSmall(int[] point, PathCalculatorGraph.DistanceSmall dist) {
         //should only be done between non-spacing and non-LB position in y-dimension and LB position in x-dimension
         final int x1 = point[1];
         final int x2 = x1 + 1;
@@ -23,7 +23,7 @@ class CCDelNL extends CCAbstract {
             return new DistanceStrStr(
                     DistanceStrStr.TYPE.MERGE_LINE,
                     0,
-                    dist.getCostsAcc(),
+                    dist.costsAcc,
                     reco,
                     null,
                     point,

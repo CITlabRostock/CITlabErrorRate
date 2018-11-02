@@ -10,7 +10,7 @@ class CCDelLine extends CCAbstract {
     }
 
     @Override
-    public PathCalculatorGraph.IDistance<String, String> getNeighbour(final int[] point, final PathCalculatorGraph.IDistance<String, String> dist) {
+    public PathCalculatorGraph.DistanceSmall getNeighbourSmall(final int[] point, final PathCalculatorGraph.DistanceSmall dist) {
         final int start = point[0];
         if (isLineBreakReco[start] && isLineBreakRef[point[1]]) {
             int idx = 0;
@@ -30,7 +30,7 @@ class CCDelLine extends CCAbstract {
             return new DistanceStrStr(
                     DistanceStrStr.TYPE.DEL_LINE,
                     costs,
-                    dist.getCostsAcc() + costs,
+                    dist.costsAcc + costs,
                     subList,
                     null,
                     point,

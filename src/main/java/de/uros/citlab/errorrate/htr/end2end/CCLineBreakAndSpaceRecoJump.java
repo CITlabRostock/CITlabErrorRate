@@ -15,12 +15,12 @@ class CCLineBreakAndSpaceRecoJump extends CCAbstract implements PathCalculatorGr
     }
 
     @Override
-    public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
-        throw new NotImplementedException();
+    public PathCalculatorGraph.DistanceSmall getNeighbourSmall(int[] point, PathCalculatorGraph.DistanceSmall dist) {
+        throw new RuntimeException("Not implemented");
     }
 
     @Override
-    public List<PathCalculatorGraph.IDistance<String, String>> getNeighbours(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
+    public List<PathCalculatorGraph.DistanceSmall> getNeighboursSmall(int[] point, PathCalculatorGraph.DistanceSmall dist) {
         final int x = point[1] + 1;
         final int y = point[0] + 1;
         if (x >= refs.length || y >= recos.length) {
@@ -29,12 +29,12 @@ class CCLineBreakAndSpaceRecoJump extends CCAbstract implements PathCalculatorGr
         final boolean lineBreakReco = isLineBreakReco[y];
         final boolean spaceRef = isSpaceRef[x];
         if (lineBreakReco && spaceRef) {
-            List<PathCalculatorGraph.IDistance<String, String>> res = new LinkedList<>();
+            List<PathCalculatorGraph.DistanceSmall> res = new LinkedList<>();
             //jump to linebreaks of reco
             for (int i = 0; i < lineBreaksReco.length; i++) {
                 final int target = lineBreaksReco[i];
                 if (target != y) {
-                    res.add(new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, 0, dist.getCostsAcc(), (String) null, null, point, new int[]{target, x}));
+                    res.add(new PathCalculatorGraph.DistanceSmall(point, new int[]{target, x}, dist.costsAcc, this));
                 }
             }
             return res;
@@ -42,11 +42,11 @@ class CCLineBreakAndSpaceRecoJump extends CCAbstract implements PathCalculatorGr
         final boolean lineBreakRef = isLineBreakRef[x];
         final boolean spaceReco = isSpaceReco[y];
         if (lineBreakRef && (lineBreakReco || spaceReco)) {
-            List<PathCalculatorGraph.IDistance<String, String>> res = new LinkedList<>();
+            List<PathCalculatorGraph.DistanceSmall> res = new LinkedList<>();
             //jump to spaces and linebreaks of reco
             for (int i = 1; i < recos.length; i++) {
                 if ((isLineBreakReco[i] || isSpaceReco[i]) && i != y) {
-                    res.add(new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, 0, dist.getCostsAcc(), null, (String) null, point, new int[]{i, x}));
+                    res.add(new PathCalculatorGraph.DistanceSmall(point, new int[]{i, x}, dist.costsAcc, this));
                 }
             }
             return res;
@@ -55,7 +55,8 @@ class CCLineBreakAndSpaceRecoJump extends CCAbstract implements PathCalculatorGr
     }
 
     @Override
-    public void setComparator(Comparator<PathCalculatorGraph.IDistance<String, String>> comparator) {
+    public PathCalculatorGraph.IDistance<String, String> getNeighbour(PathCalculatorGraph.DistanceSmall dist) {
+        return new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, 0, dist.costsAcc, (String) null, null, dist.pointPrevious, dist.point);
     }
 
     @Override
@@ -64,13 +65,13 @@ class CCLineBreakAndSpaceRecoJump extends CCAbstract implements PathCalculatorGr
     }
 
     @Override
-    public boolean addNewEdge(PathCalculatorGraph.IDistance<String, String> newEdge) {
-        return newEdge.getPoint()[1] >= xMax;
+    public boolean addNewEdge(PathCalculatorGraph.DistanceSmall newEdge) {
+        return newEdge.point[1] >= xMax;
     }
 
     @Override
-    public boolean followPathsFromBestEdge(PathCalculatorGraph.IDistance<String, String> bestEdge) {
-        int x = bestEdge.getPoint()[1];
+    public boolean followPathsFromBestEdge(PathCalculatorGraph.DistanceSmall bestEdge) {
+        int x = bestEdge.point[1];
         if (x < refs.length && isLineBreakRef[x]) {
             if (xMax > x) {
                 return false;//already better alternative

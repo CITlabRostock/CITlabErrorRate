@@ -15,30 +15,31 @@ class CCRecoJumpAtRefNL extends CCAbstract implements PathCalculatorGraph.ICostC
     }
 
     @Override
-    public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
+    public PathCalculatorGraph.IDistance<String, String> getNeighbour(PathCalculatorGraph.DistanceSmall dist) {
         throw new NotImplementedException();
     }
 
     @Override
-    public List<PathCalculatorGraph.IDistance<String, String>> getNeighbours(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
+    public PathCalculatorGraph.DistanceSmall getNeighbourSmall(int[] point, PathCalculatorGraph.DistanceSmall dist) {
+        throw new NotImplementedException();
+    }
+
+    @Override
+    public List<PathCalculatorGraph.DistanceSmall> getNeighboursSmall(int[] point, PathCalculatorGraph.DistanceSmall dist) {
         int x = point[1] + 1;
         if (x >= refs.length || !isLineBreakRef[x]) {
             return null;
         }
-        List<PathCalculatorGraph.IDistance<String, String>> res = new LinkedList<>();
+        List<PathCalculatorGraph.DistanceSmall> res = new LinkedList<>();
         String ref = refs[x];
         int y = point[0] + 1;
         for (int i = 1; i < recos.length; i++) {
             if (y == i) {
                 continue;
             }
-            res.add(new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, 0, dist.getCostsAcc(), null, ref, point, new int[]{i, x}));
+            res.add(new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, 0, dist.costsAcc, null, ref, point, new int[]{i, x}));
         }
         return res;
-    }
-
-    @Override
-    public void setComparator(Comparator<PathCalculatorGraph.IDistance<String, String>> comparator) {
     }
 
     @Override
@@ -47,13 +48,13 @@ class CCRecoJumpAtRefNL extends CCAbstract implements PathCalculatorGraph.ICostC
     }
 
     @Override
-    public boolean addNewEdge(PathCalculatorGraph.IDistance<String, String> newEdge) {
-        return newEdge.getPoint()[1] >= xMax;
+    public boolean addNewEdge(PathCalculatorGraph.DistanceSmall newEdge) {
+        return newEdge.point[1] >= xMax;
     }
 
     @Override
-    public boolean followPathsFromBestEdge(PathCalculatorGraph.IDistance<String, String> bestEdge) {
-        final int x = bestEdge.getPoint()[1];
+    public boolean followPathsFromBestEdge(PathCalculatorGraph.DistanceSmall bestEdge) {
+        final int x = bestEdge.point[1];
         if (x < refs.length && isLineBreakRef[x]) {
             if (xMax > x) {
                 return false;//already better alternative

@@ -15,29 +15,30 @@ class CCLineBreakRecoJump extends CCAbstract implements PathCalculatorGraph.ICos
     }
 
     @Override
-    public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
+    public PathCalculatorGraph.IDistance<String, String> getNeighbour(PathCalculatorGraph.DistanceSmall dist) {
         throw new NotImplementedException();
     }
 
     @Override
-    public List<PathCalculatorGraph.IDistance<String, String>> getNeighbours(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
+    public PathCalculatorGraph.DistanceSmall getNeighbourSmall(int[] point, PathCalculatorGraph.DistanceSmall dist) {
+        throw new RuntimeException("not implemented");
+    }
+
+    @Override
+    public List<PathCalculatorGraph.DistanceSmall> getNeighboursSmall(int[] point, PathCalculatorGraph.DistanceSmall dist) {
         int x = point[1] + 1;
         int y = point[0] + 1;
         if (x >= refs.length || !isLineBreakRef[x] || y >= recos.length || !isLineBreakReco[y]) {
             return null;
         }
-        List<PathCalculatorGraph.IDistance<String, String>> res = new LinkedList<>();
+        List<PathCalculatorGraph.DistanceSmall> res = new LinkedList<>();
         for (int i = 0; i < this.lineBreaksReco.length; i++) {
             final int target = lineBreaksReco[i];
             if (target != y) {
-                res.add(new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, 0, dist.getCostsAcc(), (String) null, null, point, new int[]{target, x}));
+                res.add(new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, 0, dist.costsAcc, (String) null, null, point, new int[]{target, x}));
             }
         }
         return res;
-    }
-
-    @Override
-    public void setComparator(Comparator<PathCalculatorGraph.IDistance<String, String>> comparator) {
     }
 
     @Override
@@ -46,13 +47,13 @@ class CCLineBreakRecoJump extends CCAbstract implements PathCalculatorGraph.ICos
     }
 
     @Override
-    public boolean addNewEdge(PathCalculatorGraph.IDistance<String, String> newEdge) {
-        return newEdge.getPoint()[1] >= xMax;
+    public boolean addNewEdge(PathCalculatorGraph.DistanceSmall newEdge) {
+        return newEdge.point[1] >= xMax;
     }
 
     @Override
-    public boolean followPathsFromBestEdge(PathCalculatorGraph.IDistance<String, String> bestEdge) {
-        int x = bestEdge.getPoint()[1];
+    public boolean followPathsFromBestEdge(PathCalculatorGraph.DistanceSmall bestEdge) {
+        int x = bestEdge.point[1];
         if (x < refs.length && isLineBreakRef[x]) {
             if (xMax > x) {
                 return false;//already better alternative

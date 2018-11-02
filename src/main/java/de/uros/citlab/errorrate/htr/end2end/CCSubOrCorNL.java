@@ -10,7 +10,7 @@ class CCSubOrCorNL extends CCAbstract {
     }
 
     @Override
-    public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point, PathCalculatorGraph.IDistance<String, String> dist) {
+    public PathCalculatorGraph.DistanceSmall getNeighbourSmall(int[] point, PathCalculatorGraph.DistanceSmall dist) {
         final int y = point[0] + 1;
         final int x = point[1] + 1;
         if (y < recos.length && x < refs.length && (isLineBreakReco[y] != isLineBreakRef[x]) && (isSpaceReco[y] != isSpaceRef[x])) {
@@ -20,7 +20,7 @@ class CCSubOrCorNL extends CCAbstract {
             return new DistanceStrStr(
                     isLineBreakReco[y] ? DistanceStrStr.TYPE.MERGE_LINE : DistanceStrStr.TYPE.SPLIT_LINE,
                     0,
-                    dist.getCostsAcc(),
+                    dist.costsAcc,
                     reco,
                     ref,
                     point,

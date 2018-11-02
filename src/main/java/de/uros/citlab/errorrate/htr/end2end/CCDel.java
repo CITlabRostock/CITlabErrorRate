@@ -9,13 +9,19 @@ class CCDel extends CCAbstract {
     }
 
     @Override
-    public PathCalculatorGraph.IDistance<String, String> getNeighbour(final int[] point, final PathCalculatorGraph.IDistance<String, String> dist) {
+    public PathCalculatorGraph.DistanceSmall getNeighbourSmall(final int[] point, final PathCalculatorGraph.DistanceSmall dist) {
         final int y = point[0] + 1;
         if (y >= recos.length || isLineBreakReco[y]) {
             return null;
         }
         final String part = recos[y];
         final int[] next = new int[]{y, point[1]};
-        return new DistanceStrStr(DistanceStrStr.TYPE.DEL, 1, dist.getCostsAcc() + 1, part, null, point, next);
+        return new PathCalculatorGraph.DistanceSmall(point, next, dist.costsAcc + 1, this);
+    }
+
+    @Override
+    public PathCalculatorGraph.IDistance<String, String> getNeighbour(PathCalculatorGraph.DistanceSmall dist) {
+        final String part = recos[dist.point[0]];
+        return new DistanceStrStr(DistanceStrStr.TYPE.DEL, 1, dist.costsAcc, part, null, dist.pointPrevious, dist.point);
     }
 }
