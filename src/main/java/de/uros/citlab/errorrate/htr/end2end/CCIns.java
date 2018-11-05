@@ -14,9 +14,8 @@ class CCIns extends CCAbstract {
         if (x >= refs.length || isLineBreakRef[x]) {
             return null;
         }
-        final String part = refs[x];
         int[] next = new int[]{point[0], x};
-        return new PathCalculatorGraph.DistanceSmall(point, next,dist.costsAcc+1,this);
+        return new PathCalculatorGraph.DistanceSmall(point, next, dist.costsAcc + offsetInsDel, this);
     }
 
     @Override
@@ -24,6 +23,6 @@ class CCIns extends CCAbstract {
         int[] point = dist.pointPrevious;
         final int x = point[1] + 1;
         final String part = refs[x];
-        return new DistanceStrStr(DistanceStrStr.TYPE.INS, 1, dist.costsAcc, null, part, point, dist.point);
+        return new DistanceStrStr(DistanceStrStr.TYPE.INS, offsetInsDel, dist.costsAcc, null, part, point, dist.point);
     }
 }

@@ -1,9 +1,7 @@
 package de.uros.citlab.errorrate.htr.end2end;
 
 import de.uros.citlab.errorrate.types.PathCalculatorGraph;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
-import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -34,7 +32,7 @@ class CCLineBreakAndSpaceRecoJump extends CCAbstract implements PathCalculatorGr
             for (int i = 0; i < lineBreaksReco.length; i++) {
                 final int target = lineBreaksReco[i];
                 if (target != y) {
-                    res.add(new PathCalculatorGraph.DistanceSmall(point, new int[]{target, x}, dist.costsAcc, this));
+                    res.add(new PathCalculatorGraph.DistanceSmall(point, new int[]{target, x}, dist.costsAcc+ offsetRecoJump, this));
                 }
             }
             return res;
@@ -46,7 +44,7 @@ class CCLineBreakAndSpaceRecoJump extends CCAbstract implements PathCalculatorGr
             //jump to spaces and linebreaks of reco
             for (int i = 1; i < recos.length; i++) {
                 if ((isLineBreakReco[i] || isSpaceReco[i]) && i != y) {
-                    res.add(new PathCalculatorGraph.DistanceSmall(point, new int[]{i, x}, dist.costsAcc, this));
+                    res.add(new PathCalculatorGraph.DistanceSmall(point, new int[]{i, x}, dist.costsAcc+ offsetRecoJump, this));
                 }
             }
             return res;
@@ -56,7 +54,7 @@ class CCLineBreakAndSpaceRecoJump extends CCAbstract implements PathCalculatorGr
 
     @Override
     public PathCalculatorGraph.IDistance<String, String> getNeighbour(PathCalculatorGraph.DistanceSmall dist) {
-        return new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, 0, dist.costsAcc, (String) null, null, dist.pointPrevious, dist.point);
+        return new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, offsetRecoJump, dist.costsAcc+ offsetRecoJump, (String) null, null, dist.pointPrevious, dist.point);
     }
 
     @Override

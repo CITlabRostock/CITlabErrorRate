@@ -13,27 +13,15 @@ class CCSubOrCor extends CCAbstract {
         final int y = point[0] + 1;
         final int x = point[1] + 1;
         if (y < recos.length && x < refs.length) {
-            final String reco = recos[y];
-            final String ref = refs[x];
-            final boolean cor = reco.equals(ref);
-            int[] next = new int[]{y, x};
-            if (cor) {
-                return new PathCalculatorGraph.DistanceSmall(point, next, dist.costsAcc, this);
+            if (recos[y].equals(refs[x])) {
+                return new PathCalculatorGraph.DistanceSmall(point, new int[]{y, x}, dist.costsAcc, this);
             }
             if (isLineBreakReco[y] || isLineBreakRef[x]) {
                 //if only one of these is a line break: it is not allowed to substitute one character against one line break!
                 return null;
             }
             //normal case: characters are unequal
-            return new PathCalculatorGraph.DistanceSmall(point, next, dist.costsAcc+1, this);
-//            return new DistanceStrStr(
-//                    DistanceStrStr.TYPE.SUB,
-//                    1,
-//                    dist.costsAcc + 1,
-//                    reco,
-//                    ref,
-//                    point,
-//                    next);
+            return new PathCalculatorGraph.DistanceSmall(point, new int[]{y, x}, dist.costsAcc + 1, this);
         }
         return null;
     }
@@ -68,4 +56,5 @@ class CCSubOrCor extends CCAbstract {
                 point,
                 next);
     }
+
 }

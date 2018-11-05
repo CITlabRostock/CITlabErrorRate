@@ -14,6 +14,10 @@ public abstract class CCAbstract implements PathCalculatorGraph.ICostCalculator<
     protected boolean[] isSpaceRef;
     protected boolean[] isLineBreakReco;
     protected boolean[] isLineBreakRef;
+    //additional costs to force the algorithm to prefer sub-sub instead of ins-cor-del pathes
+    protected double offsetInsDel = 1 + Math.pow(2, -20);
+    //additional costs to force algorithm to prefer original reading order
+    protected double offsetRecoJump = Math.pow(2, -20);
 
     public CCAbstract(Voter voter) {
         this.voter = voter;
@@ -52,6 +56,7 @@ public abstract class CCAbstract implements PathCalculatorGraph.ICostCalculator<
         System.arraycopy(tmp, 0, res, 0, cnt);
         return res;
     }
+
     @Override
     public PathCalculatorGraph.IDistance<String, String> getNeighbour(PathCalculatorGraph.DistanceSmall dist) {
         return (PathCalculatorGraph.IDistance<String, String>) dist;

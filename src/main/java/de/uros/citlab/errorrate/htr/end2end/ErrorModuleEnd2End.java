@@ -343,7 +343,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
         List<PathCalculatorGraph.IDistance<String, String>> calcBestPath = pathCalculator.calcBestPath(mat);
         log(mat, calcBestPath, recos, refs);
         if (calcBestPath == null) {
-            //TODO: return maximal error? or Thorow RuntimeException?
+            //TODO: return maximal error or throw RuntimeException?
             LOG.warn("cannot find path between \n" + Arrays.toString(recos).replace("\n", "\\n") + " and \n" + Arrays.toString(refs).replace("\n", "\\n"));
             throw new RuntimeException("cannot find path (see Logger.warn) for more information");
         }

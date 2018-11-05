@@ -14,14 +14,13 @@ class CCDel extends CCAbstract {
         if (y >= recos.length || isLineBreakReco[y]) {
             return null;
         }
-        final String part = recos[y];
         final int[] next = new int[]{y, point[1]};
-        return new PathCalculatorGraph.DistanceSmall(point, next, dist.costsAcc + 1, this);
+        return new PathCalculatorGraph.DistanceSmall(point, next, dist.costsAcc + offsetInsDel, this);
     }
 
     @Override
     public PathCalculatorGraph.IDistance<String, String> getNeighbour(PathCalculatorGraph.DistanceSmall dist) {
         final String part = recos[dist.point[0]];
-        return new DistanceStrStr(DistanceStrStr.TYPE.DEL, 1, dist.costsAcc, part, null, dist.pointPrevious, dist.point);
+        return new DistanceStrStr(DistanceStrStr.TYPE.DEL, offsetInsDel, dist.costsAcc, part, null, dist.pointPrevious, dist.point);
     }
 }

@@ -10,6 +10,7 @@ import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
+import de.uros.citlab.errorrate.types.StopWatch;
 import de.uros.citlab.errorrate.util.ObjectCounter;
 import de.uros.citlab.tokenizer.TokenizerCategorizer;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
@@ -76,9 +77,9 @@ public class TestEnd2EndRealWorld {
 
     static {
         expecteds.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.26434720229555236, 0.24629374904478069, 0.20664998212370397, 0.31553192774723615});
-        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.18256814921090386, 0.20426409903713894, 0.20629245620307474, 0.21767762203963267});
+        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.18256814921090386, 0.20357634112792297, 0.20629245620307474, 0.21628806186563557});
         expecteds.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.25125538020086086, 0.24254928931682715, 0.19806936002860207, 0.29450854829940193});
-        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.1735151623900951, 0.19782907812261122, 0.18998211091234346, 0.17737243970427827});
+        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.1735151623900951, 0.19718632923006346, 0.18998211091234346, 0.18083752499848493});
     }
 
 
@@ -182,7 +183,7 @@ public class TestEnd2EndRealWorld {
     @Test
     public void testSingle() throws IOException {
         ErrorModuleEnd2End.Mode mode = ErrorModuleEnd2End.Mode.NO_RO_SEG;
-        int i = 2;
+        int i = 3;
         double[] doubles = expecteds.get(mode);
         double expected = doubles[i];
 //                if (expected != 0.0) {
@@ -191,7 +192,6 @@ public class TestEnd2EndRealWorld {
         double cer = testGermania(mode, i);
         Assert.assertEquals("CER of page " + i + " and mode " + mode + " is wrong", expected, cer, 0.00001);
     }
-
 
     public void testGermania0_RO() throws IOException {
         double cer = testGermania(ErrorModuleEnd2End.Mode.RO, 0);
@@ -211,6 +211,7 @@ public class TestEnd2EndRealWorld {
     }
 
     public double testGermania(ErrorModuleEnd2End.Mode mode, int image) throws IOException {
+        StopWatch sw = new StopWatch();
         ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, mode, false);
 //        end2End.setSizeProcessViewer(6000);
 //        end2End.setFileDynProg(new File(mode+".png"));
@@ -229,11 +230,13 @@ public class TestEnd2EndRealWorld {
         for (int i = 0; i < gtLines.size(); i++) {
             cnt += gtLines.get(i).getFirst().length();
         }
-        System.out.println("test with mode "+mode+ " for "+cnt +" characters");
+        System.out.println("test with mode " + mode + " for " + cnt + " characters");
         end2End.calculate(concat(hypLines), concat(gtLines));
         ObjectCounter<Count> counter = end2End.getCounter();
         System.out.println(((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT));
         System.out.println(counter);
+        sw.stop();
+        System.out.println("Stopwatch for mode " + mode + " and image " + image + " = " + sw.toString());
         return ((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT);
 //        }
     }

@@ -15,6 +15,7 @@ public class StopWatch {
     private long cnt;
     private final String name;
     private static HashMap<String, StopWatch> staticWatches = new HashMap<>();
+    private double nato2second = 1D / 1000000;
 
     public StopWatch() {
         this("StopWatch " + count++);
@@ -32,12 +33,14 @@ public class StopWatch {
         }
         stopWatch.start();
     }
+
     public static void stop(String key) {
         staticWatches.get(key).stop();
     }
-    public static String getStats(){
+
+    public static String getStats() {
         StringBuilder sb = new StringBuilder();
-        for(StopWatch sw : staticWatches.values()){
+        for (StopWatch sw : staticWatches.values()) {
             sb.append(sw.toString()).append('\n');
         }
         return sb.toString();
@@ -64,6 +67,6 @@ public class StopWatch {
 
     @Override
     public String toString() {
-        return String.format("%10s: sum = %.4f ms avg = %.4f ms last = %.4f ms count = %d", name, ((double) sum) / 1000000, ((double) sum) / cnt / 1000000, ((double) actual) / 1000000, cnt);
+        return String.format("%10s: sum = %.4f ms avg = %.4f ms last = %.4f ms count = %d", name, ((double) sum) * nato2second, ((double) sum) / cnt * nato2second, ((double) actual) * nato2second, cnt);
     }
 }
