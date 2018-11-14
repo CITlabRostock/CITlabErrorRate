@@ -5,7 +5,8 @@
  */
 package de.uros.citlab.errorrate.htr.end2end;
 
-import de.uros.citlab.errorrate.interfaces.IErrorModule;
+import de.uros.citlab.errorrate.interfaces.IErrorModuleWithSegmentation;
+import de.uros.citlab.errorrate.interfaces.ILine;
 import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.PathCalculatorGraph;
 import de.uros.citlab.errorrate.util.GroupUtil;
@@ -23,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.*;
+import java.util.List;
 
 /**
  * Module, which uses the {@link PathCalculatorGraph} to calculate the error
@@ -32,7 +34,7 @@ import java.util.*;
  *
  * @author gundram
  */
-public class ErrorModuleEnd2End implements IErrorModule {
+public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     private final ObjectCounter<Count> counter = new ObjectCounter<>();
     private final ObjectCounter<RecoRef> counterSub = new ObjectCounter<>();
     private final ITokenizer tokenizer;
@@ -45,14 +47,16 @@ public class ErrorModuleEnd2End implements IErrorModule {
     private double filterOffset;
     private int sizeProcessViewer = -1;
     private File fileDynProg = null;
+    private PathFilterBaselineMatch filter = null;
+    private boolean usePolygons;
 
 
-    public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed) {
-        this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, detailed, 100);
+    public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, Boolean detailed) {
+        this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, usePolygons, detailed, 100);
     }
 
-    public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed, double filterOffset) {
-        this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, detailed, filterOffset);
+    public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, Boolean detailed, double filterOffset) {
+        this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, usePolygons, detailed, filterOffset);
     }
 
     public enum Mode {
@@ -62,12 +66,13 @@ public class ErrorModuleEnd2End implements IErrorModule {
         NO_RO_SEG,
     }
 
-    public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed) {
-        this(tokenizer, stringNormalizer, mode, detailed, 100);
+    public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, Boolean detailed) {
+        this(tokenizer, stringNormalizer, mode, usePolygons, detailed, 100);
     }
 
-    public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, Boolean detailed, double filterOffset) {
+    public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, Boolean detailed, double filterOffset) {
         this.filterOffset = filterOffset;
+        this.usePolygons = usePolygons;
         this.detailed = detailed;
         this.mode = mode;
         if (tokenizer == null) {
@@ -80,6 +85,7 @@ public class ErrorModuleEnd2End implements IErrorModule {
         pathCalculator.addCostCalculator(new CCSubOrCor(voter));
         pathCalculator.addCostCalculator(new CCInsLine(voter));
         int grid = 20;
+        PathCalculatorGraph.PathFilter filter = null;
         switch (mode) {
             case NO_RO_SEG:
                 pathCalculator.addCostCalculator(new CCSubOrCorNL(voter));
@@ -90,14 +96,14 @@ public class ErrorModuleEnd2End implements IErrorModule {
 //                CCRecoJumpAtRefNL jumper1 = new CCRecoJumpAtRefNL(voter);
 //                pathCalculator.addCostCalculator((PathCalculatorGraph.ICostCalculatorMulti<String, String>) jumper1);
                 if (filterOffset > 0.0) {
-                    pathCalculator.setFilter(ccLineBreakAndSpaceRecoJump);
+                    filter = ccLineBreakAndSpaceRecoJump;
                 }
                 break;
             case NO_RO:
                 CCLineBreakRecoJump jumper = new CCLineBreakRecoJump(voter);
                 pathCalculator.addCostCalculator((PathCalculatorGraph.ICostCalculatorMulti<String, String>) jumper);
                 if (filterOffset > 0.0) {
-                    pathCalculator.setFilter(jumper);
+                    filter = jumper;
                 }
                 break;
             case RO_SEG:
@@ -107,11 +113,18 @@ public class ErrorModuleEnd2End implements IErrorModule {
             case RO:
                 pathCalculator.addCostCalculator(new CCDelLine(voter));//this cost calculator is not needed for IGNORE_READINGORDER because CCLineBreakRecoJump is cheaper anyway
                 if (filterOffset > 0.0) {
-                    pathCalculator.setFilter(new FilterHorizontalFixedLength(filterOffset, grid));
+                    filter = new FilterHorizontalFixedLength(filterOffset, grid);
                 }
                 break;
             default:
                 throw new RuntimeException("not implemented yet");
+        }
+        if (usePolygons) {
+            this.filter = new PathFilterBaselineMatch(filter);
+            pathCalculator.setFilter(this.filter);
+        } else {
+            this.filter = null;
+            pathCalculator.setFilter(filter);
         }
     }
 
@@ -253,9 +266,16 @@ public class ErrorModuleEnd2End implements IErrorModule {
         }
 
         //tokenize both strings
-        String[] recos = tokenizer.tokenize(reco).toArray(new String[0]);
-        String[] refs = tokenizer.tokenize(ref).toArray(new String[0]);
-        calculate(recos, refs, sizeProcessViewer, fileDynProg);
+        List<String> recoList = tokenizer.tokenize(reco);
+        recoList.add(0, "\n");
+        recoList.add("\n");
+        String[] recos = recoList.toArray(new String[0]);
+        List<String> refList = tokenizer.tokenize(ref);
+        refList.add(0, "\n");
+        refList.add("\n");
+        String[] refs = refList.toArray(new String[0]);
+        AlignmentTask result = new AlignmentTask(recos, refs);
+        calculate(result, sizeProcessViewer, fileDynProg);
     }
 
     private void log(PathCalculatorGraph.DistanceMat<String, String> mat, List<PathCalculatorGraph.IDistance<String, String>> calcBestPath, String[] recos, String[] refs) {
@@ -332,19 +352,34 @@ public class ErrorModuleEnd2End implements IErrorModule {
         return usedReco;
     }
 
-    private void calculate(String[] recos, String[] refs, int sizeProcessViewer, File out) {
+
+    @Override
+    public void calculateWithSegmentation(List<ILine> reco, List<ILine> ref) {
+        AlignmentTask lmr = new AlignmentTask(reco, ref, tokenizer, stringNormalizer);
+        calculate(lmr, sizeProcessViewer, fileDynProg);
+
+    }
+
+    private void calculate(AlignmentTask alignmentTask, int sizeProcessViewer, File out) {
         //use dynamic programming to calculate the cheapest path through the dynamic programming tabular
 //        calcBestPathFast(recos, refs);
+        if (filter != null) {
+            filter.setAlignmentTask(alignmentTask);
+        }
         pathCalculator.setUpdateScheme(PathCalculatorGraph.UpdateScheme.LAZY);
         pathCalculator.setSizeProcessViewer(sizeProcessViewer);
         pathCalculator.setFileDynMat(out);
-        PathCalculatorGraph.DistanceMat<String, String> mat = pathCalculator.calcDynProg(Arrays.asList(recos), Arrays.asList(refs));
+        String[] recos = alignmentTask.getRecos();
+        String[] refs = alignmentTask.getRefs();
+        List<String> recoList = Arrays.asList(recos);
+        List<String> refList = Arrays.asList(refs);
+        PathCalculatorGraph.DistanceMat<String, String> mat = pathCalculator.calcDynProg(recoList, refList);
 //        pathCalculator.calcBestPath(mat);
         List<PathCalculatorGraph.IDistance<String, String>> calcBestPath = pathCalculator.calcBestPath(mat);
         log(mat, calcBestPath, recos, refs);
         if (calcBestPath == null) {
             //TODO: return maximal error or throw RuntimeException?
-            LOG.warn("cannot find path between \n" + Arrays.toString(recos).replace("\n", "\\n") + " and \n" + Arrays.toString(refs).replace("\n", "\\n"));
+            LOG.warn("cannot find path between \n" + recoList.toString().replace("\n", "\\n") + " and \n" + refList.toString().replace("\n", "\\n"));
             throw new RuntimeException("cannot find path (see Logger.warn) for more information");
         }
         for (Count c : Count.values()) {
@@ -450,14 +485,14 @@ public class ErrorModuleEnd2End implements IErrorModule {
                 default:
                     throw new RuntimeException("not implemented yet");
             }
-            ErrorModuleEnd2End fallback = new ErrorModuleEnd2End(tokenizer, null, modeFallback, detailed, 0.0);
+            ErrorModuleEnd2End fallback = new ErrorModuleEnd2End(tokenizer, null, modeFallback, usePolygons, detailed, 0.0);
             File outSubProblem = null;
             if (out != null) {
                 String path = out.getPath();
                 path = path.substring(0, path.lastIndexOf(".")) + "_" + path.substring(path.lastIndexOf("."));
                 outSubProblem = new File(path);
             }
-            fallback.calculate(recos, refs, sizeProcessViewer, outSubProblem);
+            fallback.calculate(alignmentTask, sizeProcessViewer, outSubProblem);
             counter.addAll(fallback.getCounter());
             return;
         }
@@ -479,9 +514,9 @@ public class ErrorModuleEnd2End implements IErrorModule {
             LOG.debug("count {} for sub-task {}", count, toDeletePath);
             counter.addAll(count);
         }
-        String[] refShorter = getSubProblem(refs, maskRef);
-        String[] recosShorter = getSubProblem(recos, maskReco);
+        String[] refShorter = getSubProblem(refs, maskRef, null).getFirst();
         if (countChars(refShorter) == 0) {
+            String[] recosShorter = getSubProblem(recos, maskReco, null).getFirst();
             int i = countChars(recosShorter);
             LOG.debug("add {} times DEL, ERR and HYP to count because ref == \"\"", i);
             counter.add(Count.DEL, i);
@@ -495,8 +530,16 @@ public class ErrorModuleEnd2End implements IErrorModule {
             path = path.substring(0, path.lastIndexOf(".")) + "_" + path.substring(path.lastIndexOf("."));
             outSubProblem = new File(path);
         }
+        AlignmentTask subProblem = getSubProblem(alignmentTask, maskRef, maskReco);
+        calculate(subProblem, sizeProcessViewer, outSubProblem);
+    }
 
-        calculate(recosShorter, refShorter, sizeProcessViewer, outSubProblem);
+    private AlignmentTask getSubProblem(AlignmentTask original, boolean[] maskRef, boolean[] maskReco) {
+        AlignmentTask res = new AlignmentTask(
+                getSubProblem(original.getRecos(), maskReco, original.getRecoLineMap()),
+                getSubProblem(original.getRefs(), maskRef, original.getRefLineMap()),
+                original.getAdjazent());
+        return res;
     }
 
     private boolean reduceMask(boolean[] mask, int start, int end) {
@@ -511,8 +554,9 @@ public class ErrorModuleEnd2End implements IErrorModule {
         return true;
     }
 
-    private String[] getSubProblem(String[] transcripts, boolean[] toDelete) {
+    private Pair<String[], int[]> getSubProblem(String[] transcripts, boolean[] toDelete, int[] lineIdxs) {
         LinkedList<String> res = new LinkedList<>();
+        LinkedList<Integer> res2 = new LinkedList<>();
         boolean lastWasLineBreak = false;
         for (int i = 0; i < transcripts.length; i++) {
             if (!toDelete[i]) {
@@ -520,11 +564,21 @@ public class ErrorModuleEnd2End implements IErrorModule {
                 boolean isLineBreak = voter.isLineBreakOrSpace(transcripts[i]);
                 if (!lastWasLineBreak || !isLineBreak) {
                     res.add(transcripts[i]);
+                    if (lineIdxs != null) {
+                        res2.add(lineIdxs[i]);
+                    }
                 }
                 lastWasLineBreak = isLineBreak;
             }
         }
-        return res.toArray(new String[0]);
+        if (lineIdxs == null) {
+            return new Pair<>(res.toArray(new String[0]), null);
+        }
+        int[] idxs = new int[res2.size()];
+        for (int i = 0; i < res2.size(); i++) {
+            idxs[i] = res2.get(i);
+        }
+        return new Pair<>(res.toArray(new String[0]), idxs);
     }
 
     private ObjectCounter<Count> count(List<PathCalculatorGraph.IDistance<String, String>> path, int[] usedReco, int lengthRecos, int lengthRefs) {

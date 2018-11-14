@@ -15,6 +15,7 @@ import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
 import org.apache.commons.math3.util.Pair;
 
+import java.awt.*;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -35,7 +36,7 @@ public class ErrorModuleDynProg implements IErrorModule {
     private final IStringNormalizer stringNormalizer;
 
     public ErrorModuleDynProg(ICategorizer categorizer, IStringNormalizer stringNormalizer, Boolean detailed) {
-        this( new TokenizerCategorizer(categorizer), stringNormalizer, detailed);
+        this(new TokenizerCategorizer(categorizer), stringNormalizer, detailed);
     }
 
     public ErrorModuleDynProg(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Boolean detailed) {
@@ -251,6 +252,12 @@ public class ErrorModuleDynProg implements IErrorModule {
         } else {
             calculate(toOneLine(reco), toOneLine(ref));
         }
+    }
+
+    public interface Line {
+        String getText();
+
+        Polygon getPolygon();
     }
 
     private static class RecoRef {

@@ -11,20 +11,17 @@ class CCInsLine extends CCAbstract {
 
     @Override
     public PathCalculatorGraph.DistanceSmall getNeighbourSmall(int[] point, PathCalculatorGraph.DistanceSmall dist) {
-        final int start = point[1];
-        if (isLineBreakReco[point[0]] && isLineBreakRef[start]) {
-            int idx = 1;
-            while (idx < lineBreaksRef.length) {
-                if (lineBreaksRef[idx] > start) {
-                    break;
+        final int xstart = point[1];
+        final int y = point[0];
+        if (isLineBreakReco[y] && isLineBreakRef[xstart]) {
+            int xend = xstart + 1;
+            while (xend < isLineBreakRef.length) {
+                if (isLineBreakRef[xend]) {
+                    //-1 because \n does not have to be count
+                    return new PathCalculatorGraph.DistanceSmall(point, new int[]{y, xend}, dist.costsAcc + (xend - xstart - 1) * offsetIns, this);
                 }
-                idx++;
+                xend++;
             }
-            if (idx == lineBreaksRef.length) {
-                return null;
-            }
-            final int end = lineBreaksRef[idx];
-            return new PathCalculatorGraph.DistanceSmall(point, new int[]{point[0], end}, dist.costsAcc + (end - start - 1) * offsetInsDel, this);
         }
         return null;
     }
@@ -44,7 +41,7 @@ class CCInsLine extends CCAbstract {
             return null;
         }
         final int end = lineBreaksRef[idx];
-        final double costs = (end - start - 1) * offsetInsDel;
+        final double costs = (end - start - 1) * offsetIns;
 //                String[] strings =new String[costs];
         String[] subList = Arrays.copyOfRange(refs, start + 1, end);
 //                        refs.subList(start + 1, end).toArray(new String[0]);

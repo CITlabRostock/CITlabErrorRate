@@ -273,7 +273,7 @@ public class PathCalculatorGraph<Reco, Reference> {
                     }
                     if (o1.marked) {
                         res.set(o1.point[0], o1.point[1], o1);
-                        o1.marked=false;
+                        o1.marked = false;
                     } else {
                         o1.dispose();
                     }
@@ -290,7 +290,7 @@ public class PathCalculatorGraph<Reco, Reference> {
             if (mark == dist.marked) {
                 return 0;
             }
-            dist.marked=mark;
+            dist.marked = mark;
             int[] pointPrevious = dist.pointPrevious;
             if (pointPrevious == null) {
                 return 1;
@@ -452,6 +452,7 @@ public class PathCalculatorGraph<Reco, Reference> {
         LOG.info("time spent: {}", swCleanup);
         LOG.info("time spent: \n{}", StopWatch.getStats());
         if (bar != null) {
+            bar.update(null, distMat, null);
             bar.setEnd();
         }
         if (distMat.getLastElement() == null) {
@@ -635,8 +636,8 @@ public class PathCalculatorGraph<Reco, Reference> {
         void update(int[] pos, DistanceMat distMat, DistanceSmall actual) {
             int sizeX = isDebug ? size : distMat.getSizeX();
             int sizeY = isDebug ? size : distMat.getSizeY();
-            int newProcess = (int) Math.round(((double) pos[1] / sizeX * steps));
-            if (progressBar.getValue() < newProcess || isDebug) {
+            int newProcess = pos == null ? steps : (int) Math.round(((double) pos[1] / sizeX * steps));
+            if (progressBar.getValue() < newProcess || isDebug || pos == null) {
                 int mb = (1024 * 1024);
                 MemoryUsage heapMemoryUsage = memoryMXBean.getHeapMemoryUsage();
                 LOG.trace("memory usage: {}/{} = {}%", heapMemoryUsage.getUsed() / mb, heapMemoryUsage.getMax() / mb, heapMemoryUsage.getUsed() * 100 / heapMemoryUsage.getMax());

@@ -11,20 +11,17 @@ class CCDelLine extends CCAbstract {
 
     @Override
     public PathCalculatorGraph.DistanceSmall getNeighbourSmall(final int[] point, final PathCalculatorGraph.DistanceSmall dist) {
-        final int start = point[0];
-        if (isLineBreakReco[start] && isLineBreakRef[point[1]]) {
-            int idx = 1;
-            while (idx < lineBreaksReco.length) {
-                if (lineBreaksReco[idx] > start) {
-                    break;
+        final int ystart = point[0];
+        final int x = point[1];
+        if (isLineBreakReco[ystart] && isLineBreakRef[x]) {
+            int yend = ystart + 1;
+            while (yend < isLineBreakReco.length) {
+                if (isLineBreakReco[yend]) {
+                    //-1 because \n does not have to be count
+                    return new PathCalculatorGraph.DistanceSmall(point, new int[]{yend, x}, dist.costsAcc + (yend - ystart - 1) * offsetDel, this);
                 }
-                idx++;
+                yend++;
             }
-            if (idx == lineBreaksReco.length) {
-                return null;
-            }
-            final int end = lineBreaksReco[idx];
-            return new PathCalculatorGraph.DistanceSmall(point, new int[]{end, point[1]}, dist.costsAcc + (end - start - 1) * offsetInsDel, this);
         }
         return null;
     }
@@ -36,7 +33,7 @@ class CCDelLine extends CCAbstract {
         final int start = previous[0];
         final int end = next[0];
         final String[] subList = Arrays.copyOfRange(recos, start + 1, end);
-        final double costs = (end - start - 1) * offsetInsDel;
+        final double costs = (end - start - 1) * offsetDel;
         return new DistanceStrStr(
                 DistanceStrStr.TYPE.DEL_LINE,
                 costs,

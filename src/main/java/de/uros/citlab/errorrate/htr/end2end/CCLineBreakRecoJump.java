@@ -24,8 +24,8 @@ class CCLineBreakRecoJump extends CCAbstract implements PathCalculatorGraph.ICos
 
     @Override
     public List<PathCalculatorGraph.DistanceSmall> getNeighboursSmall(int[] point, PathCalculatorGraph.DistanceSmall dist) {
-        int x = point[1] + 1;
-        int y = point[0] + 1;
+        int x = point[1];
+        int y = point[0];
         if (x >= refs.length || !isLineBreakRef[x] || y >= recos.length || !isLineBreakReco[y]) {
             return null;
         }

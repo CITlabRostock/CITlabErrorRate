@@ -7,6 +7,7 @@ package de.uros.citlab.errorrate;
 
 import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
+import de.uros.citlab.errorrate.interfaces.ILine;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
@@ -74,39 +75,44 @@ public class TestEnd2EndRealWorld {
     }
 
     private static HashMap<ErrorModuleEnd2End.Mode, double[]> expecteds = new HashMap<>();
+    private static HashMap<ErrorModuleEnd2End.Mode, double[]> expectedsSegmentation = new HashMap<>();
 
     static {
-        expecteds.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.26434720229555236, 0.24629374904478069, 0.20664998212370397, 0.31553192774723615});
-        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.18256814921090386, 0.20357634112792297, 0.20629245620307474, 0.21628806186563557});
-        expecteds.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.25125538020086086, 0.24254928931682715, 0.19806936002860207, 0.29450854829940193});
-        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.1735151623900951, 0.19718632923006346, 0.18998211091234346, 0.18083752499848493});
+        expecteds.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.2569942611190818, 0.24629374904478069, 0.19306399713979264, 0.311484323083429});
+        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.1750358680057389, 0.20357634112792297, 0.1927064712191634, 0.21337521899353593});
+        expecteds.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.24802725968436154, 0.24254928931682715, 0.18841616017161245, 0.29124629976439315});
+        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16666666666666666, 0.19785932721712537, 0.18812589413447783, 0.17925728478827163});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.26434720229555236, 0.24629374904478069, 0.20664998212370397, 0.31553192774723615});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.18256814921090386, 0.20357634112792297, 0.20629245620307474, 0.21628806186563557});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.25125538020086086, 0.24254928931682715, 0.19806936002860207, 0.29450854829940193});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.1735151623900951, 0.19718632923006346, 0.18998211091234346, 0.18083752499848493});
     }
 
-
-    public Map<Count, Long> getCount(boolean upper, boolean word, ErrorModuleEnd2End.Mode mode, boolean letterNumber, String gt, String hyp) {
-        System.out.println((" test \"" + gt + "\" vs \"" + hyp + "\"").replace("\n", "\\n"));
-        ITokenizer tokenizer = new TokenizerCategorizer(word ? new CategorizerWordMergeGroups() : new CategorizerCharacterDft());
-        IStringNormalizer sn = new StringNormalizerDft(Normalizer.Form.NFKC, upper);
-        if (letterNumber) {
-            sn = new StringNormalizerLetterNumber(sn);
-        }
-        IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, mode, false);
-        //TODO: better place to add "\n" to strings?
-        if (!hyp.startsWith("\n")) {
-            hyp = "\n" + hyp;
-        }
-        if (!hyp.endsWith("\n")) {
-            hyp += "\n";
-        }
-        if (!gt.startsWith("\n")) {
-            gt = "\n" + gt;
-        }
-        if (!gt.endsWith("\n")) {
-            gt += "\n";
-        }
-        impl.calculate(hyp, gt);
-        return impl.getCounter().getMap();
-    }
+//
+//    public Map<Count, Long> getCount(boolean upper, boolean word, ErrorModuleEnd2End.Mode mode, boolean letterNumber, String gt, String hyp) {
+//        System.out.println((" test \"" + gt + "\" vs \"" + hyp + "\"").replace("\n", "\\n"));
+//        ITokenizer tokenizer = new TokenizerCategorizer(word ? new CategorizerWordMergeGroups() : new CategorizerCharacterDft());
+//        IStringNormalizer sn = new StringNormalizerDft(Normalizer.Form.NFKC, upper);
+//        if (letterNumber) {
+//            sn = new StringNormalizerLetterNumber(sn);
+//        }
+//        IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, mode, false);
+//        //TODO: better place to add "\n" to strings?
+//        if (!hyp.startsWith("\n")) {
+//            hyp = "\n" + hyp;
+//        }
+//        if (!hyp.endsWith("\n")) {
+//            hyp += "\n";
+//        }
+//        if (!gt.startsWith("\n")) {
+//            gt = "\n" + gt;
+//        }
+//        if (!gt.endsWith("\n")) {
+//            gt += "\n";
+//        }
+//        impl.calculate(hyp, gt);
+//        return impl.getCounter().getMap();
+//    }
 
     static String concat(List<Pair<String, Polygon>> lines) {
         StringBuilder sb = new StringBuilder();
@@ -165,36 +171,95 @@ public class TestEnd2EndRealWorld {
         return null;
     }
 
+    public static List<ILine> getLinesFromFile(String fileName) {
+        if (fileName.endsWith(".xml")) {
+            Page aPage;
+            try {
+                List<ILine> res = new ArrayList<>();
+//                aPage = reader.read(new FileInput(new File(fileName)));
+                aPage = org.primaresearch.dla.page.io.xml.PageXmlInputOutput.readPage(fileName);
+                if (aPage == null) {
+                    System.out.println("Error while parsing xml-File.");
+                    return null;
+                }
+                List<Region> regionsSorted = aPage.getLayout().getRegionsSorted();
+                for (Region reg : regionsSorted)
+                    if (reg instanceof TextRegion) {
+                        TextRegion textregion = (TextRegion) reg;
+                        List<LowLevelTextObject> textObjectsSorted = textregion.getTextObjectsSorted();
+                        for (LowLevelTextObject line : textObjectsSorted) {
+                            if (line instanceof TextLine) {
+                                String text = line.getText();
+                                Polygon polygon = getPolygon(((TextLine) line).getBaseline());
+                                if (text == null) {
+                                    System.out.println("transciption is '" + text + "' and polygon is '" + polygon + "'");
+                                    continue;
+                                }
+                                if (polygon.npoints < 1) {
+                                    throw new RuntimeException("polygon is too small");
+                                }
+                                res.add(new ILine() {
+                                    @Override
+                                    public String getText() {
+                                        return text;
+                                    }
+
+                                    @Override
+                                    public Polygon getBaseline() {
+                                        return polygon;
+                                    }
+                                });
+                            }
+                        }
+                    }
+                return res;
+            } catch (UnsupportedFormatVersionException ex) {
+                throw new RuntimeException("Error while parsing xml-file.", ex);
+            }
+        }
+        return null;
+    }
+
     @Test
     public void testAllPages() throws IOException {
+        boolean usePolygons = false;
         for (ErrorModuleEnd2End.Mode mode : ErrorModuleEnd2End.Mode.values()) {
+            StringBuilder sb = new StringBuilder();
             double[] doubles = expecteds.get(mode);
+            sb.append(usePolygons ? "expectedsSegmentation" : "expecteds").append("put(ErrorModuleEnd2End.Mode.").append(mode.name()).append(", new double[]{");
             for (int i = 0; i < doubles.length; i++) {
                 double expected = doubles[i];
 //                if (expected != 0.0) {
 //                    continue;
 //                }
-                double cer = testGermania(mode, i);
-                Assert.assertEquals("CER of page " + i + " and mode " + mode + " is wrong", expected, cer, 0.00001);
+                double cer = testGermania(mode, i, usePolygons);
+                sb.append(cer);
+                if (i < doubles.length - 1) {
+                    sb.append(",");
+                }
+//                Assert.assertEquals("CER of page " + i + " and mode " + mode + " is wrong", expected, cer, 0.00001);
             }
+            sb.append("});");
+            System.out.println(sb);
         }
     }
 
     @Test
     public void testSingle() throws IOException {
-        ErrorModuleEnd2End.Mode mode = ErrorModuleEnd2End.Mode.NO_RO_SEG;
-        int i = 3;
+        ErrorModuleEnd2End.Mode mode = ErrorModuleEnd2End.Mode.RO;
+        int i = 0;
+        boolean usePolygon = true;
         double[] doubles = expecteds.get(mode);
         double expected = doubles[i];
 //                if (expected != 0.0) {
 //                    continue;
 //                }
-        double cer = testGermania(mode, i);
+        double cer = testGermania(mode, i, usePolygon);
         Assert.assertEquals("CER of page " + i + " and mode " + mode + " is wrong", expected, cer, 0.00001);
     }
 
     public void testGermania0_RO() throws IOException {
-        double cer = testGermania(ErrorModuleEnd2End.Mode.RO, 0);
+        double cer = testGermania(ErrorModuleEnd2End.Mode.RO, 0, false);
         Assert.assertEquals("CER differs from previous", 0.26434720229555236, cer, 0.00001);
         //0m 04s 195mw -> no debug output
         //0m 18s 022ms -> introduce static arrays in CCAbstract
@@ -203,18 +268,22 @@ public class TestEnd2EndRealWorld {
     }
 
     public void testGermania0_RO_SEG() throws IOException {
-        double cer = testGermania(ErrorModuleEnd2End.Mode.RO_SEG, 0);
+        double cer = testGermania(ErrorModuleEnd2End.Mode.RO_SEG, 0, false);
         Assert.assertEquals("CER differs from previous", 0.25125538020086086, cer, 0.00001);
         //0m 24s 564ms -> introduce static arrays in CCAbstract
         //0m 30s 910ms -> with String[] as reco and ref
         //6m 59s 357ms -> with List<String> as reco and ref
     }
 
-    public double testGermania(ErrorModuleEnd2End.Mode mode, int image) throws IOException {
+//    public double testGermania(ErrorModuleEnd2End.Mode mode, int image) throws IOException {
+//        return testGermania(mode, image, false);
+//    }
+
+    public double testGermania(ErrorModuleEnd2End.Mode mode, int image, boolean usePolygons) throws IOException {
         StopWatch sw = new StopWatch();
-        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, mode, false);
+        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, mode, usePolygons, false);
 //        end2End.setSizeProcessViewer(6000);
-//        end2End.setFileDynProg(new File(mode+".png"));
+//        end2End.setFileDynProg(new File(mode + ".png"));
         Result gtResult = Result.F1_ATR1;
         Result hypResult = Result.F3_ATR2;
         File[] gts = new File(gtResult.getPath().getPath()).listFiles();
@@ -224,14 +293,14 @@ public class TestEnd2EndRealWorld {
 //        for (int i = 0; i < 1; i++) {
         File hyp = hyps[image];
         File gt = gts[image];
-        List<Pair<String, Polygon>> hypLines = getTranscriptsAndPolyFromLines(hyp.getPath());
-        List<Pair<String, Polygon>> gtLines = getTranscriptsAndPolyFromLines(gt.getPath());
+        List<ILine> hypLines = getLinesFromFile(hyp.getPath());
+        List<ILine> gtLines = getLinesFromFile(gt.getPath());
         int cnt = 0;
         for (int i = 0; i < gtLines.size(); i++) {
-            cnt += gtLines.get(i).getFirst().length();
+            cnt += gtLines.get(i).getText().length();
         }
         System.out.println("test with mode " + mode + " for " + cnt + " characters");
-        end2End.calculate(concat(hypLines), concat(gtLines));
+        end2End.calculateWithSegmentation(hypLines, gtLines);
         ObjectCounter<Count> counter = end2End.getCounter();
         System.out.println(((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT));
         System.out.println(counter);
@@ -243,7 +312,7 @@ public class TestEnd2EndRealWorld {
 
     @Test
     public void testGermania1() throws IOException {
-        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false);
+        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false, false);
         Result gtResult = Result.F3_ATR1;
         Result hypResult = Result.F1_ATR2;
 
@@ -266,7 +335,7 @@ public class TestEnd2EndRealWorld {
 
     @Test
     public void testGermania2() throws IOException {
-        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false);
+        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false, false);
         Result gtResult = Result.GT;
         Result hypResult = Result.F1_ATR2;
 
@@ -289,7 +358,7 @@ public class TestEnd2EndRealWorld {
 
     @Test
     public void testGermania3() throws IOException {
-        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false);
+        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false, false);
         Result gtResult = Result.F1_ATR1;
         Result hypResult = Result.F3_ATR2;
 

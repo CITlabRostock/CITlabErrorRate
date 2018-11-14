@@ -199,8 +199,8 @@ public class TestEnd2End {
     public void testLongerText() {
 //        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
 
-        String reference = "ein zwei drei\nvier fünf sechs\nsieben\nacht\nneun zehn elf zwölf";
-        String recognition = "ein zwei drei\nsieben acht\nvier fünf sechs\nneun ze\nhn elf zwölf";
+        String recognition = "ein zwei drei\nvier fünf sechs\nsieben\nacht\nneun zehn elf zwölf";
+        String reference = "ein zwei drei\nsieben acht\nvier fünf sechs\nneun ze\nhn elf zwölf";
         //11 DEL (sieben acht), 3 INS (sie), 6 SUB/INS  7 INS (neun ze)=27
         Assert.assertEquals(new Long(29), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, reference, recognition).get(Count.ERR));
 
@@ -217,9 +217,9 @@ public class TestEnd2End {
     @Test
     public void testVeryLongerText() {
 //        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
-
-        String reference = "ein zwei drei\nvier fünf sechs\nsieben\nacht\nneun zehn elf zwölf";
-        String recognition = "ein zwei drei\nsieben acht\nvier fünf sechs\nneun ze\nhn elf zwölf";
+        //TODO: change reco and ref
+        String recognition = "ein zwei drei\nvier fünf sechs\nsieben\nacht\nneun zehn elf zwölf";
+        String reference = "ein zwei drei\nsieben acht\nvier fünf sechs\nneun ze\nhn elf zwölf";
         int times = 2;
         int factor = Math.round((float) Math.pow(2, times));
         for (int i = 0; i < times; i++) {
@@ -296,20 +296,7 @@ public class TestEnd2End {
         if (letterNumber) {
             sn = new StringNormalizerLetterNumber(sn);
         }
-        IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, mode, false);
-        //TODO: better place to add "\n" to strings?
-        if (!hyp.startsWith("\n")) {
-            hyp = "\n" + hyp;
-        }
-        if (!hyp.endsWith("\n")) {
-            hyp += "\n";
-        }
-        if (!gt.startsWith("\n")) {
-            gt = "\n" + gt;
-        }
-        if (!gt.endsWith("\n")) {
-            gt += "\n";
-        }
+        IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, mode, false, false);
         ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
         impl.calculate(hyp, gt);
         return impl.getCounter().getMap();

@@ -15,9 +15,10 @@ public abstract class CCAbstract implements PathCalculatorGraph.ICostCalculator<
     protected boolean[] isLineBreakReco;
     protected boolean[] isLineBreakRef;
     //additional costs to force the algorithm to prefer sub-sub instead of ins-cor-del pathes
-    protected double offsetInsDel = 1 + Math.pow(2, -20);
+    protected double offsetIns = 1 + Math.pow(2, -20);
+    protected double offsetDel = 1 + Math.pow(2, -18);
     //additional costs to force algorithm to prefer original reading order
-    protected double offsetRecoJump = Math.pow(2, -20);
+    protected double offsetRecoJump = Math.pow(2, -9);
 
     public CCAbstract(Voter voter) {
         this.voter = voter;

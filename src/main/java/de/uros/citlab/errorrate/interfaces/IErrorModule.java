@@ -7,6 +7,8 @@ package de.uros.citlab.errorrate.interfaces;
 
 import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.util.ObjectCounter;
+
+import java.awt.*;
 import java.util.List;
 
 /**
@@ -25,3 +27,4 @@ public interface IErrorModule {
 
     public void reset();
 }
+
