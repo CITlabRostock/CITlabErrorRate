@@ -260,7 +260,7 @@ public class TestEnd2EndRealWorld {
 
     public void testGermania0_RO() throws IOException {
         double cer = testGermania(ErrorModuleEnd2End.Mode.RO, 0, false);
-        Assert.assertEquals("CER differs from previous", 0.26434720229555236, cer, 0.00001);
+        Assert.assertEquals("CER differs from previous", expecteds.get(ErrorModuleEnd2End.Mode.RO)[0], cer, 0.00001);
         //0m 04s 195mw -> no debug output
         //0m 18s 022ms -> introduce static arrays in CCAbstract
         //0m 21s 680ms -> with String[] as reco and ref
@@ -269,7 +269,8 @@ public class TestEnd2EndRealWorld {
 
     public void testGermania0_RO_SEG() throws IOException {
         double cer = testGermania(ErrorModuleEnd2End.Mode.RO_SEG, 0, false);
-        Assert.assertEquals("CER differs from previous", 0.25125538020086086, cer, 0.00001);
+        Assert.assertEquals("CER differs from previous",  expecteds.get(ErrorModuleEnd2End.Mode.RO_SEG)[0], cer, 0.00001);
+        //0m 05s 688ms -> add pathFilter for jumpReco
         //0m 24s 564ms -> introduce static arrays in CCAbstract
         //0m 30s 910ms -> with String[] as reco and ref
         //6m 59s 357ms -> with List<String> as reco and ref
