@@ -237,7 +237,7 @@ public class TestEnd2EndRealWorld {
                 if (i < doubles.length - 1) {
                     sb.append(",");
                 }
-//                Assert.assertEquals("CER of page " + i + " and mode " + mode + " is wrong", expected, cer, 0.00001);
+                Assert.assertEquals("CER of page " + i + " and mode " + mode + " is wrong", expected, cer, 0.00001);
             }
             sb.append("});");
             System.out.println(sb);
