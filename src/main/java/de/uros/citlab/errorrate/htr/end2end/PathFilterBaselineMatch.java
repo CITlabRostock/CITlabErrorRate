@@ -17,15 +17,17 @@ public class PathFilterBaselineMatch implements PathCalculatorGraph.PathFilter<S
 
     @Override
     public void init(String[] strings, String[] strings2) {
-        intern.init(strings, strings2);
+        if (intern != null) {
+            intern.init(strings, strings2);
+        }
     }
 
     @Override
     public boolean addNewEdge(PathCalculatorGraph.DistanceSmall newDistance) {
         int[] point = newDistance.point;
         //-1 because epty element is added at the beginning of reco and ref
-        if (alignmentTask.isSameLine(point[0]-1, point[1]-1)) {
-            return intern.addNewEdge(newDistance);
+        if (alignmentTask.isSameLine(point[0] - 1, point[1] - 1)) {
+            return intern == null ? true : intern.addNewEdge(newDistance);
         }
 //        if(newDistance.costCalculator instanceof CCInsLine||newDistance.costCalculator instanceof CCDelLine){
 //            System.out.println(newDistance.costCalculator.getClass().getName());
@@ -37,8 +39,8 @@ public class PathFilterBaselineMatch implements PathCalculatorGraph.PathFilter<S
     @Override
     public boolean followPathsFromBestEdge(PathCalculatorGraph.DistanceSmall bestDistance) {
         int[] point = bestDistance.point;
-        if (alignmentTask.isSameLine(point[0]-1, point[1]-1)) {
-            return intern.addNewEdge(bestDistance);
+        if (alignmentTask.isSameLine(point[0] - 1, point[1] - 1)) {
+            return intern == null ? true : intern.addNewEdge(bestDistance);
         }
 //        if(bestDistance.costCalculator instanceof CCInsLine||bestDistance.costCalculator instanceof CCDelLine){
 //            System.out.println(bestDistance.costCalculator.getClass().getName());

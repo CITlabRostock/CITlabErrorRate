@@ -57,12 +57,11 @@ public class TestEnd2EndRealWorld {
 
     private enum Result {
         F1_ATR1("ATR_1/page_f1"),
-        F1_ATR2("ATR_2/page_f1"),
-        F2_ATR1("ATR_1/page_f2"),
-        F2_ATR2("ATR_2/page_f2"),
-        F3_ATR1("ATR_1/page_f3"),
-        F3_ATR2("ATR_2/page_f3"),
-        GT("ATR_1/page_f1");
+//        F1_ATR2("ATR_2/page_f1"),
+//        F2_ATR1("ATR_1/page_f2"),
+//        F2_ATR2("ATR_2/page_f2"),
+//        F3_ATR1("ATR_1/page_f3"),
+        F3_ATR2("ATR_2/page_f3");
         private String path;
 
         Result(String path) {
@@ -82,37 +81,11 @@ public class TestEnd2EndRealWorld {
         expecteds.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.1750358680057389, 0.20357634112792297, 0.1927064712191634, 0.21337521899353593});
         expecteds.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.24802725968436154, 0.24254928931682715, 0.18841616017161245, 0.29124629976439315});
         expecteds.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16666666666666666, 0.19785932721712537, 0.18812589413447783, 0.17925728478827163});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.26434720229555236, 0.24629374904478069, 0.20664998212370397, 0.31553192774723615});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.18256814921090386, 0.20357634112792297, 0.20629245620307474, 0.21628806186563557});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.25125538020086086, 0.24254928931682715, 0.19806936002860207, 0.29450854829940193});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.1735151623900951, 0.19718632923006346, 0.18998211091234346, 0.18083752499848493});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.2779770444763271, 0.25981965459269446, 0.19306399713979264, 0.3473086449586178});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.17539454806312768, 0.20693871312853432, 0.1927064712191634, 0.22239004349927502});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.2749282639885222, 0.25767996331957815, 0.18841616017161245, 0.3361324231257174});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16630785791173305, 0.19844060541201652, 0.18812589413447783, 0.18083948227894037});
     }
-
-//
-//    public Map<Count, Long> getCount(boolean upper, boolean word, ErrorModuleEnd2End.Mode mode, boolean letterNumber, String gt, String hyp) {
-//        System.out.println((" test \"" + gt + "\" vs \"" + hyp + "\"").replace("\n", "\\n"));
-//        ITokenizer tokenizer = new TokenizerCategorizer(word ? new CategorizerWordMergeGroups() : new CategorizerCharacterDft());
-//        IStringNormalizer sn = new StringNormalizerDft(Normalizer.Form.NFKC, upper);
-//        if (letterNumber) {
-//            sn = new StringNormalizerLetterNumber(sn);
-//        }
-//        IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, mode, false);
-//        //TODO: better place to add "\n" to strings?
-//        if (!hyp.startsWith("\n")) {
-//            hyp = "\n" + hyp;
-//        }
-//        if (!hyp.endsWith("\n")) {
-//            hyp += "\n";
-//        }
-//        if (!gt.startsWith("\n")) {
-//            gt = "\n" + gt;
-//        }
-//        if (!gt.endsWith("\n")) {
-//            gt += "\n";
-//        }
-//        impl.calculate(hyp, gt);
-//        return impl.getCounter().getMap();
-//    }
 
     static String concat(List<Pair<String, Polygon>> lines) {
         StringBuilder sb = new StringBuilder();
@@ -222,11 +195,11 @@ public class TestEnd2EndRealWorld {
 
     @Test
     public void testAllPages() throws IOException {
-        boolean usePolygons = false;
+        boolean usePolygons = true;
         for (ErrorModuleEnd2End.Mode mode : ErrorModuleEnd2End.Mode.values()) {
             StringBuilder sb = new StringBuilder();
             double[] doubles = expecteds.get(mode);
-            sb.append(usePolygons ? "expectedsSegmentation" : "expecteds").append("put(ErrorModuleEnd2End.Mode.").append(mode.name()).append(", new double[]{");
+            sb.append(usePolygons ? "expectedsSegmentation" : "expecteds").append(".put(ErrorModuleEnd2End.Mode.").append(mode.name()).append(", new double[]{");
             for (int i = 0; i < doubles.length; i++) {
                 double expected = doubles[i];
 //                if (expected != 0.0) {
@@ -244,7 +217,7 @@ public class TestEnd2EndRealWorld {
         }
     }
 
-    @Test
+    //    @Test
     public void testSingle() throws IOException {
         ErrorModuleEnd2End.Mode mode = ErrorModuleEnd2End.Mode.RO;
         int i = 0;
@@ -269,7 +242,7 @@ public class TestEnd2EndRealWorld {
 
     public void testGermania0_RO_SEG() throws IOException {
         double cer = testGermania(ErrorModuleEnd2End.Mode.RO_SEG, 0, false);
-        Assert.assertEquals("CER differs from previous",  expecteds.get(ErrorModuleEnd2End.Mode.RO_SEG)[0], cer, 0.00001);
+        Assert.assertEquals("CER differs from previous", expecteds.get(ErrorModuleEnd2End.Mode.RO_SEG)[0], cer, 0.00001);
         //0m 05s 688ms -> add pathFilter for jumpReco
         //0m 24s 564ms -> introduce static arrays in CCAbstract
         //0m 30s 910ms -> with String[] as reco and ref
@@ -309,52 +282,6 @@ public class TestEnd2EndRealWorld {
         System.out.println("Stopwatch for mode " + mode + " and image " + image + " = " + sw.toString());
         return ((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT);
 //        }
-    }
-
-    @Test
-    public void testGermania1() throws IOException {
-        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false, false);
-        Result gtResult = Result.F3_ATR1;
-        Result hypResult = Result.F1_ATR2;
-
-        File[] gts = new File(gtResult.getPath().getPath()).listFiles();
-        File[] hyps = new File(hypResult.getPath().getPath()).listFiles();
-        Arrays.sort(gts);
-        Arrays.sort(hyps);
-        for (int i = 1; i < 2; i++) {
-            File hyp = hyps[i];
-            File gt = gts[i];
-            List<Pair<String, Polygon>> hypLines = getTranscriptsAndPolyFromLines(hyp.getPath());
-            List<Pair<String, Polygon>> gtLines = getTranscriptsAndPolyFromLines(gt.getPath());
-            end2End.calculate(concat(hypLines), concat(gtLines));
-            ObjectCounter<Count> counter = end2End.getCounter();
-            System.out.println(((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT));
-            System.out.println(counter);
-
-        }
-    }
-
-    @Test
-    public void testGermania2() throws IOException {
-        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false, false);
-        Result gtResult = Result.GT;
-        Result hypResult = Result.F1_ATR2;
-
-        File[] gts = new File(gtResult.getPath().getPath()).listFiles();
-        File[] hyps = new File(hypResult.getPath().getPath()).listFiles();
-        Arrays.sort(gts);
-        Arrays.sort(hyps);
-        for (int i = 2; i < 3; i++) {
-            File hyp = hyps[i];
-            File gt = gts[i];
-            List<Pair<String, Polygon>> hypLines = getTranscriptsAndPolyFromLines(hyp.getPath());
-            List<Pair<String, Polygon>> gtLines = getTranscriptsAndPolyFromLines(gt.getPath());
-            end2End.calculate(concat(hypLines), concat(gtLines));
-            ObjectCounter<Count> counter = end2End.getCounter();
-            System.out.println(((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT));
-            System.out.println(counter);
-
-        }
     }
 
     @Test
