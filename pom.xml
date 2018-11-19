@@ -7,7 +7,7 @@
 
     <groupId>de.uros.citlab</groupId>
     <artifactId>errorrate</artifactId>
-    <version>3.1.1-SNAPSHOT</version>
+    <version>3.2.0</version>
     <packaging>jar</packaging>
 
     <parent>

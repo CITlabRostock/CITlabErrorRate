@@ -1,6 +1,9 @@
 
 # Changelog
 
+#3.2.0
+* add statistic module to calculate confidence intervals for CER for a given number of lines.
+
 # 3.0.1
 * all HtrError classes return a result structure which contains the counts and measures
 
