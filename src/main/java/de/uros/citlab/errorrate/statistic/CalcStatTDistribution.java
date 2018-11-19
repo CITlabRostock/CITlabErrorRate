@@ -12,7 +12,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
 
-public class CalcStatTDistribution implements ICalcStatistic, ICalcStatistic.Testable {
+@Deprecated
+public class CalcStatTDistribution implements ICalcStatistic {
     ErrorModuleDynProg instance = new ErrorModuleDynProg(new CategorizerCharacterDft(), null, Boolean.FALSE);
     private double alpha;
     private Endpoints endpoints;
@@ -61,23 +62,23 @@ public class CalcStatTDistribution implements ICalcStatistic, ICalcStatistic.Tes
         return new StatResult(true, lower, upper, p, "only a test");
     }
 
-    @Override
-    public IStatResult processTest(long k, long n) {
-        double p = ((double) k) / n;
-        if (n <= 2) {
-            return new StatResult(false, 1, 1, 1, String.format("no statistic available - truth approx %.0f characters - %d done so far.", 10 / (p + 0.01) / (1.01 - p), n));
-        }
-        double sSquare = 1D / ((double) n - 1) * (k * (1 - p) * (1 - p) + (n - k) * p * p);
-        double s = Math.sqrt(sSquare);
-        TDistribution distribution = new TDistribution(null, n - 1);
-        double max = distribution.inverseCumulativeProbability(endpoints.equals(Endpoints.BOTH) ? 1 - alpha / 2 : 1 - alpha);
-//
-        AbstractRealDistribution gauss = new NormalDistribution();
-        //evtl N-1??
-        double upper = endpoints.equals(Endpoints.UPPER) ? Double.NaN : p + max * s / Math.sqrt(n);
-        double lower = endpoints.equals(Endpoints.LOWER) ? Double.NaN : p - max * s / Math.sqrt(n);
-        return new StatResult(true, lower, upper, p, "only a test");
-    }
+//    @Override
+//    public IStatResult processTest(long k, long n) {
+//        double p = ((double) k) / n;
+//        if (n <= 2) {
+//            return new StatResult(false, 1, 1, 1, String.format("no statistic available - truth approx %.0f characters - %d done so far.", 10 / (p + 0.01) / (1.01 - p), n));
+//        }
+//        double sSquare = 1D / ((double) n - 1) * (k * (1 - p) * (1 - p) + (n - k) * p * p);
+//        double s = Math.sqrt(sSquare);
+//        TDistribution distribution = new TDistribution(null, n - 1);
+//        double max = distribution.inverseCumulativeProbability(endpoints.equals(Endpoints.BOTH) ? 1 - alpha / 2 : 1 - alpha);
+////
+//        AbstractRealDistribution gauss = new NormalDistribution();
+//        //evtl N-1??
+//        double upper = endpoints.equals(Endpoints.UPPER) ? Double.NaN : p + max * s / Math.sqrt(n);
+//        double lower = endpoints.equals(Endpoints.LOWER) ? Double.NaN : p - max * s / Math.sqrt(n);
+//        return new StatResult(true, lower, upper, p, "only a test");
+//    }
 
     @Override
     public void setEndPoints(Endpoints endPoints) {

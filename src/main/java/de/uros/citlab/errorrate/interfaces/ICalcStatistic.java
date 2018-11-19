@@ -144,9 +144,4 @@ public interface ICalcStatistic {
                     '}';
         }
     }
-
-    interface Testable extends ICalcStatistic {
-
-        IStatResult processTest(long k, long n);
-    }
 }

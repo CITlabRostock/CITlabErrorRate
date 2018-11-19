@@ -18,7 +18,7 @@ import java.util.Map;
  *
  * @author Gundram <gundram.leifert@uni-rostock.de>
  */
-public class CalcStatNormalDistribution implements ICalcStatistic, ICalcStatistic.Testable {
+public class CalcStatNormalDistribution implements ICalcStatistic {
 
     ErrorModuleDynProg instance;
     private double alpha;
@@ -54,11 +54,6 @@ public class CalcStatNormalDistribution implements ICalcStatistic, ICalcStatisti
         Map<Count, Long> map = instance.getCounter().getMap();
         long n = getValue(map, Count.GT);
         long k = getSumErrors(map);
-        return processTest(k, n);
-    }
-
-    @Override
-    public IStatResult processTest(long k, long n) {
         double p = ((double) k) / n;
         if (n == 0 || n * p < 5 || n * (1 - p) < 5) {
             return new ICalcStatistic.StatResult(false, 1, 1, 1, String.format("no statistic available - truth approx %.0f characters - %d done so far.", 10 / (p + 0.01) / (1.01 - p), n));
