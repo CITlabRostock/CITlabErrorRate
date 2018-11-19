@@ -36,7 +36,7 @@ import java.util.List;
  */
 public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     private final ObjectCounter<Count> counter = new ObjectCounter<>();
-    private final ObjectCounter<RecoRef> counterSub = new ObjectCounter<>();
+    private final ObjectCounter<RecoRef> substitutionCounter = new ObjectCounter<>();
     private final ITokenizer tokenizer;
     private final Boolean detailed;
     private final IStringNormalizer stringNormalizer;
@@ -236,7 +236,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     public String toString() {
         return "ErrorModuleEnd2End{" +
                 "counter=" + counter +
-                ", counterSub=" + counterSub +
+                ", substitutionCounter=" + substitutionCounter +
                 ", tokenizer=" + tokenizer +
                 ", detailed=" + detailed +
                 ", stringNormalizer=" + stringNormalizer +
@@ -593,16 +593,32 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                 case INS:
                 case SUB:
                     res.add(Count.ERR);
+                    if (detailed == null) {
+                        substitutionCounter.add(new RecoRef(dist.getRecos(), dist.getReferences()));
+                    }
                 case COR:
                     res.add(Count.valueOf(dist.getManipulation()));
+                    if (detailed != null && detailed.booleanValue()) {
+                        substitutionCounter.add(new RecoRef(dist.getRecos(), dist.getReferences()));
+                    }
                     break;
                 case INS_LINE:
                     res.add(Count.ERR, dist.getReferences().length);
                     res.add(Count.INS, dist.getReferences().length);
+                    if (detailed == null || (detailed != null && detailed.booleanValue())) {
+                        for (int i = 0; i < dist.getReferences().length; i++) {
+                            substitutionCounter.add(new RecoRef(dist.getRecos(), new String[]{dist.getReferences()[i]}));
+                        }
+                    }
                     break;
                 case DEL_LINE:
                     res.add(Count.ERR, dist.getRecos().length);
                     res.add(Count.DEL, dist.getRecos().length);
+                    if (detailed == null || (detailed != null && detailed.booleanValue())) {
+                        for (int i = 0; i < dist.getRecos().length; i++) {
+                            substitutionCounter.add(new RecoRef(new String[]{dist.getRecos()[i]}, dist.getReferences()));
+                        }
+                    }
                     break;
                 case COR_LINEBREAK:
                 case JUMP_RECO:
@@ -645,7 +661,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     @Override
     public void reset() {
         counter.reset();
-        counterSub.reset();
+        substitutionCounter.reset();
     }
 
     /**
@@ -659,7 +675,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     public List<String> getResults() {
         LinkedList<String> res = new LinkedList<>();
         if (detailed == null || detailed) {
-            for (Pair<RecoRef, Long> pair : counterSub.getResultOccurrence()) {
+            for (Pair<RecoRef, Long> pair : substitutionCounter.getResultOccurrence()) {
                 RecoRef first = pair.getFirst();
                 String key1;
                 switch (first.recos.length) {

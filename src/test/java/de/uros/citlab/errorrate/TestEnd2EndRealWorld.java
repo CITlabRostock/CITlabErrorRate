@@ -283,28 +283,4 @@ public class TestEnd2EndRealWorld {
         return ((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT);
 //        }
     }
-
-    @Test
-    public void testGermania3() throws IOException {
-        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, ErrorModuleEnd2End.Mode.RO, false, false);
-        Result gtResult = Result.F1_ATR1;
-        Result hypResult = Result.F3_ATR2;
-
-        File[] gts = new File(gtResult.getPath().getPath()).listFiles();
-        File[] hyps = new File(hypResult.getPath().getPath()).listFiles();
-        Arrays.sort(gts);
-        Arrays.sort(hyps);
-
-        for (int i = 3; i < 4; i++) {
-            File hyp = hyps[i];
-            File gt = gts[i];
-            List<Pair<String, Polygon>> hypLines = getTranscriptsAndPolyFromLines(hyp.getPath());
-            List<Pair<String, Polygon>> gtLines = getTranscriptsAndPolyFromLines(gt.getPath());
-            end2End.calculate(concat(hypLines), concat(gtLines));
-            ObjectCounter<Count> counter = end2End.getCounter();
-            System.out.println(((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT));
-            System.out.println(counter);
-
-        }
-    }
 }
