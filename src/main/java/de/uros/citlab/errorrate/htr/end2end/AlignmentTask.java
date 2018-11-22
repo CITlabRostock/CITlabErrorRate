@@ -76,7 +76,7 @@ public class AlignmentTask {
         return refLineMap;
     }
 
-    public AlignmentTask(List<ILine> reco, List<ILine> ref, ITokenizer tokenizer, IStringNormalizer sn) {
+    public AlignmentTask(List<ILine> reco, List<ILine> ref, ITokenizer tokenizer, IStringNormalizer sn, double thresholdCouverage) {
         Polygon[] recos = new Polygon[reco.size()];
         Polygon[] refs = new Polygon[ref.size()];
         Boolean useFilter = null; //only use filter, if baselines are given everywhere
@@ -104,7 +104,7 @@ public class AlignmentTask {
 
         //TODO: tolerances are ignored anyway and will be calculated properly only on expanded polygons
 //        double[] doubles = baseLineAligner.calcTolerances(refs);
-        int[][] gtLists = new BaseLineAligner().getGTLists(refs, null, recos, 0.1);
+        int[][] gtLists = new BaseLineAligner().getGTLists(refs, null, recos, thresholdCouverage);
         this.adjazent = getMap(gtLists, recos.length, refs.length);
 
         Pair<String[], int[]> recoTokens = getTokensAndLineIndex(reco, tokenizer, sn);

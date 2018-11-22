@@ -297,7 +297,7 @@ public class TestEnd2End {
             sn = new StringNormalizerLetterNumber(sn);
         }
         IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, mode, false, false);
-        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
+//        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
         impl.calculate(hyp, gt);
         return impl.getCounter().getMap();
     }

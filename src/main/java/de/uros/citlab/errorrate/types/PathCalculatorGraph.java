@@ -6,8 +6,8 @@
 package de.uros.citlab.errorrate.types;
 
 import de.uros.citlab.errorrate.util.HeatMapUtil;
-import gnu.trove.TIntObjectHashMap;
-import gnu.trove.TIntObjectProcedure;
+import gnu.trove.map.hash.TIntObjectHashMap;
+import gnu.trove.procedure.TIntObjectProcedure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -347,6 +347,10 @@ public class PathCalculatorGraph<Reco, Reference> {
     }
 
     public DistanceMat<Reco, Reference> calcDynProg(List<Reco> reco, List<Reference> ref) {
+        return calcDynProg(reco, ref, -1);
+    }
+
+    public DistanceMat<Reco, Reference> calcDynProg(List<Reco> reco, List<Reference> ref, int maxCount) {
         if (ref == null || reco == null) {
             throw new RuntimeException("target or output is null");
         }
@@ -439,6 +443,11 @@ public class PathCalculatorGraph<Reco, Reference> {
                 }
                 swHandle.stop();
             }
+            if (maxCount > 0 && cntVerticies >= maxCount) {
+                LOG.debug(String.format("found count = %d, return with so far calculated dynProg.", cntEdges));
+                return distMat;
+            }
+
             if (cntVerticies > boundNextCleanup) {
                 swCleanup.start();
                 distMat = distMat.cleanup(QSortedCostAcc);
@@ -495,7 +504,11 @@ public class PathCalculatorGraph<Reco, Reference> {
         private final double costs;
         private Reco[] recos;
         private Reference[] references;
-        private boolean marked = false;
+//        private boolean marked = false;
+
+        public Distance(DistanceSmall distanceSmall, String manipulation, double costs, Reco[] recos, Reference[] references) {
+            this(manipulation, costs, distanceSmall.costsAcc, distanceSmall.point, distanceSmall.pointPrevious, recos, references);
+        }
 
         public Distance(String manipulation, double costs, double costAcc, int[] point, int[] previous, Reco[] recos, Reference[] references) {
             super(previous, point, costAcc, null);
@@ -569,7 +582,7 @@ public class PathCalculatorGraph<Reco, Reference> {
 
         @Override
         public String toString() {
-            return "cost=" + costs + ";manipulation=" + manipulation + ";costAcc=" + getCostsAcc() + ";" + Arrays.deepToString(recos) + ";" + Arrays.deepToString(references);
+            return String.format("cost=%5.2f, manipulation=%10s, costAcc=%5.2f, pos=[%3d,%3d], reco=%s, ref=%s", costs, manipulation, costsAcc, point[0], point[1], Arrays.deepToString(recos), Arrays.deepToString(references));
         }
 
     }

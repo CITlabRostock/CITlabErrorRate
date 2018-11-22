@@ -17,7 +17,7 @@ import de.uros.citlab.tokenizer.TokenizerCategorizer;
 import de.uros.citlab.tokenizer.interfaces.ICategorizer;
 import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
-import gnu.trove.TIntDoubleHashMap;
+import gnu.trove.map.hash.TIntDoubleHashMap;
 import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +49,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     private File fileDynProg = null;
     private PathFilterBaselineMatch filter = null;
     private boolean usePolygons;
+    private double thresholdCouverage = 0.0;
 
 
     public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, Boolean detailed) {
@@ -64,6 +65,10 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         NO_RO,
         RO_SEG,
         NO_RO_SEG,
+    }
+
+    public void setThresholdCouverage(double thresholdCouverage) {
+        this.thresholdCouverage = thresholdCouverage;
     }
 
     public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, Boolean detailed) {
@@ -355,7 +360,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
 
     @Override
     public void calculateWithSegmentation(List<ILine> reco, List<ILine> ref) {
-        AlignmentTask lmr = new AlignmentTask(reco, ref, tokenizer, stringNormalizer);
+        AlignmentTask lmr = new AlignmentTask(reco, ref, tokenizer, stringNormalizer, thresholdCouverage);
         calculate(lmr, sizeProcessViewer, fileDynProg);
 
     }

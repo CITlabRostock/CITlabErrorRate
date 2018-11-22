@@ -12,6 +12,7 @@ import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.StopWatch;
+import de.uros.citlab.errorrate.util.ExtractUtil;
 import de.uros.citlab.errorrate.util.ObjectCounter;
 import de.uros.citlab.tokenizer.TokenizerCategorizer;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
@@ -57,7 +58,7 @@ public class TestEnd2EndRealWorld {
 
     private enum Result {
         F1_ATR1("ATR_1/page_f1"),
-//        F1_ATR2("ATR_2/page_f1"),
+        //        F1_ATR2("ATR_2/page_f1"),
 //        F2_ATR1("ATR_1/page_f2"),
 //        F2_ATR2("ATR_2/page_f2"),
 //        F3_ATR1("ATR_1/page_f3"),
@@ -87,133 +88,28 @@ public class TestEnd2EndRealWorld {
         expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16630785791173305, 0.19844060541201652, 0.18812589413447783, 0.18083948227894037});
     }
 
-    static String concat(List<Pair<String, Polygon>> lines) {
-        StringBuilder sb = new StringBuilder();
-        for (Pair<String, Polygon> line : lines) {
-            if (!line.getFirst().isEmpty()) {
-                if (sb.length() > 0) {
-                    sb.append("\n");
-                }
-                sb.append(line.getFirst());
-            }
-        }
-        return sb.toString();
-    }
-
-    public static Polygon getPolygon(org.primaresearch.maths.geometry.Polygon baseline) {
-        Polygon p = new Polygon();
-        for (int i = 0; i < baseline.getSize(); i++) {
-            p.addPoint(baseline.getPoint(i).x, baseline.getPoint(i).y);
-        }
-        return p;
-    }
-
-    public static List<Pair<String, Polygon>> getTranscriptsAndPolyFromLines(String fileName) {
-        if (fileName.endsWith(".xml")) {
-            Page aPage;
-            try {
-                List<Pair<String, Polygon>> res = new ArrayList<>();
-//                aPage = reader.read(new FileInput(new File(fileName)));
-                aPage = org.primaresearch.dla.page.io.xml.PageXmlInputOutput.readPage(fileName);
-                if (aPage == null) {
-                    System.out.println("Error while parsing xml-File.");
-                    return null;
-                }
-                List<Region> regionsSorted = aPage.getLayout().getRegionsSorted();
-                for (Region reg : regionsSorted)
-                    if (reg instanceof TextRegion) {
-                        TextRegion textregion = (TextRegion) reg;
-                        List<LowLevelTextObject> textObjectsSorted = textregion.getTextObjectsSorted();
-                        for (LowLevelTextObject line : textObjectsSorted) {
-                            if (line instanceof TextLine) {
-                                String text = line.getText();
-                                Polygon polygon = getPolygon(((TextLine) line).getBaseline());
-                                if (text == null || polygon.npoints < 1) {
-                                    System.out.println("transciption is '" + text + "' and polygon is '" + polygon + "'");
-                                } else {
-                                    res.add(new Pair<>(text, polygon));
-                                }
-                            }
-                        }
-                    }
-                return res;
-            } catch (UnsupportedFormatVersionException ex) {
-                throw new RuntimeException("Error while parsing xml-file.", ex);
-            }
-        }
-        return null;
-    }
-
-    public static List<ILine> getLinesFromFile(String fileName) {
-        if (fileName.endsWith(".xml")) {
-            Page aPage;
-            try {
-                List<ILine> res = new ArrayList<>();
-//                aPage = reader.read(new FileInput(new File(fileName)));
-                aPage = org.primaresearch.dla.page.io.xml.PageXmlInputOutput.readPage(fileName);
-                if (aPage == null) {
-                    System.out.println("Error while parsing xml-File.");
-                    return null;
-                }
-                List<Region> regionsSorted = aPage.getLayout().getRegionsSorted();
-                for (Region reg : regionsSorted)
-                    if (reg instanceof TextRegion) {
-                        TextRegion textregion = (TextRegion) reg;
-                        List<LowLevelTextObject> textObjectsSorted = textregion.getTextObjectsSorted();
-                        for (LowLevelTextObject line : textObjectsSorted) {
-                            if (line instanceof TextLine) {
-                                String text = line.getText();
-                                Polygon polygon = getPolygon(((TextLine) line).getBaseline());
-                                if (text == null) {
-                                    System.out.println("transciption is '" + text + "' and polygon is '" + polygon + "'");
-                                    continue;
-                                }
-                                if (polygon.npoints < 1) {
-                                    throw new RuntimeException("polygon is too small");
-                                }
-                                res.add(new ILine() {
-                                    @Override
-                                    public String getText() {
-                                        return text;
-                                    }
-
-                                    @Override
-                                    public Polygon getBaseline() {
-                                        return polygon;
-                                    }
-                                });
-                            }
-                        }
-                    }
-                return res;
-            } catch (UnsupportedFormatVersionException ex) {
-                throw new RuntimeException("Error while parsing xml-file.", ex);
-            }
-        }
-        return null;
-    }
-
     @Test
     public void testAllPages() throws IOException {
-        boolean usePolygons = true;
-        for (ErrorModuleEnd2End.Mode mode : ErrorModuleEnd2End.Mode.values()) {
-            StringBuilder sb = new StringBuilder();
-            double[] doubles = expecteds.get(mode);
-            sb.append(usePolygons ? "expectedsSegmentation" : "expecteds").append(".put(ErrorModuleEnd2End.Mode.").append(mode.name()).append(", new double[]{");
-            for (int i = 0; i < doubles.length; i++) {
-                double expected = doubles[i];
+        for (boolean usePolygons : new boolean[]{true, false}) {
+            for (ErrorModuleEnd2End.Mode mode : ErrorModuleEnd2End.Mode.values()) {
+                StringBuilder sb = new StringBuilder();
+                double[] doubles = (usePolygons ? expectedsSegmentation : expecteds).get(mode);
+                sb.append(usePolygons ? "expectedsSegmentation" : "expecteds").append(".put(ErrorModuleEnd2End.Mode.").append(mode.name()).append(", new double[]{");
+                for (int i = 0; i < doubles.length; i++) {
+                    double expected = doubles[i];
 //                if (expected != 0.0) {
 //                    continue;
 //                }
-                double cer = testGermania(mode, i, usePolygons);
-                sb.append(cer);
-                if (i < doubles.length - 1) {
-                    sb.append(",");
+                    double cer = testGermania(mode, i, usePolygons);
+                    sb.append(cer);
+                    if (i < doubles.length - 1) {
+                        sb.append(",");
+                    }
+                    Assert.assertEquals("CER of page " + i + " and mode " + mode + " is wrong", expected, cer, 0.00001);
                 }
-                Assert.assertEquals("CER of page " + i + " and mode " + mode + " is wrong", expected, cer, 0.00001);
+                sb.append("});");
+                System.out.println(sb);
             }
-            sb.append("});");
-            System.out.println(sb);
         }
     }
 
@@ -267,8 +163,8 @@ public class TestEnd2EndRealWorld {
 //        for (int i = 0; i < 1; i++) {
         File hyp = hyps[image];
         File gt = gts[image];
-        List<ILine> hypLines = getLinesFromFile(hyp.getPath());
-        List<ILine> gtLines = getLinesFromFile(gt.getPath());
+        List<ILine> hypLines = ExtractUtil.getLinesFromFile(hyp.getPath());
+        List<ILine> gtLines = ExtractUtil.getLinesFromFile(gt.getPath());
         int cnt = 0;
         for (int i = 0; i < gtLines.size(); i++) {
             cnt += gtLines.get(i).getText().length();
