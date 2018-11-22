@@ -49,7 +49,7 @@ Parameter that determin how the error is calculated:
 So ``["first line", "second line"]`` vs. ``["second line", "first line"]`` would be correct.
 * __-s__ the right segmentation plays a role.
 That means a space ``\+u0020`` can be interpretet as space or as split of lines.
-So ``["split and", "merge lines"]`` vs. ``["split", "and merge", "line"]`` would be correct.
+So ``["split and", "merge lines"]`` vs. ``["split", "and merge", "lines"]`` would be correct.
 * __-g__ the geometric postion of the line plays a role. The couverage between two lines have above a threshold (see parameter -t).
 * __-t \<FLOAT\>__ the minimal couverage [0.0,1.0) between two line so that they were assumed to be adjacent.
 
