@@ -210,7 +210,7 @@ public class Text2ImageError {
                         linesHyp.add(line);
                     }
                 }
-                //TODO: is it clear that each GT-line can be aligned to only one HYP-line?
+                //TODO: is it dispose that each GT-line can be aligned to only one HYP-line?
                 IBaseLineAligner.IAlignerResult alignment = baseLineAligner.getAlignment(toArray(linesGT), toArray(linesLA), toArray(linesHyp), threshold, null);
                 int[][] precAlignment = alignment.getGTLists();
                 // Algorithm returns index of GT-lines, which overlap with a HYP-line with more than <var_t> percent.

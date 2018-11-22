@@ -15,6 +15,7 @@ import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
 import org.apache.commons.math3.util.Pair;
 
+import java.awt.*;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -35,7 +36,7 @@ public class ErrorModuleDynProg implements IErrorModule {
     private final IStringNormalizer stringNormalizer;
 
     public ErrorModuleDynProg(ICategorizer categorizer, IStringNormalizer stringNormalizer, Boolean detailed) {
-        this( new TokenizerCategorizer(categorizer), stringNormalizer, detailed);
+        this(new TokenizerCategorizer(categorizer), stringNormalizer, detailed);
     }
 
     public ErrorModuleDynProg(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Boolean detailed) {
@@ -222,74 +223,6 @@ public class ErrorModuleDynProg implements IErrorModule {
         return res;
     }
 
-    private static class CostCalculatorIntern implements PathCalculatorGraph.ICostCalculator<String, String> {
-
-        private List<String> recos;
-        private List<String> refs;
-        private PathCalculatorGraph.DistanceMat<String, String> mat;
-        private final String manipulation;
-        private final String[] emptyList = new String[0];
-
-        public CostCalculatorIntern(String manipulation) {
-            this.manipulation = manipulation;
-        }
-
-        @Override
-        public PathCalculatorGraph.IDistance<String, String> getNeighbour(int[] point) {
-            final int y = point[0];
-            final int x = point[1];
-            switch (manipulation) {
-                case "SUB": {
-                    int xx = x + 1;
-                    int yy = y + 1;
-                    if (yy >= recos.size() || xx >= refs.size()) {
-                        return null;
-                    }
-                    final double cost = recos.get(yy).equals(refs.get(xx))?0:1;
-                    return new PathCalculatorGraph.Distance<>(cost == 0 ? "COR" : "SUB",
-                            cost, mat.get(point).getCostsAcc() + cost,
-                            new int[]{yy, xx},
-                            point, new String[]{recos.get(yy)},
-                            new String[]{refs.get(xx)});
-                }
-                case "INS": {
-                    int xx = x + 1;
-                    if (xx >= refs.size()) {
-                        return null;
-                    }
-                    final double cost = 1;
-                    return new PathCalculatorGraph.Distance<>("INS",
-                            cost, mat.get(point).getCostsAcc() + cost,
-                            new int[]{y, xx},
-                            point, emptyList,
-                            new String[]{refs.get(xx)});
-                }
-                case "DEL": {
-                    int yy = y + 1;
-                    if (yy >= recos.size()) {
-                        return null;
-                    }
-                    final double cost = 1;
-                    return new PathCalculatorGraph.Distance<>("DEL",
-                            cost, mat.get(point).getCostsAcc() + cost,
-                            new int[]{yy, x},
-                            point, new String[]{recos.get(yy)},
-                            emptyList);
-                }
-                default:
-                    throw new RuntimeException("not expected manipulation " + manipulation);
-            }
-        }
-
-        @Override
-        public void init(PathCalculatorGraph.DistanceMat<String, String> mat, List<String> recos, List<String> refs) {
-            this.mat = mat;
-            this.recos = recos;
-            this.refs = refs;
-        }
-
-    }
-
     @Override
     public ObjectCounter<Count> getCounter() {
         return counter;
@@ -319,6 +252,12 @@ public class ErrorModuleDynProg implements IErrorModule {
         } else {
             calculate(toOneLine(reco), toOneLine(ref));
         }
+    }
+
+    public interface Line {
+        String getText();
+
+        Polygon getPolygon();
     }
 
     private static class RecoRef {

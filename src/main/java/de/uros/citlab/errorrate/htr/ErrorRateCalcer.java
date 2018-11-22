@@ -5,6 +5,7 @@
  */
 package de.uros.citlab.errorrate.htr;
 
+import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
@@ -31,6 +32,11 @@ import java.util.Map;
  * @author gundram
  */
 public class ErrorRateCalcer {
+    private boolean useEnd2End = false;
+
+    public void setUseEnd2End(boolean useEnd2End) {
+        this.useEnd2End = useEnd2End;
+    }
 
     public class ResultPagewise extends Result {
 
@@ -93,7 +99,9 @@ public class ErrorRateCalcer {
             case WER:
             case CER_ALNUM:
             case WER_ALNUM:
-                return new ErrorModuleDynProg(tok, sn, detailed);
+                return useEnd2End ?
+                        new ErrorModuleEnd2End(tok, sn, ErrorModuleEnd2End.Mode.RO, false,detailed):
+                        new ErrorModuleDynProg(tok, sn, detailed) ;
             case BOT:
             case BOT_ALNUM:
                 return new ErrorModuleBagOfTokens(tok, sn, detailed);

@@ -54,9 +54,8 @@ public class Result {
                 case WER:
                 case WER_ALNUM:
                     double err = counts.get(Count.ERR);
-                    double cor = counts.get(Count.COR);
                     double gt = counts.get(Count.GT);
-                    metrics.put(Metric.ACC, gt == 0 ? 1.0 : cor / gt);
+                    metrics.put(Metric.ACC, gt == 0 ? 1.0 : 1 - err / gt);
                     metrics.put(Metric.ERR, gt == 0 ? 0.0 : err / gt);
                     break;
                 default:
