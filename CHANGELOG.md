@@ -1,6 +1,11 @@
 
 # Changelog
 
+#3.3.0
+* add End2End measure
+* change Readme: more parameter description, add End2End as measur
+* add command-line tool for End2End measure  
+
 #3.2.0
 * add statistic module to calculate confidence intervals for CER for a given number of lines.
 
