@@ -28,6 +28,11 @@ hs_err_pid*
 *.ipr
 .idea/
 
+# Eclipse project files
+.classpath
+.project
+.settings/
+
 # Maven 
 target/
 
