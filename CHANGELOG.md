@@ -1,18 +1,18 @@
 
 # Changelog
 
-#3.4.0
+# 3.4.0
 * right implementation of count for segmentation-mode for end2end
 * substitution counts available for end2end
 * add additional metrics for error rates: PREC,REC,ACC
 * minor fixes
 
-#3.3.0
+# 3.3.0
 * add End2End measure
 * change Readme: more parameter description, add End2End as measur
 * add command-line tool for End2End measure  
 
-#3.2.0
+# 3.2.0
 * add statistic module to calculate confidence intervals for CER for a given number of lines.
 
 # 3.0.1
