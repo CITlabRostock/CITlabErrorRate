@@ -727,27 +727,23 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         if (detailed == null || detailed) {
             for (Pair<RecoRef, Long> pair : substitutionCounter.getResultOccurrence()) {
                 RecoRef first = pair.getFirst();
+                String[] recos = first.recos;
                 String key1;
-                switch (first.recos.length) {
-                    case 0:
-                        key1 = "";
-                        break;
-                    case 1:
-                        key1 = first.recos[0];
-                        break;
-                    default:
-                        key1 = Arrays.toString(first.recos);
+                if (recos == null || recos.length == 0) {
+                    key1 = "";
+                } else if (recos.length == 1) {
+                    key1 = recos[0];
+                } else {
+                    key1 = Arrays.toString(first.recos);
                 }
+                String[] refs = first.refs;
                 String key2;
-                switch (first.refs.length) {
-                    case 0:
-                        key2 = "";
-                        break;
-                    case 1:
-                        key2 = first.refs[0];
-                        break;
-                    default:
-                        key2 = Arrays.toString(first.refs);
+                if (refs == null || refs.length == 0) {
+                    key2 = "";
+                } else if (refs.length == 1) {
+                    key2 = refs[0];
+                } else {
+                    key2 = Arrays.toString(first.refs);
                 }
                 res.addFirst("[" + key1 + "=>" + key2 + "]=" + pair.getSecond());
             }

@@ -1,6 +1,12 @@
 
 # Changelog
 
+#3.4.0
+* right implementation of count for segmentation-mode for end2end
+* substitution counts available for end2end
+* add additional metrics for error rates: PREC,REC,ACC
+* minor fixes
+
 #3.3.0
 * add End2End measure
 * change Readme: more parameter description, add End2End as measur

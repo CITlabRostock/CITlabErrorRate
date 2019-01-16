@@ -75,14 +75,12 @@ public class End2EndError {
             if (cmd.hasOption("h")) {
                 help();
             }
-            //Word or Character Error Rate?
-            boolean wer = cmd.hasOption('w');
             if (cmd.hasOption('d') && cmd.hasOption('D')) {
                 help("only one of the parameter -d and -D have to be set. Note that -D includes the output of -d");
             }
-            if (cmd.hasOption('d') || cmd.hasOption('D')) {
-                help("the options -d and -D are not supported yet.");
-            }
+//            if (cmd.hasOption('d') || cmd.hasOption('D')) {
+//                help("the options -d and -D are not supported yet.");
+//            }
             //how detailed should the output be
             Boolean detailed = cmd.hasOption('d') ? null : cmd.hasOption('D');
             //upper case?
@@ -158,7 +156,7 @@ public class End2EndError {
                 }
             }
             //print statistic to console
-            List<Pair<Count, Long>> resultOccurrence = em.getCounter().getResultOccurrence();
+//            List<Pair<Count, Long>> resultOccurrence = em.getCounter().getResultOccurrence();
             if (detailed == null || detailed == true) {
                 List<String> results = em.getResults();
                 for (String result : results) {

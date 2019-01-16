@@ -18,6 +18,7 @@ import eu.transkribus.interfaces.ITokenizer;
 import org.junit.Assert;
 import org.junit.Test;
 
+import javax.swing.text.StyledEditorKit;
 import java.io.File;
 import java.text.Normalizer;
 import java.util.*;
@@ -475,6 +476,23 @@ public class TestEnd2End {
         Assert.assertEquals(new Long(2), getCount(false, true, ErrorModuleEnd2End.Mode.RO, true, "it's wrong", "its wrong").get(Count.COR));
         Assert.assertEquals(new Long(3), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "its, wrong", "its, wrong").get(Count.COR));
 //        Assert.assertEquals(new Long(4), getCount(true, true, true, true, "30 examples, just some...", "('just') <SOME> 30examples??;:").get(Count.TP));
+    }
+
+    @Test
+    public void testSubstitutionMap(){
+        String gt = "groundtruth\nstring";
+        String hyp = "string\ngroundtruth";
+        System.out.println((" test \"" + gt + "\" vs \"" + hyp + "\"").replace("\n", "\\n"));
+        ITokenizer tokenizer = new TokenizerCategorizer(new CategorizerCharacterDft());
+        IStringNormalizer sn = new StringNormalizerDft(Normalizer.Form.NFKC, false);
+        IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, ErrorModuleEnd2End.Mode.RO_SEG, false, null);
+//        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
+        impl.calculate(hyp, gt);
+        List<String> results = impl.getResults();
+        for (int i = 0; i < results.size(); i++) {
+            String s = results.get(i);
+            System.out.println(s);
+        }
     }
 
     private class CategorizerWordMergeGroupsLeaveSpaces extends CategorizerWordMergeGroups {
