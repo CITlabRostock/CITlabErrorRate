@@ -19,8 +19,8 @@ class CCLineBreakAndSpaceRecoJump extends CCAbstract implements PathCalculatorGr
 
     @Override
     public List<PathCalculatorGraph.DistanceSmall> getNeighboursSmall(int[] point, PathCalculatorGraph.DistanceSmall dist) {
-        final int x = point[1] + 1;
-        final int y = point[0] + 1;
+        final int x = point[1];
+        final int y = point[0];
         if (x >= refs.length || y >= recos.length) {
             return null;
         }

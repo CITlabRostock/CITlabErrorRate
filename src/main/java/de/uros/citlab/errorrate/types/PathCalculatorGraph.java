@@ -34,6 +34,7 @@ public class PathCalculatorGraph<Reco, Reference> {
     private UpdateScheme updateScheme = UpdateScheme.LAZY;
     private int sizeProcessViewer = -1;
     private File folderDynMats = null;
+    private boolean show = true;
     private static final Logger LOG = LoggerFactory.getLogger(PathCalculatorGraph.class);
     private final List<ICostCalculator<Reco, Reference>> costCalculators = new ArrayList<>();
     private final List<ICostCalculatorMulti<Reco, Reference>> costCalculatorsMutli = new ArrayList<>();
@@ -81,9 +82,6 @@ public class PathCalculatorGraph<Reco, Reference> {
 
     }
 
-    public void setSizeProcessViewer(int useProgressBar) {
-        this.sizeProcessViewer = useProgressBar;
-    }
 
     public void addCostCalculator(ICostCalculator<Reco, Reference> costCalculator) {
         costCalculators.add(costCalculator);
@@ -95,6 +93,14 @@ public class PathCalculatorGraph<Reco, Reference> {
 
     public void setFileDynMat(File folderDynMats) {
         this.folderDynMats = folderDynMats;
+    }
+
+    public void setSizeProcessViewer(int useProgressBar) {
+        this.sizeProcessViewer = useProgressBar;
+    }
+
+    public void setShowDynMat(boolean show) {
+        this.show = show;
     }
 
     public void setFilter(PathFilter<Reco, Reference> filter) {
@@ -387,7 +393,7 @@ public class PathCalculatorGraph<Reco, Reference> {
         QSortedCostAcc.add(start);
 //        G.add(start);
 //        distMat.set(startPoint, start);
-        ProcessField bar = sizeProcessViewer > 0 || folderDynMats != null ? new ProcessField("calculating Dynamic Matrix", sizeProcessViewer, folderDynMats) : null;
+        ProcessField bar = sizeProcessViewer > 0 || folderDynMats != null ? new ProcessField("calculating Dynamic Matrix", sizeProcessViewer, folderDynMats, show) : null;
         int factorNextCleanup = 500000;
         int boundNextCleanup = factorNextCleanup;
         int cntEdges = 0;
@@ -596,17 +602,12 @@ public class PathCalculatorGraph<Reco, Reference> {
         private double[][] mat = null;
         private final int steps = 100;
         private File outFile;
+        private boolean show;
 
-        public ProcessField(String title, int sizeProcessViewer, File outFile) {
+        public ProcessField(String title, int sizeProcessViewer, File outFile, boolean show) {
             this.size = sizeProcessViewer;
+            this.show = show;
             this.outFile = outFile;
-            mainFrame = new JFrame();
-//        meinJFrame.setSize(size, size + 300);
-            mainFrame.setTitle(title);
-            Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-            JPanel meinPanel = new JPanel();
-            meinPanel.setLayout(new BoxLayout(meinPanel, BoxLayout.Y_AXIS));
-
             // JProgressBar-Objekt wird erzeugt
             progressBar = new JProgressBar(0, steps);
 
@@ -615,19 +616,28 @@ public class PathCalculatorGraph<Reco, Reference> {
             // Der aktuelle Wert wird als
             // Text in Prozent angezeigt
             progressBar.setStringPainted(true);
+            if (show) {
+                mainFrame = new JFrame();
+//        meinJFrame.setSize(size, size + 300);
+                mainFrame.setTitle(title);
+                Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+                JPanel meinPanel = new JPanel();
+                meinPanel.setLayout(new BoxLayout(meinPanel, BoxLayout.Y_AXIS));
 
-            image = new JLabel();
-            image.setIcon(new ImageIcon(HeatMapUtil.getHeatMap(new double[size][size], 7)));
-            image.setAlignmentX(Component.CENTER_ALIGNMENT);
-            progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
-            meinPanel.add(image);
-            // JProgressBar wird Panel hinzugefügt
-            meinPanel.add(progressBar);
-            mainFrame.add(meinPanel);
-            if (size > 0) {
-                mainFrame.setLocation(new Point((int) (screenSize.getWidth() - mainFrame.getWidth()) / 2, (int) (screenSize.getHeight() - mainFrame.getHeight()) / 2));
-                mainFrame.setVisible(true);
-                mainFrame.pack();
+
+                image = new JLabel();
+                image.setIcon(new ImageIcon(HeatMapUtil.getHeatMap(new double[size][size], 7)));
+                image.setAlignmentX(Component.CENTER_ALIGNMENT);
+                progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
+                meinPanel.add(image);
+                // JProgressBar wird Panel hinzugefügt
+                meinPanel.add(progressBar);
+                mainFrame.add(meinPanel);
+                if (size > 0) {
+                    mainFrame.setLocation(new Point((int) (screenSize.getWidth() - mainFrame.getWidth()) / 2, (int) (screenSize.getHeight() - mainFrame.getHeight()) / 2));
+                    mainFrame.setVisible(true);
+                    mainFrame.pack();
+                }
             }
         }
 
@@ -639,8 +649,10 @@ public class PathCalculatorGraph<Reco, Reference> {
         }
 
         private void dispose() {
-            mainFrame.setVisible(false);
-            mainFrame.dispose();
+            if (show) {
+                mainFrame.setVisible(false);
+                mainFrame.dispose();
+            }
 
         }
 
@@ -672,11 +684,13 @@ public class PathCalculatorGraph<Reco, Reference> {
 //                        vec[j] = dist == null ? isDebug ? -5 : 0 : dist.getCostsAcc();
                     }
                 }
-                BufferedImage heatMap = HeatMapUtil.getHeatMap(mat, 7);
-                image.setIcon(new ImageIcon(heatMap));
-                mainFrame.invalidate();
-                mainFrame.revalidate();
-                mainFrame.repaint();
+                if (show) {
+                    BufferedImage heatMap = HeatMapUtil.getHeatMap(mat, 7);
+                    image.setIcon(new ImageIcon(heatMap));
+                    mainFrame.invalidate();
+                    mainFrame.revalidate();
+                    mainFrame.repaint();
+                }
 //                System.out.println("done");
             }
 

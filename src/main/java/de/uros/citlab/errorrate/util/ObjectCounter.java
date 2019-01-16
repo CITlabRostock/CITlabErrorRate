@@ -5,20 +5,14 @@
  */
 package de.uros.citlab.errorrate.util;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.commons.math3.util.Pair;
 
+import java.io.Serializable;
+import java.util.*;
+
 /**
- *
- * @author gundram
  * @param <E> object type
+ * @author gundram
  */
 public class ObjectCounter<E> implements Serializable {
 
@@ -35,6 +29,10 @@ public class ObjectCounter<E> implements Serializable {
         } else {
             map.put(object, 1L);
         }
+    }
+
+    public void set(E object, long count) {
+        map.put(object, count);
     }
 
     public void add(E object, long count) {

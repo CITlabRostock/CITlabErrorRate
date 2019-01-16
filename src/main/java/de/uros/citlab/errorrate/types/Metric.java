@@ -18,17 +18,27 @@ public enum Metric {
     ERR,
     /**
      * Accuracy [0,1], (1 = perfect).<br>
-     * ACC = #COR / #GT
+     * ACC = #COR / (#GT + #HYP - #COR)
      */
     ACC,
     /**
-     * Precision [0,1], (1 = perfect)<br>
-     * PREC = #TP / (#FP + #TP)
+     * For retrieval measures:<br/>
+     * Precision [0,1], (1 = perfect)<br/>
+     * PREC = #TP / (#FP + #TP)<br/>
+     * <br/>
+     * For error rate measures:<br/>
+     * Precision [0,1], (1 = perfect)
+     * PREC = #COR / #HYP
      */
     PREC,
     /**
+     * For retrieval measures:<br/>
      * Recall [0,1], (1 = perfect)<br>
      * REC = #TP / (#FN + #TP)
+     * <br/>
+     * For error rate measures:<br/>
+     * Recall [0,1], (1 = perfect)
+     * REC = #COR / #GT
      */
     REC,
     /**

@@ -23,7 +23,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -44,7 +46,6 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     private final Mode mode;
     private final Voter voter = new Voter();
     private static final Logger LOG = LoggerFactory.getLogger(ErrorModuleEnd2End.class);
-    private double filterOffset;
     private int sizeProcessViewer = -1;
     private File fileDynProg = null;
     private PathFilterBaselineMatch filter = null;
@@ -76,7 +77,6 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     }
 
     public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, Boolean detailed, double filterOffset) {
-        this.filterOffset = filterOffset;
         this.usePolygons = usePolygons;
         this.detailed = detailed;
         this.mode = mode;
@@ -94,12 +94,8 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         switch (mode) {
             case NO_RO_SEG:
                 pathCalculator.addCostCalculator(new CCSubOrCorNL(voter));
-//                pathCalculator.addCostCalculator(new CCInsNL(voter));
-//                pathCalculator.addCostCalculator(new CCDelNL(voter));
                 CCLineBreakAndSpaceRecoJump ccLineBreakAndSpaceRecoJump = new CCLineBreakAndSpaceRecoJump(voter);
                 pathCalculator.addCostCalculator((PathCalculatorGraph.ICostCalculatorMulti<String, String>) ccLineBreakAndSpaceRecoJump);
-//                CCRecoJumpAtRefNL jumper1 = new CCRecoJumpAtRefNL(voter);
-//                pathCalculator.addCostCalculator((PathCalculatorGraph.ICostCalculatorMulti<String, String>) jumper1);
                 if (filterOffset > 0.0) {
                     filter = ccLineBreakAndSpaceRecoJump;
                 }
@@ -113,10 +109,8 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                 break;
             case RO_SEG:
                 pathCalculator.addCostCalculator(new CCSubOrCorNL(voter));
-//                pathCalculator.addCostCalculator(new CCInsNL(voter));
-//                pathCalculator.addCostCalculator(new CCDelNL(voter));
             case RO:
-                pathCalculator.addCostCalculator(new CCDelLine(voter));//this cost calculator is not needed for IGNORE_READINGORDER because CCLineBreakRecoJump is cheaper anyway
+                pathCalculator.addCostCalculator(new CCDelLine(voter, mode.equals(Mode.RO)));//this cost calculator is not needed for IGNORE_READINGORDER because CCLineBreakRecoJump is cheaper anyway
                 if (filterOffset > 0.0) {
                     filter = new FilterHorizontalFixedLength(filterOffset, grid);
                 }
@@ -233,7 +227,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     for (String ref : refs) sbRef.append(ref);
                 }
             }
-            return "\"" + sbReco + "\"=>\"" + sbRef + "\"";
+            return ("\"" + sbReco + "\"=>\"" + sbRef + "\"").replace("\n", "\\n");
         }
     }
 
@@ -366,8 +360,19 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     }
 
     private void calculate(AlignmentTask alignmentTask, int sizeProcessViewer, File out) {
+        Pair<ObjectCounter<Count>, ObjectCounter<RecoRef>> pathCount = getPathCount(alignmentTask, sizeProcessViewer, out);
+        counter.addAll(pathCount.getFirst());
+        if (detailed == null || detailed) {
+            substitutionCounter.addAll(pathCount.getSecond());
+        }
+        counter.add(Count.ERR, counter.get(Count.INS) + counter.get(Count.DEL) + counter.get(Count.SUB));
+    }
+
+    private Pair<ObjectCounter<Count>, ObjectCounter<RecoRef>> getPathCount(AlignmentTask alignmentTask, int sizeProcessViewer, File out) {
         //use dynamic programming to calculate the cheapest path through the dynamic programming tabular
 //        calcBestPathFast(recos, refs);
+        ObjectCounter<Count> res1 = new ObjectCounter<>();
+        ObjectCounter<RecoRef> res2 = new ObjectCounter<>();
         if (filter != null) {
             filter.setAlignmentTask(alignmentTask);
         }
@@ -393,11 +398,8 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         int[] usedReco = getUsedRecos(recos, calcBestPath);
         int max = VectorUtil.max(usedReco);
         //if any reference is used, the resulting array "usedReco" should only conatain zeros.
-        if (mode.equals(Mode.RO) || mode.equals(Mode.RO_SEG) || !(max > 1 || countUnusedChars(usedReco, recos) > 0)) {
-            ObjectCounter<Count> count = count(calcBestPath, usedReco, countChars(recos), countChars(refs));
-            LOG.debug("count = " + count);
-            counter.addAll(count);
-            return;
+        if (isRO() || !(max > 1 || countUnusedChars(usedReco, recos) > 0)) {
+            return getPathCounts(calcBestPath, detailed);
         }
         // 1. group path into line-line-path
         // 2. sort paths according quality
@@ -413,24 +415,22 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     case DEL:
                     case SUB:
                     case DEL_LINE:
-//                        case MERGE_LINE:
-//                        case SPLIT_LINE:
+                    case MERGE_LINE:
+                    case SPLIT_LINE:
                         switch (typeBefore) {
                             case COR:
                             case INS:
                             case DEL:
                             case SUB:
                             case DEL_LINE:
-//                                case MERGE_LINE:
-//                                case SPLIT_LINE:
+                            case MERGE_LINE:
+                            case SPLIT_LINE:
                                 return true;
                         }
                         return false;
                     case INS_LINE:
                     case JUMP_RECO:
-                    case MERGE_LINE:
-                    case SPLIT_LINE:
-                        return false;
+//                    case SPLIT_LINE:
                     case COR_LINEBREAK:
                         return false;
                     default:
@@ -445,12 +445,12 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     case INS:
                     case DEL:
                     case SUB:
-                        return true;
                     case MERGE_LINE:
                     case SPLIT_LINE:
+                        return true;
+                    case JUMP_RECO:
                     case DEL_LINE:
                     case INS_LINE:
-                    case JUMP_RECO:
                     case COR_LINEBREAK:
                         return false;
                     default:
@@ -497,9 +497,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                 path = path.substring(0, path.lastIndexOf(".")) + "_" + path.substring(path.lastIndexOf("."));
                 outSubProblem = new File(path);
             }
-            fallback.calculate(alignmentTask, sizeProcessViewer, outSubProblem);
-            counter.addAll(fallback.getCounter());
-            return;
+            return fallback.getPathCount(alignmentTask, sizeProcessViewer, outSubProblem);
         }
         boolean[] maskReco = new boolean[recos.length];
         boolean[] maskRef = new boolean[refs.length];
@@ -511,23 +509,28 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
                 throw new RuntimeException("reference should be used only 1 time in bestPath");
             }
-            int i = countChars(recos, toDeletePath.startReco, toDeletePath.endReco);
-            int j = toDeletePath.endReco - toDeletePath.startReco;
-            System.out.println("cntChars = " + i + " toDelete-diff = " + j);
-            ObjectCounter<Count> count = count(toDeletePath.path, usedReco, countChars(recos, toDeletePath.startReco, toDeletePath.endReco), countChars(refs, toDeletePath.startRef, toDeletePath.endRef));
+            LOG.debug("add count of subpath {}", toDeletePath);
+            Pair<ObjectCounter<Count>, ObjectCounter<RecoRef>> pathCounts = getPathCounts(toDeletePath.path, detailed);
+            res1.addAll(pathCounts.getFirst());
+            res2.addAll(pathCounts.getSecond());
 //            ObjectCounter<Count> count = count(toDeletePath.path, usedReco, recos, refs);
-            LOG.debug("count {} for sub-task {}", count, toDeletePath);
-            counter.addAll(count);
         }
         String[] refShorter = getSubProblem(refs, maskRef, null).getFirst();
         if (countChars(refShorter) == 0) {
             String[] recosShorter = getSubProblem(recos, maskReco, null).getFirst();
-            int i = countChars(recosShorter);
-            LOG.debug("add {} times DEL, ERR and HYP to count because ref == \"\"", i);
-            counter.add(Count.DEL, i);
-            counter.add(Count.ERR, i);
-            counter.add(Count.HYP, i);
-            return;
+            for (int i = 0; i < recosShorter.length; i++) {
+                String s = recosShorter[i];
+                if (!voter.isLineBreak(s)) {
+                    if (isSeg() && voter.isSpace(s)) {
+                        //allow any partition of text - then it is better to substitute spaces by newlines. Do not count spaces.
+                        continue;
+                    }
+                    res1.add(Count.HYP);
+                    res1.add(Count.DEL);
+                    res2.add(new RecoRef(new String[]{s}, new String[0]));
+                }
+            }
+            return new Pair<>(res1, res2);
         }
         File outSubProblem = null;
         if (out != null) {
@@ -536,7 +539,10 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             outSubProblem = new File(path);
         }
         AlignmentTask subProblem = getSubProblem(alignmentTask, maskRef, maskReco);
-        calculate(subProblem, sizeProcessViewer, outSubProblem);
+        Pair<ObjectCounter<Count>, ObjectCounter<RecoRef>> pathCountSubProblem = getPathCount(subProblem, sizeProcessViewer, outSubProblem);
+        res1.addAll(pathCountSubProblem.getFirst());
+        res2.addAll(pathCountSubProblem.getSecond());
+        return new Pair<>(res1, res2);
     }
 
     private AlignmentTask getSubProblem(AlignmentTask original, boolean[] maskRef, boolean[] maskReco) {
@@ -586,8 +592,18 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         return new Pair<>(res.toArray(new String[0]), idxs);
     }
 
-    private ObjectCounter<Count> count(List<PathCalculatorGraph.IDistance<String, String>> path, int[] usedReco, int lengthRecos, int lengthRefs) {
+    private boolean isSeg() {
+        return mode.equals(Mode.RO_SEG) || mode.equals(Mode.NO_RO_SEG);
+    }
+
+    private boolean isRO() {
+        return mode.equals(Mode.RO) || mode.equals(Mode.RO_SEG);
+    }
+
+    private Pair<ObjectCounter<Count>, ObjectCounter<RecoRef>> getPathCounts(List<PathCalculatorGraph.IDistance<String, String>> path, Boolean detailed) {
         ObjectCounter<Count> res = new ObjectCounter<>();
+        ObjectCounter<RecoRef> res2 = new ObjectCounter<>();
+//        int cnt = 0;
         for (PathCalculatorGraph.IDistance<String, String> dist : path) {
             String m = dist.getManipulation();
             if (m == null) {
@@ -595,50 +611,79 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             }
             switch (DistanceStrStr.TYPE.valueOf(m)) {
                 case DEL:
-                case INS:
-                case SUB:
-                    res.add(Count.ERR);
-                    if (detailed == null) {
-                        substitutionCounter.add(new RecoRef(dist.getRecos(), dist.getReferences()));
+                    if (detailed == null || detailed.booleanValue()) {
+                        res2.add(new RecoRef(dist.getRecos(), dist.getReferences()));
                     }
+                    res.add(Count.HYP);
+                    res.add(Count.DEL);
+                    break;
+                case INS:
+                    if (detailed == null || detailed.booleanValue()) {
+                        res2.add(new RecoRef(dist.getRecos(), dist.getReferences()));
+                    }
+                    res.add(Count.GT);
+                    res.add(Count.INS);
+                    break;
+                case SUB:
+                    if (detailed == null || detailed.booleanValue()) {
+                        res2.add(new RecoRef(dist.getRecos(), dist.getReferences()));
+                    }
+                    res.add(Count.HYP);
+                    res.add(Count.GT);
+                    res.add(Count.SUB);
+                    break;
                 case COR:
-                    res.add(Count.valueOf(dist.getManipulation()));
+                    res.add(Count.HYP);
+                    res.add(Count.GT);
+                    res.add(Count.COR);
                     if (detailed != null && detailed.booleanValue()) {
-                        substitutionCounter.add(new RecoRef(dist.getRecos(), dist.getReferences()));
+                        res2.add(new RecoRef(dist.getRecos(), dist.getReferences()));
                     }
                     break;
                 case INS_LINE:
-                    res.add(Count.ERR, dist.getReferences().length);
+                    res.add(Count.GT, dist.getReferences().length);
                     res.add(Count.INS, dist.getReferences().length);
                     if (detailed == null || (detailed != null && detailed.booleanValue())) {
                         for (int i = 0; i < dist.getReferences().length; i++) {
-                            substitutionCounter.add(new RecoRef(dist.getRecos(), new String[]{dist.getReferences()[i]}));
+                            res2.add(new RecoRef(dist.getRecos(), new String[]{dist.getReferences()[i]}));
                         }
                     }
                     break;
                 case DEL_LINE:
-                    res.add(Count.ERR, dist.getRecos().length);
-                    res.add(Count.DEL, dist.getRecos().length);
-                    if (detailed == null || (detailed != null && detailed.booleanValue())) {
-                        for (int i = 0; i < dist.getRecos().length; i++) {
-                            substitutionCounter.add(new RecoRef(new String[]{dist.getRecos()[i]}, dist.getReferences()));
+                    for (int i = 0; i < dist.getRecos().length; i++) {
+                        String reco = dist.getRecos()[i];
+                        if (voter.isLineBreak(reco)) {
+                            //do not count spaces, if whole line should be deleted - spaces can be substituted by newline.
+                            continue;
+                        }
+                        res.add(Count.HYP);
+                        res.add(Count.DEL);
+                        if (detailed == null || (detailed != null && detailed.booleanValue())) {
+                            res2.add(new RecoRef(new String[]{reco}, dist.getReferences()));
                         }
                     }
                     break;
-                case COR_LINEBREAK:
-                case JUMP_RECO:
                 case MERGE_LINE:
+                    //special case for merging lines:
+                    // a \n will be interpreted as space ==> Hypothesis gets 1 character longer!
+                    res.add(Count.HYP);
+                    res.add(Count.GT);
+                    res.add(Count.COR);
+                    if (detailed != null && detailed.booleanValue()) {
+                        //BOTH GET REFERENCE AS VALUE
+                        res2.add(new RecoRef(dist.getReferences(), dist.getReferences()));
+                    }
+                    break;
+                //all other cases will not be count
+                case JUMP_RECO:
+                case COR_LINEBREAK:
                 case SPLIT_LINE:
                     break;
                 default:
                     throw new RuntimeException("found type '" + dist.getManipulation() + "'");
             }
         }
-        res.add(Count.GT, lengthRefs);
-        res.add(Count.HYP, lengthRecos);
-
-        return res;
-
+        return new Pair<>(res, res2);
     }
 
     private int countUnusedChars(int[] usage, String[] out) {

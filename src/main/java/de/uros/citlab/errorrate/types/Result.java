@@ -54,9 +54,13 @@ public class Result {
                 case WER:
                 case WER_ALNUM:
                     double err = counts.get(Count.ERR);
+                    double cor = counts.get(Count.COR);
                     double gt = counts.get(Count.GT);
-                    metrics.put(Metric.ACC, gt == 0 ? 1.0 : 1 - err / gt);
+                    double hyp = counts.get(Count.HYP);
                     metrics.put(Metric.ERR, gt == 0 ? 0.0 : err / gt);
+                    metrics.put(Metric.ACC, gt + hyp == 0 ? 1.0 : cor / (gt + hyp - cor));
+                    metrics.put(Metric.PREC, hyp == 0 ? 1.0 : cor / hyp);
+                    metrics.put(Metric.REC, gt == 0 ? 1.0 : cor / gt);
                     break;
                 default:
                     throw new RuntimeException("unknown method '" + method + "'.");

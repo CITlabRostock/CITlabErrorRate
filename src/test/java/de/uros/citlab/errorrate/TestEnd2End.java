@@ -20,7 +20,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.text.Normalizer;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Here every one can add groundtruth (GT) and hypothesis (HYP) text. Then some
@@ -196,6 +196,211 @@ public class TestEnd2End {
     }
 
     @Test
+    public void testCountComparisonSmall() {
+//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+
+        String recognition = "dazu Pfeffer\nPfeffer";
+        String reference = "dazu Pfeffer Mehl Salz\nPfeffer";
+        Map<Count, Long> count_NO_RO_SEG = getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition);
+        System.out.println("count_NO_RO_SEG");
+        System.out.println(count_NO_RO_SEG);
+        Assert.assertEquals("ground truth should have the same length", Long.valueOf(reference.replaceAll("\n", "").length()), count_NO_RO_SEG.get(Count.GT));
+    }
+
+    @Test
+    public void testCountComparisonAcademical1() {
+//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+        for (ErrorModuleEnd2End.Mode mode : new ErrorModuleEnd2End.Mode[]{ErrorModuleEnd2End.Mode.NO_RO_SEG}) {
+            String reference = "two three\nthree";
+            String recognition = "one\ntwo three";
+            Map<Count, Long> count = getCount(false, false, mode, false, reference, recognition);
+            System.out.println("count");
+            System.out.println(count);
+            Assert.assertEquals("wrong count GT", Long.valueOf(14), count.get(Count.GT));
+            Assert.assertEquals("wrong count COR", Long.valueOf(10), count.get(Count.COR));
+            Assert.assertEquals("wrong count INS", Long.valueOf(2), count.get(Count.INS));
+            Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.get(Count.DEL));
+            Assert.assertEquals("wrong count SUB", Long.valueOf(2), count.get(Count.SUB));
+            Assert.assertEquals("wrong count HYP", Long.valueOf(12), count.get(Count.HYP));
+        }
+    }
+
+    @Test
+    public void testCountComparisonAcademical4() {
+//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+        for (ErrorModuleEnd2End.Mode mode : new ErrorModuleEnd2End.Mode[]{ErrorModuleEnd2End.Mode.NO_RO_SEG}) {
+            String reference = "two\nthree\nthree";
+            String recognition = "one two\nthree";
+            Map<Count, Long> count = getCount(false, false, mode, false, reference, recognition);
+            System.out.println("count");
+            System.out.println(count);
+            Assert.assertEquals("wrong count GT", Long.valueOf(14 - 1), count.get(Count.GT));
+            Assert.assertEquals("wrong count COR", Long.valueOf(10 - 1), count.get(Count.COR));
+            Assert.assertEquals("wrong count INS", Long.valueOf(2), count.get(Count.INS));
+            Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.get(Count.DEL));
+            Assert.assertEquals("wrong count SUB", Long.valueOf(2), count.get(Count.SUB));
+            Assert.assertEquals("wrong count HYP", Long.valueOf(12 - 1), count.get(Count.HYP));
+        }
+    }
+
+    @Test
+    public void testCountComparisonAcademicalLarge() {
+        String gt = "abcdef ghi jklmn opqrst uvwxyz abcdef ghi jklmn opqrst uvwxyz";
+        String hyp = gt;
+        Random r = new Random(1234);
+        int ins = 0;
+        int del = 3;
+        int sub = 4;
+        for (int i = 0; i < del; i++) {
+            while (true) {
+                int idx = r.nextInt(hyp.length());
+                if (hyp.charAt(idx) == ' ') {
+                    continue;
+                }
+                hyp = hyp.substring(0, idx) + "!" + hyp.substring(idx);
+                break;
+            }
+        }
+        for (int i = 0; i < ins; i++) {
+            while (true) {
+                int idx = r.nextInt(hyp.length());
+                if (hyp.charAt(idx) == ' ') {
+                    continue;
+                }
+                hyp = hyp.substring(0, idx) + hyp.substring(idx + 1);
+                break;
+            }
+        }
+        boolean[] subs = new boolean[hyp.length()];
+        for (int i = 0; i < sub; i++) {
+            while (true) {
+                int idx = r.nextInt(hyp.length());
+                if (hyp.charAt(idx) == ' ' || subs[idx]) {
+                    continue;
+                }
+                subs[idx] = true;
+                hyp = hyp.substring(0, idx) + "?" + hyp.substring(idx + 1);
+                break;
+            }
+        }
+        int idx = hyp.indexOf(" ");
+        while (idx > 0) {
+            if (r.nextDouble() < 0.4) {
+                hyp = hyp.substring(0, idx) + "\n" + hyp.substring(idx + 1);
+            }
+            idx = hyp.indexOf(" ", idx + 1);
+        }
+        idx = gt.indexOf(" ");
+        while (idx > 0) {
+            if (r.nextDouble() < 0.4) {
+                gt = gt.substring(0, idx) + "\n" + gt.substring(idx + 1);
+            }
+            idx = gt.indexOf(" ", idx + 1);
+        }
+        List<String> hypList = Arrays.asList(hyp.split("\n"));
+        Collections.shuffle(hypList, r);
+        StringBuilder sb = new StringBuilder();
+        for (String line : hypList) {
+            sb.append(line).append('\n');
+        }
+        hyp = sb.toString();
+        hyp = hyp.substring(0, hyp.length() - 1);
+        System.out.println("gt =" + gt.replace("\n", "_"));
+        System.out.println("hyp=" + hyp.replace("\n", "_"));
+        Long gtLength = new Long(gt.replace("\n", "").length());
+        Long hypLength = new Long(hyp.replace("\n", "").length());
+//        Assert.assertNotEquals("for test, length of hyp and gt should differ", gtLength, hypLength);
+//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+        Map<Count, Long> count = getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, gt, hyp);
+        System.out.println(count);
+        Assert.assertEquals("wrong count GT", gtLength, count.get(Count.GT));
+        Assert.assertEquals("wrong count INS", Long.valueOf(ins), count.get(Count.INS));
+        Assert.assertEquals("wrong count DEL", Long.valueOf(del), count.get(Count.DEL));
+        Assert.assertEquals("wrong count SUB", Long.valueOf(sub), count.get(Count.SUB));
+        Assert.assertEquals("wrong count COR", new Long(gtLength.intValue() - sub-ins), count.get(Count.COR));
+        Assert.assertEquals("wrong count HYP", Long.valueOf(gtLength+del-ins), count.get(Count.HYP));
+    }
+
+    @Test
+    public void testCountComparisonAcademical3() {
+//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+        for (ErrorModuleEnd2End.Mode mode : new ErrorModuleEnd2End.Mode[]{ErrorModuleEnd2End.Mode.NO_RO_SEG}) {
+            String reference = "two\nthree\nthree";
+            String recognition = "one\ntwo three";
+            Map<Count, Long> count = getCount(false, false, mode, false, reference, recognition);
+            System.out.println(count);
+            Assert.assertEquals("wrong count GT", Long.valueOf(14 - 1), count.get(Count.GT));
+            Assert.assertEquals("wrong count COR", Long.valueOf(10 - 1), count.get(Count.COR));
+            Assert.assertEquals("wrong count INS", Long.valueOf(2), count.get(Count.INS));
+            Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.get(Count.DEL));
+            Assert.assertEquals("wrong count SUB", Long.valueOf(2), count.get(Count.SUB));
+            Assert.assertEquals("wrong count HYP", Long.valueOf(12 - 1), count.get(Count.HYP));
+        }
+    }
+
+    @Test
+    public void testCountComparisonAcademical2() {
+//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+        for (ErrorModuleEnd2End.Mode mode : new ErrorModuleEnd2End.Mode[]{ErrorModuleEnd2End.Mode.RO_SEG, ErrorModuleEnd2End.Mode.NO_RO_SEG}) {
+            String recognition = "one two\ntm o";
+            String reference = "one\ntwo";
+            Map<Count, Long> count = getCount(false, false, mode, false, reference, recognition);
+            System.out.println("count");
+            System.out.println(count);
+            Assert.assertEquals("wrong count GT", Long.valueOf(6), count.get(Count.GT));
+            Assert.assertEquals("wrong count COR", Long.valueOf(6), count.get(Count.COR));
+            Assert.assertEquals("wrong count INS", Long.valueOf(0), count.get(Count.INS));
+            Assert.assertEquals("wrong count DEL", Long.valueOf(3), count.get(Count.DEL));
+            Assert.assertEquals("wrong count SUB", Long.valueOf(0), count.get(Count.SUB));
+            Assert.assertEquals("wrong count HYP", Long.valueOf(9), count.get(Count.HYP));
+        }
+    }
+
+    @Test
+    public void testCountComparison() {
+//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+
+        String recognition = "und\n" +
+                "Feriogsadlat\n" +
+                "C\n" +
+                "B Herinoe\n" +
+                "1 Meter\n" +
+                "Gehrürzguoken\n" +
+                "A Rote Rlbe\n" +
+                "Sellesie gekocht\n" +
+                "7 Gekochtes Er\n" +
+                "Fwriebel\n" +
+                "Pele Zutaten in Wuofel schreit\n" +
+                "3912\n" +
+                "dazu Pfeltec\n" +
+                "Essig\n" +
+                "Der | Zwiebeln , Zucker\n" +
+                "x\n" +
+                "Dressing\n" +
+                ")";
+        String reference = "Heringssalat\n" +
+                "3 Heringe\n" +
+                "1 Apfel\n" +
+                "Gewürzgurken\n" +
+                "1 Rote Rübe\n" +
+                "1/2 . Sellerie gekocht\n" +
+                "1 gekochtes Ei\n" +
+                "1/2 Zwiebeln\n" +
+                "Alle Zutaten in Würfel schneid\n" +
+                "dazu Pfeffer , Salz , Essig ,\n" +
+                "Oel , Zwiebeln , Zucker ,\n" +
+                "Dressing";
+//                "Oel , Zwiebeln , Zucker ,";
+//        Map<Count, Long> count_NO_RO = getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO, false, reference, recognition);
+        Map<Count, Long> count_NO_RO_SEG = getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition);
+//        System.out.println("count_NO_RO");
+//        System.out.println(count_NO_RO);
+        System.out.println("count_NO_RO_SEG");
+        System.out.println(count_NO_RO_SEG);
+        Assert.assertEquals("ground truth should have the same length", Long.valueOf(reference.replaceAll("\n", "").length()), count_NO_RO_SEG.get(Count.GT));
+    }
+
+    @Test
     public void testLongerText() {
 //        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
 
@@ -289,7 +494,8 @@ public class TestEnd2End {
         }
     }
 
-    public Map<Count, Long> getCount(boolean upper, boolean word, ErrorModuleEnd2End.Mode mode, boolean letterNumber, String gt, String hyp) {
+    public Map<Count, Long> getCount(boolean upper, boolean word, ErrorModuleEnd2End.Mode mode,
+                                     boolean letterNumber, String gt, String hyp) {
         System.out.println((" test \"" + gt + "\" vs \"" + hyp + "\"").replace("\n", "\\n"));
         ITokenizer tokenizer = new TokenizerCategorizer(word ? new CategorizerWordMergeGroups() : new CategorizerCharacterDft());
         IStringNormalizer sn = new StringNormalizerDft(Normalizer.Form.NFKC, upper);
@@ -299,6 +505,7 @@ public class TestEnd2End {
         IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, mode, false, false);
 //        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
         impl.calculate(hyp, gt);
+
         return impl.getCounter().getMap();
     }
 
