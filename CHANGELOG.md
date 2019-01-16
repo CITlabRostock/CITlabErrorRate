@@ -1,6 +1,9 @@
 
 # Changelog
 
+# 3.4.1
+* bugfix: modify test error rates because of changes in 3.4.0 
+
 # 3.4.0
 * right implementation of count for segmentation-mode for end2end
 * substitution counts available for end2end
