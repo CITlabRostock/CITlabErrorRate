@@ -473,7 +473,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             @Override
             public int compare(PathQuality o1, PathQuality o2) {
                 //TODO: better function here - maybe dependent on ref-length or on path-length
-                return Double.compare(o1.error, o2.error);
+                return Double.compare((o1.error + 0.5) / Math.max(1, o1.path.size()), (o2.error + 0.5) / Math.max(1, o2.path.size()));
             }
         });
         if (grouping.isEmpty()) {

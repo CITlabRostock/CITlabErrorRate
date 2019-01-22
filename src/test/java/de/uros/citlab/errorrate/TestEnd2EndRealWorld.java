@@ -85,7 +85,7 @@ public class TestEnd2EndRealWorld {
         expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.2779770444763271, 0.25981965459269446, 0.19306399713979264, 0.3473086449586178});
         expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.17539454806312768, 0.20693871312853432, 0.1927064712191634, 0.22239004349927502});
         expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.2666786226685796, 0.2537062509552193, 0.1873435824097247, 0.3265873255603214});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16624820659971307,0.1982271129451322,0.1873435824097247,0.17943450942484293});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16624820659971307,0.1982271129451322,0.1873435824097247,0.1791928467858869});
     }
 
     @Test
