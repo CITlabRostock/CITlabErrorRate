@@ -1,6 +1,8 @@
 
 # Changelog
 
+# 3.4.3
+
 # 3.4.2
 * bugfix: fix usage of remaining line breaks and spaces
 * bugfix: Calculation of count ERR
