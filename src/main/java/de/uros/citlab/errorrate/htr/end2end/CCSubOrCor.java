@@ -37,8 +37,7 @@ class CCSubOrCor extends CCAbstract {
         final boolean cor = reco.equals(ref);
         if (cor) {
             if (isLineBreakReco[y]) {
-                //line break characters are no real characters - so they do not have to be count!
-                return new DistanceStrStr(DistanceStrStr.TYPE.COR_LINEBREAK, 0, dist.costsAcc, (String) null, null, point, next);
+                return new DistanceStrStr(DistanceStrStr.TYPE.COR_LINEBREAK, 0, dist.costsAcc, reco, ref, point, next);
             }
             //normal case: characters are equal
             return new DistanceStrStr(DistanceStrStr.TYPE.COR, 0, dist.costsAcc, reco, ref, point, next);

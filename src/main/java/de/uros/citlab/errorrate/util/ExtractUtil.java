@@ -1,7 +1,6 @@
 package de.uros.citlab.errorrate.util;
 
 import de.uros.citlab.errorrate.interfaces.ILine;
-import org.apache.commons.math3.util.Pair;
 import org.primaresearch.dla.page.Page;
 import org.primaresearch.dla.page.layout.physical.Region;
 import org.primaresearch.dla.page.layout.physical.text.LowLevelTextObject;
@@ -12,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.awt.*;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,6 +27,10 @@ public class ExtractUtil {
             p.addPoint(baseline.getPoint(i).x, baseline.getPoint(i).y);
         }
         return p;
+    }
+
+    public static List<String> getTextFromFile(File fileName) {
+        return getTextFromFile(fileName.getPath());
     }
 
     public static List<String> getTextFromFile(String fileName) {
@@ -52,7 +56,13 @@ public class ExtractUtil {
                                     LOG.warn("transciption is null for line with id = {} - ignore line.", line.getId());
                                     continue;
                                 }
-                                res.add(text);
+                                if (text.startsWith(" ")) {
+                                    LOG.warn("transciption of line id {} starts with space, trim transcription '{}'", line.getId(), text);
+                                }
+                                if (text.endsWith(" ")) {
+                                    LOG.warn("transciption of line id {} ends with space, trim transcription '{}'", line.getId(), text);
+                                }
+                                res.add(text.trim());
                             }
                         }
                     }
@@ -62,6 +72,10 @@ public class ExtractUtil {
             }
         }
         return null;
+    }
+
+    public static List<ILine> getLinesFromFile(File fileName) {
+        return getLinesFromFile(fileName.getPath());
     }
 
     public static List<ILine> getLinesFromFile(String fileName) {
@@ -86,17 +100,28 @@ public class ExtractUtil {
                                 org.primaresearch.maths.geometry.Polygon baseline = ((TextLine) line).getBaseline();
                                 Polygon polygon = getPolygon(baseline);
                                 if (text == null) {
-                                    LOG.warn("transciption is null for line with id = {} - ignore line.", line.getId());
+                                    LOG.warn("transciption is null for line id = {} and document {} - ignore line.", line.getId(), fileName);
                                     continue;
                                 }
                                 if (polygon == null || polygon.npoints < 2) {
-                                    LOG.error("polygon {} of line with id = {} is null or has < 2 points", polygon, line.getId());
+                                    LOG.error("polygon {} of line id = {} and document {} is null or has < 2 points", polygon, line.getId(), fileName);
                                     throw new RuntimeException("polygon " + polygon + " of line with id = " + line.getId() + " is null or has < 2 points");
+                                }
+                                if (text.startsWith(" ")) {
+                                    LOG.warn("transciption of line id {} and document {} starts with space, trim transcription '{}'", line.getId(), fileName, text);
+                                }
+                                if (text.endsWith(" ")) {
+                                    LOG.warn("transciption of line id {} and document {} ends with space, trim transcription '{}'", line.getId(), fileName, text);
+                                }
+                                final String textFinal = text.trim();
+                                if (text.isEmpty()) {
+                                    LOG.warn("transciption is empty for line id {} and document {} - ignore line", line.getId(), fileName);
+                                    continue;
                                 }
                                 res.add(new ILine() {
                                     @Override
                                     public String getText() {
-                                        return text;
+                                        return textFinal;
                                     }
 
                                     @Override

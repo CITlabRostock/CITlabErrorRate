@@ -235,12 +235,12 @@ public class TestEnd2End {
             Map<Count, Long> count = getCount(false, false, mode, false, reference, recognition);
             System.out.println("count");
             System.out.println(count);
-            Assert.assertEquals("wrong count GT", Long.valueOf(14 - 1), count.get(Count.GT));
+            Assert.assertEquals("wrong count GT", Long.valueOf(reference.length()-2), count.get(Count.GT));
             Assert.assertEquals("wrong count COR", Long.valueOf(10 - 1), count.get(Count.COR));
             Assert.assertEquals("wrong count INS", Long.valueOf(2), count.get(Count.INS));
             Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.get(Count.DEL));
             Assert.assertEquals("wrong count SUB", Long.valueOf(2), count.get(Count.SUB));
-            Assert.assertEquals("wrong count HYP", Long.valueOf(12 - 1), count.get(Count.HYP));
+            Assert.assertEquals("wrong count HYP", Long.valueOf(recognition.length()-2), count.get(Count.HYP));
         }
     }
 
@@ -416,8 +416,17 @@ public class TestEnd2End {
         Assert.assertEquals(new Long(count + 4), getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference, recognition).get(Count.ERR));
         // 5 DEL ("sieben acht" => "sieben"), 4 SUB + 3 DEL ("neun se" => "acht"), 7 INS ("" => "neun ze")
         Assert.assertEquals(new Long(19), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO, false, reference, recognition).get(Count.ERR));
-        //zero - can repair everything excepte zehn -> ze\nhn: +2 ins +2 del +1 del of Space (double-use fore space and lb not allowed
+        //zero - can repair everything excepte zehn -> ze\nhn: +2 ins +2 del (double-use fore space and lb not allowed)
         Assert.assertEquals(new Long(5), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
+    }
+    @Test
+    public void testLongerText2() {
+//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+
+        String recognition = "neun zehn";
+        String reference = "neun ze\nhn";
+        //zero - can repair everything excepte zehn -> ze\nhn: +2 ins +2 del +1 del of Space (double-use fore space and lb not allowed
+        Assert.assertEquals(new Long(4), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
     }
 
     @Test

@@ -14,6 +14,7 @@ import de.uros.citlab.errorrate.util.HeatMapUtil;
 import de.uros.citlab.errorrate.util.ObjectCounter;
 import de.uros.citlab.errorrate.util.VectorUtil;
 import de.uros.citlab.tokenizer.TokenizerCategorizer;
+import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
 import de.uros.citlab.tokenizer.interfaces.ICategorizer;
 import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
@@ -55,6 +56,10 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
 
     public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, Boolean detailed) {
         this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, usePolygons, detailed, 100);
+    }
+
+    public ErrorModuleEnd2End(Mode mode, boolean usePolygons, Boolean detailed) {
+        this(new CategorizerCharacterDft(), null, mode, usePolygons, detailed);
     }
 
     public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, Boolean detailed, double filterOffset) {
@@ -292,8 +297,8 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                 sb1.append(i == 0 ? "-----" : String.format("%5s", recos[i - 1].replace("\n", "\\n")));
                 for (int j = 0; j < outV.length; j++) {
                     PathCalculatorGraph.DistanceSmall dist = mat.get(i, j);
-                    sb1.append(String.format(" %2d", (int) (dist == null ? 0 : dist.costsAcc + 0.5)));
-                    outV[j] = dist == null ? 0 : dist.costsAcc;
+                    sb1.append(String.format(" %2d", (int) (dist == null ? -1 : dist.costsAcc + 0.999)));
+                    outV[j] = dist == null ? -1 : dist.costsAcc;
                 }
                 LOG.trace(sb1.toString());
             }
@@ -361,11 +366,12 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
 
     private void calculate(AlignmentTask alignmentTask, int sizeProcessViewer, File out) {
         Pair<ObjectCounter<Count>, ObjectCounter<RecoRef>> pathCount = getPathCount(alignmentTask, sizeProcessViewer, out);
-        counter.addAll(pathCount.getFirst());
+        ObjectCounter<Count> countActual = pathCount.getFirst();
+        counter.addAll(countActual);
         if (detailed == null || detailed) {
             substitutionCounter.addAll(pathCount.getSecond());
         }
-        counter.add(Count.ERR, counter.get(Count.INS) + counter.get(Count.DEL) + counter.get(Count.SUB));
+        counter.add(Count.ERR, countActual.get(Count.INS) + countActual.get(Count.DEL) + countActual.get(Count.SUB));
     }
 
     private Pair<ObjectCounter<Count>, ObjectCounter<RecoRef>> getPathCount(AlignmentTask alignmentTask, int sizeProcessViewer, File out) {
@@ -408,26 +414,24 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         List<PathQuality> grouping = GroupUtil.getGrouping(calcBestPath, new GroupUtil.Joiner<PathCalculatorGraph.IDistance<String, String>>() {
             @Override
             public boolean isGroup(List<PathCalculatorGraph.IDistance<String, String>> group, PathCalculatorGraph.IDistance<String, String> element) {
-                DistanceStrStr.TYPE typeBefore = DistanceStrStr.TYPE.valueOf(group.get(group.size() - 1).getManipulation());
                 switch (DistanceStrStr.TYPE.valueOf(element.getManipulation())) {
                     case COR:
                     case INS:
                     case DEL:
                     case SUB:
                     case DEL_LINE:
-                    case MERGE_LINE:
-                    case SPLIT_LINE:
+                        DistanceStrStr.TYPE typeBefore = DistanceStrStr.TYPE.valueOf(group.get(group.size() - 1).getManipulation());
                         switch (typeBefore) {
                             case COR:
                             case INS:
                             case DEL:
                             case SUB:
                             case DEL_LINE:
-                            case MERGE_LINE:
-                            case SPLIT_LINE:
                                 return true;
                         }
                         return false;
+                    case MERGE_LINE:
+                    case SPLIT_LINE:
                     case INS_LINE:
                     case JUMP_RECO:
 //                    case SPLIT_LINE:
@@ -462,10 +466,10 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             public PathQuality map(List<PathCalculatorGraph.IDistance<String, String>> elements) {
                 return new PathQuality(
                         (elements.get(elements.size() - 1).getCostsAcc() - elements.get(0).getCostsAcc() + elements.get(0).getCosts()),
-                        elements.get(0).getPointPrevious()[0],
-                        elements.get(elements.size() - 1).getPoint()[0],
-                        elements.get(0).getPointPrevious()[1],
-                        elements.get(elements.size() - 1).getPoint()[1],
+                        elements.get(0).getPoint()[0] - 1,
+                        elements.get(elements.size() - 1).getPoint()[0] - 1,
+                        elements.get(0).getPoint()[1] - 1,
+                        elements.get(elements.size() - 1).getPoint()[1] - 1,
                         elements);
             }
         });
@@ -502,8 +506,8 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         boolean[] maskReco = new boolean[recos.length];
         boolean[] maskRef = new boolean[refs.length];
         for (PathQuality toDeletePath : grouping) {
-//            PathQuality toDeletePath = grouping.get(0);
             if (!reduceMask(maskReco, toDeletePath.startReco, toDeletePath.endReco)) {
+                LOG.debug("skip count of subpath {}, add for next round", toDeletePath);
                 continue;
             }
             if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
@@ -515,9 +519,9 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             res2.addAll(pathCounts.getSecond());
 //            ObjectCounter<Count> count = count(toDeletePath.path, usedReco, recos, refs);
         }
-        String[] refShorter = getSubProblem(refs, maskRef, null).getFirst();
+        String[] refShorter = getSubProblem(refs, maskRef, alignmentTask.getRefLineMap()).getFirst();
         if (countChars(refShorter) == 0) {
-            String[] recosShorter = getSubProblem(recos, maskReco, null).getFirst();
+            String[] recosShorter = getSubProblem(recos, maskReco, alignmentTask.getRecoLineMap()).getFirst();
             for (int i = 0; i < recosShorter.length; i++) {
                 String s = recosShorter[i];
                 if (!voter.isLineBreak(s)) {
@@ -554,12 +558,12 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     }
 
     private boolean reduceMask(boolean[] mask, int start, int end) {
-        for (int i = start; i < end; i++) {
+        for (int i = start; i < end + 1; i++) {
             if (mask[i]) {
                 return false;
             }
         }
-        for (int i = start; i < end; i++) {
+        for (int i = start; i < end + 1; i++) {
             mask[i] = true;
         }
         return true;
@@ -568,18 +572,21 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     private Pair<String[], int[]> getSubProblem(String[] transcripts, boolean[] toDelete, int[] lineIdxs) {
         LinkedList<String> res = new LinkedList<>();
         LinkedList<Integer> res2 = new LinkedList<>();
-        boolean lastWasLineBreak = false;
         for (int i = 0; i < transcripts.length; i++) {
             if (!toDelete[i]) {
-                //prevent adding double-linebreaks
-                boolean isLineBreak = voter.isLineBreakOrSpace(transcripts[i]);
-                if (!lastWasLineBreak || !isLineBreak) {
-                    res.add(transcripts[i]);
-                    if (lineIdxs != null) {
-                        res2.add(lineIdxs[i]);
-                    }
+                res.add(transcripts[i]);
+                if (lineIdxs != null) {
+                    res2.add(lineIdxs[i]);
                 }
-                lastWasLineBreak = isLineBreak;
+            }
+        }
+        for (int i = res.size()-1; i > 0; i--) {
+            if (voter.isLineBreakOrSpace(res.get(i)) && voter.isLineBreakOrSpace(res.get(i - 1))) {
+                int idx = voter.isSpace(res.get(i)) ? i : i - 1;
+                res.remove(idx);
+                if (lineIdxs != null) {
+                    res2.remove(idx);
+                }
             }
         }
         if (lineIdxs == null) {

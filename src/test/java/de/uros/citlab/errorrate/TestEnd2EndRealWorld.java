@@ -6,35 +6,22 @@
 package de.uros.citlab.errorrate;
 
 import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
-import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.interfaces.ILine;
-import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
-import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
+import de.uros.citlab.errorrate.types.Method;
 import de.uros.citlab.errorrate.types.StopWatch;
 import de.uros.citlab.errorrate.util.ExtractUtil;
 import de.uros.citlab.errorrate.util.ObjectCounter;
-import de.uros.citlab.tokenizer.TokenizerCategorizer;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
-import de.uros.citlab.tokenizer.categorizer.CategorizerWordMergeGroups;
-import eu.transkribus.interfaces.IStringNormalizer;
-import eu.transkribus.interfaces.ITokenizer;
-import org.apache.commons.math3.util.Pair;
 import org.junit.Assert;
 import org.junit.Test;
-import org.primaresearch.dla.page.Page;
-import org.primaresearch.dla.page.layout.physical.Region;
-import org.primaresearch.dla.page.layout.physical.text.LowLevelTextObject;
-import org.primaresearch.dla.page.layout.physical.text.impl.TextLine;
-import org.primaresearch.dla.page.layout.physical.text.impl.TextRegion;
-import org.primaresearch.io.UnsupportedFormatVersionException;
 
-import java.awt.*;
 import java.io.File;
 import java.io.IOException;
-import java.text.Normalizer;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Here every one can add groundtruth (GT) and hypothesis (HYP) text. Then some
@@ -80,12 +67,48 @@ public class TestEnd2EndRealWorld {
     static {
         expecteds.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.2569942611190818, 0.24629374904478069, 0.19306399713979264, 0.311484323083429});
         expecteds.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.1750358680057389, 0.20357634112792297, 0.1927064712191634, 0.21337521899353593});
-        expecteds.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.24497847919655666,0.24232003668042182,0.1873435824097247,0.28937352745725853});
-        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16660688665710185,0.1974629374904478,0.1873435824097247,0.1803902615840029});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.2779770444763271, 0.25981965459269446, 0.19306399713979264, 0.3473086449586178});
+        expecteds.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.24497847919655666, 0.24232003668042182, 0.1873435824097247, 0.28937352745725853});
+        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16660688665710185, 0.1974629374904478, 0.1873435824097247, 0.1803902615840029});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.2777977044476327, 0.25981965459269446, 0.19306399713979264, 0.3473086449586178});
         expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.17539454806312768, 0.20693871312853432, 0.1927064712191634, 0.22239004349927502});
         expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.2666786226685796, 0.2537062509552193, 0.1873435824097247, 0.3265873255603214});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16624820659971307,0.1982271129451322,0.1873435824097247,0.1791928467858869});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16624820659971307, 0.1982271129451322, 0.1873435824097247, 0.1791928467858869});
+    }
+
+    @Test
+    public void testSegmentBug() {
+        File gtFile = new File("src/test/resources/end2end/segment_bug/071_085_002_gt.xml");
+        File hypFile = new File("src/test/resources/end2end/segment_bug/071_085_002_hyp.xml");
+        List<ILine> linesGT = ExtractUtil.getLinesFromFile(gtFile);
+        List<ILine> linesHyp = ExtractUtil.getLinesFromFile(hypFile);
+        ErrorModuleEnd2End module = new ErrorModuleEnd2End(ErrorModuleEnd2End.Mode.NO_RO_SEG, true, null);
+        module.calculateWithSegmentation(linesHyp, linesGT);
+    }
+
+    @Test
+    public void testRO_Consistance() {
+        List<String> linesGT = Arrays.asList("we only want to test", "if a sparate input", "is as good as a", "combined", "input");
+        List<String> linesHyp = Arrays.asList("sde onsdy wantdsto tedst", "isd a ssdarate input", "is asssdgood as a", "combdned", "iaput");
+        de.uros.citlab.errorrate.types.Result resExpect = new de.uros.citlab.errorrate.types.Result(Method.CER);
+        {
+            ErrorModuleEnd2End module = new ErrorModuleEnd2End(ErrorModuleEnd2End.Mode.RO, false, null);
+            for (int i = 0; i < linesGT.size(); i++) {
+                module.calculate(linesHyp.get(i), linesGT.get(i));
+            }
+            de.uros.citlab.errorrate.types.Result res = new de.uros.citlab.errorrate.types.Result(Method.CER);
+            resExpect.addCounts(module.getCounter());
+        }
+        for (ErrorModuleEnd2End.Mode mode : ErrorModuleEnd2End.Mode.values()) {
+            de.uros.citlab.errorrate.types.Result resActual = new de.uros.citlab.errorrate.types.Result(Method.CER);
+            ErrorModuleEnd2End module = new ErrorModuleEnd2End(mode, false, null);
+            module.calculate(linesHyp, linesGT);
+            resActual.addCounts(module.getCounter());
+            Map<Count, Long> countActual = resActual.getCounts().getMap();
+            Map<Count, Long> countExpect = resExpect.getCounts().getMap();
+            for (Count count : countActual.keySet()) {
+                Assert.assertEquals("for mode " + mode + " and count " + count + " has to be the same for same task", countExpect.get(count), countActual.get(count));
+            }
+        }
     }
 
     @Test
