@@ -234,6 +234,14 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             }
             return ("\"" + sbReco + "\"=>\"" + sbRef + "\"").replace("\n", "\\n");
         }
+
+        private boolean isSplit() {
+            return path.size() == 1 && path.get(0).getManipulation().equals(DistanceStrStr.TYPE.SPLIT_LINE.toString());
+        }
+
+        private boolean isMerge() {
+            return path.size() == 1 && path.get(0).getManipulation().equals(DistanceStrStr.TYPE.MERGE_LINE.toString());
+        }
     }
 
     @Override
@@ -297,7 +305,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                 sb1.append(i == 0 ? "-----" : String.format("%5s", recos[i - 1].replace("\n", "\\n")));
                 for (int j = 0; j < outV.length; j++) {
                     PathCalculatorGraph.DistanceSmall dist = mat.get(i, j);
-                    sb1.append(String.format(" %2d", (int) (dist == null ? -1 : dist.costsAcc + 0.999)));
+                    sb1.append(String.format(" %2d", (int) (dist == null ? -1 : dist.costsAcc + 0.99)));
                     outV[j] = dist == null ? -1 : dist.costsAcc;
                 }
                 LOG.trace(sb1.toString());
@@ -477,7 +485,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             @Override
             public int compare(PathQuality o1, PathQuality o2) {
                 //TODO: better function here - maybe dependent on ref-length or on path-length
-                return Double.compare((o1.error + 0.5) / Math.max(1, o1.path.size()), (o2.error + 0.5) / Math.max(1, o2.path.size()));
+                return Double.compare((o1.error + 0.01) / Math.max(1, o1.path.size()), (o2.error + 0.01) / Math.max(1, o2.path.size()));
             }
         });
         if (grouping.isEmpty()) {
@@ -506,12 +514,14 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         boolean[] maskReco = new boolean[recos.length];
         boolean[] maskRef = new boolean[refs.length];
         for (PathQuality toDeletePath : grouping) {
-            if (!reduceMask(maskReco, toDeletePath.startReco, toDeletePath.endReco)) {
-                LOG.debug("skip count of subpath {}, add for next round", toDeletePath);
-                continue;
-            }
-            if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
-                throw new RuntimeException("reference should be used only 1 time in bestPath");
+            if (!toDeletePath.isSplit() && !toDeletePath.isMerge()) {
+                if (!reduceMask(maskReco, toDeletePath.startReco, toDeletePath.endReco)) {
+                    LOG.debug("skip count of subpath {}, add for next round", toDeletePath);
+                    continue;
+                }
+                if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
+                    throw new RuntimeException("reference should be used only 1 time in bestPath");
+                }
             }
             LOG.debug("add count of subpath {}", toDeletePath);
             Pair<ObjectCounter<Count>, ObjectCounter<RecoRef>> pathCounts = getPathCounts(toDeletePath.path, detailed);
@@ -580,7 +590,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                 }
             }
         }
-        for (int i = res.size()-1; i > 0; i--) {
+        for (int i = res.size() - 1; i > 0; i--) {
             if (voter.isLineBreakOrSpace(res.get(i)) && voter.isLineBreakOrSpace(res.get(i - 1))) {
                 int idx = voter.isSpace(res.get(i)) ? i : i - 1;
                 res.remove(idx);

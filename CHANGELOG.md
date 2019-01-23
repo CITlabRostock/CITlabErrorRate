@@ -4,6 +4,7 @@
 # 3.4.2
 * bugfix: fix usage of remaining line breaks and spaces
 * bugfix: Calculation of count ERR
+* better implementation of greedy-algorithm if reading order is ignored
 
 # 3.4.1
 * bugfix: modify test error rates because of changes in 3.4.0 
