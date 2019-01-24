@@ -48,7 +48,7 @@ class CCInsLine extends CCAbstract {
         return new DistanceStrStr(
                 DistanceStrStr.TYPE.INS_LINE,
                 costs,
-                dist.costsAcc + costs,
+                dist.costsAcc,
                 null,
                 subList,
                 point,

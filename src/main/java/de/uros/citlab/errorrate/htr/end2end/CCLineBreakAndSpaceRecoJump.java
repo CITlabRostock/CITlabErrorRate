@@ -54,7 +54,7 @@ class CCLineBreakAndSpaceRecoJump extends CCAbstract implements PathCalculatorGr
 
     @Override
     public PathCalculatorGraph.IDistance<String, String> getNeighbour(PathCalculatorGraph.DistanceSmall dist) {
-        return new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, offsetRecoJump, dist.costsAcc+ offsetRecoJump, (String) null, null, dist.pointPrevious, dist.point);
+        return new DistanceStrStr(DistanceStrStr.TYPE.JUMP_RECO, offsetRecoJump, dist.costsAcc, (String) null, null, dist.pointPrevious, dist.point);
     }
 
     @Override

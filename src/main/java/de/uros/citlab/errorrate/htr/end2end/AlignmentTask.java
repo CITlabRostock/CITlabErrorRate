@@ -52,12 +52,26 @@ public class AlignmentTask {
 
     private AlignmentTask(String[] recos, int[] recoLineMap, String[] refs, int[] refLineMap, boolean[][] adjazent) {
         this.recos = recos;
-        this.recoLineMap = recoLineMap;
+        this.recoLineMap = recoLineMap == null ? getDefaultLineMap(recos) : recoLineMap;
         this.refs = refs;
-        this.refLineMap = refLineMap;
+        this.refLineMap = refLineMap == null ? getDefaultLineMap(refs) : refLineMap;
         this.adjazent = adjazent;
         this.useFilter = adjazent != null;
 
+    }
+
+    private final int[] getDefaultLineMap(String[] line) {
+        int[] res = new int[line.length];
+        int idx = -1;
+        for (int i = 0; i < line.length; i++) {
+            if (line[i] == "\n") {
+                idx++;
+                res[i] = -1;
+            } else {
+                res[i] = idx;
+            }
+        }
+        return res;
     }
 
     public AlignmentTask(Pair<String[], int[]> recos, Pair<String[], int[]> refs, boolean[][] adjazent) {

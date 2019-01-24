@@ -5,6 +5,7 @@
  */
 package de.uros.citlab.errorrate.htr.end2end;
 
+import de.uros.citlab.errorrate.interfaces.IDistance;
 import de.uros.citlab.errorrate.interfaces.IErrorModuleWithSegmentation;
 import de.uros.citlab.errorrate.interfaces.ILine;
 import de.uros.citlab.errorrate.types.*;
@@ -215,6 +216,15 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         private boolean isMerge() {
             return path.size() == 1 && path.get(0).getManipulation().equals(DistanceStrStr.TYPE.MERGE_LINE.toString());
         }
+
+        private boolean isSplitOrMerge() {
+            if (path.size() != 1) {
+                return false;
+            }
+            String manipulation = path.get(0).getManipulation();
+            return manipulation.equals(DistanceStrStr.TYPE.MERGE_LINE.toString()) || manipulation.equals(DistanceStrStr.TYPE.SPLIT_LINE);
+        }
+
     }
 
     @Override
@@ -447,7 +457,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         int max = VectorUtil.max(usedReco);
         //if any reference is used, the resulting array "usedReco" should only conatain zeros.
         if (!mode.ignoreReadingOrder() || !(max > 1 || countUnusedChars(usedReco, recos) > 0)) {
-            return getPathCounts(calcBestPath);
+            return getPathCounts(calcBestPath, alignmentTask, calcLineComparison);
         }
         // 1. group path into line-line-path
         // 2. sort paths according quality
@@ -519,7 +529,11 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             @Override
             public int compare(PathQuality o1, PathQuality o2) {
                 //TODO: better function here - maybe dependent on ref-length or on path-length
-                return Double.compare((o1.error + 0.01) / Math.max(1, o1.path.size()), (o2.error + 0.01) / Math.max(1, o2.path.size()));
+                return o1.isSplitOrMerge() != o2.isSplitOrMerge() ?
+                        o1.isSplitOrMerge() ?
+                                1 :
+                                -1 :
+                        Double.compare((o1.error + 0.01) / Math.max(1, o1.path.size()), (o2.error + 0.01) / Math.max(1, o2.path.size()));
             }
         });
         if (grouping.isEmpty()) {
@@ -548,7 +562,31 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         boolean[] maskReco = new boolean[recos.length];
         boolean[] maskRef = new boolean[refs.length];
         for (PathQuality toDeletePath : grouping) {
-            if (!toDeletePath.isSplit() && !toDeletePath.isMerge()) {
+            if (toDeletePath.isMerge()) {
+                int startRef = toDeletePath.startRef;
+                if (maskRef[startRef]) {
+                    LOG.debug("skip count of subpath {}, add for next round", toDeletePath);
+                    continue;
+                }
+                //check if it is next to already deleted text
+                //left:
+                if (startRef > 0 && maskRef[startRef - 1]) {
+                    if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
+                        throw new RuntimeException("reference should be used only 1 time in bestPath");
+                    }
+                    LOG.debug("add count of subpath {}", toDeletePath);
+                    res.addAll(getPathCounts(toDeletePath.path, alignmentTask, false));
+                } else if (startRef < maskRef.length - 1 && maskRef[startRef + 1]) {
+                    //or check right otherwise
+                    if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
+                        throw new RuntimeException("reference should be used only 1 time in bestPath");
+                    }
+                    LOG.debug("add count of subpath {}", toDeletePath);
+                    res.addAll(getPathCounts(toDeletePath.path, alignmentTask, false));
+                }
+            } else if (toDeletePath.isSplit()) {
+                //nothing to do: Splits only occur if HYP=" " and GT="\n" -> nothing have to be count.
+            } else {
                 if (!reduceMask(maskReco, toDeletePath.startReco, toDeletePath.endReco)) {
                     LOG.debug("skip count of subpath {}, add for next round", toDeletePath);
                     continue;
@@ -556,9 +594,10 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                 if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
                     throw new RuntimeException("reference should be used only 1 time in bestPath");
                 }
+                LOG.debug("add count of subpath {}", toDeletePath);
+                res.addAll(getPathCounts(toDeletePath.path, alignmentTask, calcLineComparison));
+
             }
-            LOG.debug("add count of subpath {}", toDeletePath);
-            res.addAll(getPathCounts(toDeletePath.path));
         }
         String[] refShorter = getSubProblem(refs, maskRef, alignmentTask.getRefLineMap()).getFirst();
         if (countChars(refShorter) == 0) {
@@ -570,7 +609,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                         //allow any partition of text - then it is better to substitute spaces by newlines. Do not count spaces.
                         continue;
                     }
-                    res.add(new RecoRef(new String[]{s}, new String[0]), null, Count.HYP, Count.DEL);
+                    res.add(new RecoRef(new String[]{s}, new String[0]), Count.HYP, Count.DEL);
                 }
             }
             return res;
@@ -606,10 +645,12 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         }
         return true;
     }
+//    private int cnt = 0;
 
     private Pair<String[], int[]> getSubProblem(String[] transcripts, boolean[] toDelete, int[] lineIdxs) {
         LinkedList<String> res = new LinkedList<>();
         LinkedList<Integer> res2 = new LinkedList<>();
+//        cnt = 0;
         for (int i = 0; i < transcripts.length; i++) {
             if (!toDelete[i]) {
                 res.add(transcripts[i]);
@@ -621,6 +662,10 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         for (int i = res.size() - 1; i > 0; i--) {
             if (voter.isLineBreakOrSpace(res.get(i)) && voter.isLineBreakOrSpace(res.get(i - 1))) {
                 int idx = voter.isSpace(res.get(i)) ? i : i - 1;
+//                String s = res.get(idx);
+//                if(voter.isSpace(s)){
+//                    cnt++;
+//                }
                 res.remove(idx);
                 if (lineIdxs != null) {
                     res2.remove(idx);
@@ -637,7 +682,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         return new Pair<>(res.toArray(new String[0]), idxs);
     }
 
-    private PathCountResult getPathCounts(List<PathCalculatorGraph.IDistance<String, String>> path) {
+    private PathCountResult getPathCounts(List<PathCalculatorGraph.IDistance<String, String>> path, AlignmentTask alignmentTask, boolean calcLineComparison) {
         ObjectCounter<Count> res = new ObjectCounter<>();
         ObjectCounter<RecoRef> res2 = new ObjectCounter<>();
 //        int cnt = 0;
@@ -720,7 +765,62 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     throw new RuntimeException("found type '" + dist.getManipulation() + "'");
             }
         }
-        return new PathCountResult(res, res2, null);
+        LineComparison lc = null;
+        if (calcLineComparison) {
+            StringBuilder recoBuilder = new StringBuilder();
+            StringBuilder refBuilder = new StringBuilder();
+            final List<IDistance> manipulations = new LinkedList<>();
+            for (PathCalculatorGraph.IDistance<String, String> point : path) {
+                final String reco = point.getRecos() == null ? "" : point.getRecos()[0];
+                final String ref = point.getRecos() == null ? "" : point.getRecos()[0];
+                recoBuilder.append(reco);
+                refBuilder.append(ref);
+                manipulations.add(new IDistance() {
+                    @Override
+                    public Manipulation getManipulation() {
+                        return Manipulation.valueOf(point.getManipulation());
+                    }
+
+                    @Override
+                    public String getReco() {
+                        return reco;
+                    }
+
+                    @Override
+                    public String getRef() {
+                        return ref;
+                    }
+                });
+            }
+            lc = new LineComparison() {
+                @Override
+                public int getRecoIndex() {
+                    return alignmentTask.getRecoLineMap()[path.get(0).getPoint()[0] - 1];
+                }
+
+                @Override
+                public int getRefIndex() {
+                    return alignmentTask.getRefLineMap()[path.get(0).getPoint()[1] - 1];
+                }
+
+                @Override
+                public String getRefText() {
+                    return refBuilder.toString();
+                }
+
+                @Override
+                public String getRecoText() {
+                    return recoBuilder.toString();
+                }
+
+                @Override
+                public List<IDistance> getPath() {
+                    return manipulations;
+                }
+            };
+
+        }
+        return new PathCountResult(res, res2, lc == null ? null : Arrays.asList(lc));
     }
 
     private int countUnusedChars(int[] usage, String[] out) {
@@ -764,39 +864,14 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         if (substitutionMap.countSubstitutions) {
             for (Pair<RecoRef, Long> pair : substitutionCounter.getResultOccurrence()) {
                 RecoRef first = pair.getFirst();
-                String[] recos = first.recos;
-                String key1;
-                if (recos == null || recos.length == 0) {
-                    key1 = "";
-                } else if (recos.length == 1) {
-                    key1 = recos[0];
-                } else {
-                    key1 = Arrays.toString(first.recos);
-                }
-                String[] refs = first.refs;
-                String key2;
-                if (refs == null || refs.length == 0) {
-                    key2 = "";
-                } else if (refs.length == 1) {
-                    key2 = refs[0];
-                } else {
-                    key2 = Arrays.toString(first.refs);
-                }
+                String reco = first.getReco();
+                String ref = first.getRef();
+                String key1 = reco == null ? "" : reco;
+                String key2 = ref == null ? "" : ref;
                 res.addFirst("[" + key1 + "=>" + key2 + "]=" + pair.getSecond());
             }
         }
         List<Pair<Count, Long>> resultOccurrence = getCounter().getResultOccurrence();
-//        long sum = 0;
-//        int length = 1;
-//        for (Pair<Count, Long> pair : resultOccurrence) {
-//            sum += pair.getSecond();
-//            length = Math.max(length, pair.getFirst().toString().length());
-//        }
-//        int length2 = String.valueOf(sum).length();
-//        res.add(String.format("%" + length + "s =%6.2f%% ; %" + length2 + "d", "ALL", 100.0, sum));
-//        for (Pair<Count, Long> pair : resultOccurrence) {
-//            res.add(String.format("%" + length + "s =%6.2f%% ; %" + length2 + "d", pair.toString(), (((double) pair.getSecond()) / sum * 100), pair.getSecond()));
-//        }
         res.add(resultOccurrence.toString());
         return res;
     }
@@ -822,44 +897,5 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         return sb.toString();
     }
 
-    private static class RecoRef {
 
-        private String[] recos;
-        private String[] refs;
-
-        public RecoRef(String[] recos, String[] refs) {
-            this.recos = recos;
-            this.refs = refs;
-        }
-
-        @Override
-        public int hashCode() {
-            int hash = 7;
-            hash = 29 * hash + Arrays.deepHashCode(this.recos);
-            hash = 29 * hash + Arrays.deepHashCode(this.refs);
-            return hash;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            final RecoRef other = (RecoRef) obj;
-            if (!Arrays.deepEquals(this.recos, other.recos)) {
-                return false;
-            }
-            if (!Arrays.deepEquals(this.refs, other.refs)) {
-                return false;
-            }
-            return true;
-        }
-
-    }
 }

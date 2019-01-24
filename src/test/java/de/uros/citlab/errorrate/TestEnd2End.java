@@ -18,7 +18,6 @@ import eu.transkribus.interfaces.ITokenizer;
 import org.junit.Assert;
 import org.junit.Test;
 
-import javax.swing.text.StyledEditorKit;
 import java.io.File;
 import java.text.Normalizer;
 import java.util.*;
@@ -197,18 +196,6 @@ public class TestEnd2End {
     }
 
     @Test
-    public void testCountComparisonSmall() {
-//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
-
-        String recognition = "dazu Pfeffer\nPfeffer";
-        String reference = "dazu Pfeffer Mehl Salz\nPfeffer";
-        Map<Count, Long> count_NO_RO_SEG = getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition);
-        System.out.println("count_NO_RO_SEG");
-        System.out.println(count_NO_RO_SEG);
-        Assert.assertEquals("ground truth should have the same length", Long.valueOf(reference.replaceAll("\n", "").length()), count_NO_RO_SEG.get(Count.GT));
-    }
-
-    @Test
     public void testCountComparisonAcademical1() {
 //        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
         for (ErrorModuleEnd2End.Mode mode : new ErrorModuleEnd2End.Mode[]{ErrorModuleEnd2End.Mode.NO_RO_SEG}) {
@@ -235,12 +222,12 @@ public class TestEnd2End {
             Map<Count, Long> count = getCount(false, false, mode, false, reference, recognition);
             System.out.println("count");
             System.out.println(count);
-            Assert.assertEquals("wrong count GT", Long.valueOf(reference.length()-2), count.get(Count.GT));
+            Assert.assertEquals("wrong count GT", Long.valueOf(reference.length() - 2), count.get(Count.GT));
             Assert.assertEquals("wrong count COR", Long.valueOf(10 - 1), count.get(Count.COR));
             Assert.assertEquals("wrong count INS", Long.valueOf(2), count.get(Count.INS));
             Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.get(Count.DEL));
             Assert.assertEquals("wrong count SUB", Long.valueOf(2), count.get(Count.SUB));
-            Assert.assertEquals("wrong count HYP", Long.valueOf(recognition.length()-2), count.get(Count.HYP));
+            Assert.assertEquals("wrong count HYP", Long.valueOf(recognition.length() - 2), count.get(Count.HYP));
         }
     }
 
@@ -318,8 +305,8 @@ public class TestEnd2End {
         Assert.assertEquals("wrong count INS", Long.valueOf(ins), count.get(Count.INS));
         Assert.assertEquals("wrong count DEL", Long.valueOf(del), count.get(Count.DEL));
         Assert.assertEquals("wrong count SUB", Long.valueOf(sub), count.get(Count.SUB));
-        Assert.assertEquals("wrong count COR", new Long(gtLength.intValue() - sub-ins), count.get(Count.COR));
-        Assert.assertEquals("wrong count HYP", Long.valueOf(gtLength+del-ins), count.get(Count.HYP));
+        Assert.assertEquals("wrong count COR", new Long(gtLength.intValue() - sub - ins), count.get(Count.COR));
+        Assert.assertEquals("wrong count HYP", Long.valueOf(gtLength + del - ins), count.get(Count.HYP));
     }
 
     @Test
@@ -355,6 +342,18 @@ public class TestEnd2End {
             Assert.assertEquals("wrong count SUB", Long.valueOf(0), count.get(Count.SUB));
             Assert.assertEquals("wrong count HYP", Long.valueOf(9), count.get(Count.HYP));
         }
+    }
+
+    @Test
+    public void testCountComparisonSmall() {
+//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+
+        String recognition = "a";
+        String reference = "a b c d";
+        Map<Count, Long> count_NO_RO_SEG = getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition);
+        System.out.println("count_NO_RO_SEG");
+        System.out.println(count_NO_RO_SEG);
+        Assert.assertEquals("ground truth should have the same length", Long.valueOf(reference.replaceAll("\n", "").length()), count_NO_RO_SEG.get(Count.GT));
     }
 
     @Test
@@ -419,6 +418,7 @@ public class TestEnd2End {
         //zero - can repair everything excepte zehn -> ze\nhn: +2 ins +2 del (double-use fore space and lb not allowed)
         Assert.assertEquals(new Long(5), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
     }
+
     @Test
     public void testLongerText2() {
 //        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
@@ -488,7 +488,7 @@ public class TestEnd2End {
     }
 
     @Test
-    public void testSubstitutionMap(){
+    public void testSubstitutionMap() {
         String gt = "groundtruth\nstring";
         String hyp = "string\ngroundtruth";
         System.out.println((" test \"" + gt + "\" vs \"" + hyp + "\"").replace("\n", "\\n"));
