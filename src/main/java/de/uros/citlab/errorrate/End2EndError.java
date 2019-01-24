@@ -5,38 +5,28 @@
  */
 package de.uros.citlab.errorrate;
 
-import de.uros.citlab.errorrate.htr.ErrorModuleBagOfTokens;
 import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
 import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
-import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.interfaces.IErrorModuleWithSegmentation;
 import de.uros.citlab.errorrate.interfaces.ILine;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
-import de.uros.citlab.errorrate.normalizer.StringNormalizerDftConfigurable;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
-import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.Method;
 import de.uros.citlab.errorrate.types.Metric;
 import de.uros.citlab.errorrate.types.Result;
 import de.uros.citlab.errorrate.util.ExtractUtil;
-import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterConfigurable;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
-import de.uros.citlab.tokenizer.categorizer.CategorizerWordDftConfigurable;
 import de.uros.citlab.tokenizer.interfaces.ICategorizer;
 import eu.transkribus.interfaces.IStringNormalizer;
-import eu.transkribus.languageresources.extractor.pagexml.PAGEXMLExtractor;
 import org.apache.commons.cli.*;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.text.Normalizer;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Parser to make {@link ErrorModuleDynProg} accessible for the console.
@@ -82,7 +72,12 @@ public class End2EndError {
 //                help("the options -d and -D are not supported yet.");
 //            }
             //how detailed should the output be
-            Boolean detailed = cmd.hasOption('d') ? null : cmd.hasOption('D');
+            ErrorModuleEnd2End.SubstitutionMap substitutionMap =
+                    cmd.hasOption('d') ?
+                            ErrorModuleEnd2End.SubstitutionMap.SUBSTITUTIONS :
+                            cmd.hasOption('D') ?
+                                    ErrorModuleEnd2End.SubstitutionMap.ALL :
+                                    ErrorModuleEnd2End.SubstitutionMap.OFF;
             //upper case?
             boolean upper = cmd.hasOption('u');
             //canoncal or compatibility composition form?
@@ -113,10 +108,10 @@ public class End2EndError {
                             cmd.hasOption('s') ?
                                     ErrorModuleEnd2End.Mode.RO_SEG :
                                     ErrorModuleEnd2End.Mode.RO;
-            IErrorModuleWithSegmentation em = new ErrorModuleEnd2End(categorizer, sn, mode, geometry, detailed);
+            IErrorModuleWithSegmentation em = new ErrorModuleEnd2End(categorizer, sn, mode, geometry, substitutionMap);
             if (cmd.hasOption('t')) {
                 double t = Double.parseDouble(cmd.getOptionValue('t'));
-                if(t<0.0||t>=1.0){
+                if (t < 0.0 || t >= 1.0) {
                     throw new RuntimeException("threshold for couverage (parameter -t) have to be in intervall [0.0,1.0)");
                 }
                 ((ErrorModuleEnd2End) em).setThresholdCouverage(t);
@@ -157,7 +152,7 @@ public class End2EndError {
             }
             //print statistic to console
 //            List<Pair<Count, Long>> resultOccurrence = em.getCounter().getResultOccurrence();
-            if (detailed == null || detailed == true) {
+            if (substitutionMap.countSubstitutions) {
                 List<String> results = em.getResults();
                 for (String result : results) {
                     System.out.println(result);

@@ -494,7 +494,7 @@ public class TestEnd2End {
         System.out.println((" test \"" + gt + "\" vs \"" + hyp + "\"").replace("\n", "\\n"));
         ITokenizer tokenizer = new TokenizerCategorizer(new CategorizerCharacterDft());
         IStringNormalizer sn = new StringNormalizerDft(Normalizer.Form.NFKC, false);
-        IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, ErrorModuleEnd2End.Mode.RO_SEG, false, null);
+        IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, ErrorModuleEnd2End.Mode.RO_SEG, false, ErrorModuleEnd2End.SubstitutionMap.SUBSTITUTIONS);
 //        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
         impl.calculate(hyp, gt);
         List<String> results = impl.getResults();
@@ -529,7 +529,7 @@ public class TestEnd2End {
         if (letterNumber) {
             sn = new StringNormalizerLetterNumber(sn);
         }
-        IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, mode, false, false);
+        IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, mode, false, ErrorModuleEnd2End.SubstitutionMap.OFF);
 //        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
         impl.calculate(hyp, gt);
 

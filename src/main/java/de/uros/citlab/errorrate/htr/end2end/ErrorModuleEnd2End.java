@@ -7,8 +7,7 @@ package de.uros.citlab.errorrate.htr.end2end;
 
 import de.uros.citlab.errorrate.interfaces.IErrorModuleWithSegmentation;
 import de.uros.citlab.errorrate.interfaces.ILine;
-import de.uros.citlab.errorrate.types.Count;
-import de.uros.citlab.errorrate.types.PathCalculatorGraph;
+import de.uros.citlab.errorrate.types.*;
 import de.uros.citlab.errorrate.util.GroupUtil;
 import de.uros.citlab.errorrate.util.HeatMapUtil;
 import de.uros.citlab.errorrate.util.ObjectCounter;
@@ -18,20 +17,16 @@ import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
 import de.uros.citlab.tokenizer.interfaces.ICategorizer;
 import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
-import gnu.trove.map.hash.TIntDoubleHashMap;
 import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
- * Module, which uses the {@link PathCalculatorGraph} to calculate the error
- * rates between tokens. Some other classes are needed, to calculate the error
+ * Module, which uses the {@link PathCalculatorGraph} to calculateIntern the error
+ * rates between tokens. Some other classes are needed, to calculateIntern the error
  * rate. See {@link ITokenizer} and
  * {@link IStringNormalizer} for more details.
  *
@@ -41,7 +36,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     private final ObjectCounter<Count> counter = new ObjectCounter<>();
     private final ObjectCounter<RecoRef> substitutionCounter = new ObjectCounter<>();
     private final ITokenizer tokenizer;
-    private final Boolean detailed;
+    private final SubstitutionMap substitutionMap;
     private final IStringNormalizer stringNormalizer;
     private final PathCalculatorGraph<String, String> pathCalculator = new PathCalculatorGraph<>();
     private final Mode mode;
@@ -53,37 +48,70 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     private boolean usePolygons;
     private double thresholdCouverage = 0.0;
 
+    public enum SubstitutionMap {
+        OFF(false, false),
+        SUBSTITUTIONS(false, true),
+        ALL(true, true);
+        public boolean countAll;
+        public boolean countSubstitutions;
 
-    public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, Boolean detailed) {
-        this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, usePolygons, detailed, 100);
+        SubstitutionMap(boolean countAll, boolean countSubstitutions) {
+            this.countAll = countAll;
+            this.countSubstitutions = countSubstitutions;
+        }
     }
 
-    public ErrorModuleEnd2End(Mode mode, boolean usePolygons, Boolean detailed) {
-        this(new CategorizerCharacterDft(), null, mode, usePolygons, detailed);
+
+    public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, SubstitutionMap substitutionMap) {
+        this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, usePolygons, substitutionMap, 100);
     }
 
-    public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, Boolean detailed, double filterOffset) {
-        this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, usePolygons, detailed, filterOffset);
+    public ErrorModuleEnd2End(Mode mode, boolean usePolygons, SubstitutionMap substitutionMap) {
+        this(new CategorizerCharacterDft(), null, mode, usePolygons, substitutionMap);
+    }
+
+    public ErrorModuleEnd2End(ICategorizer categorizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, SubstitutionMap substitutionMap, double filterOffset) {
+        this(new TokenizerCategorizer(categorizer), stringNormalizer, mode, usePolygons, substitutionMap, filterOffset);
     }
 
     public enum Mode {
-        RO,
-        NO_RO,
-        RO_SEG,
-        NO_RO_SEG,
+        RO(false, false),
+        NO_RO(true, false),
+        RO_SEG(false, true),
+        NO_RO_SEG(true, true);
+
+        private boolean ignoreReadingOrder;
+        private boolean ignoreSegmentation;
+
+        Mode(boolean ignoreReadingOrder, boolean ignoreSegmentation) {
+            this.ignoreReadingOrder = ignoreReadingOrder;
+            this.ignoreSegmentation = ignoreSegmentation;
+        }
+
+        public boolean ignoreReadingOrder() {
+            return ignoreReadingOrder;
+        }
+
+        public boolean ignoreSegmentation() {
+            return ignoreSegmentation;
+        }
+
     }
 
     public void setThresholdCouverage(double thresholdCouverage) {
         this.thresholdCouverage = thresholdCouverage;
     }
 
-    public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, Boolean detailed) {
-        this(tokenizer, stringNormalizer, mode, usePolygons, detailed, 100);
+    public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, SubstitutionMap substitutionMap) {
+        this(tokenizer, stringNormalizer, mode, usePolygons, substitutionMap, 100);
     }
 
-    public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, Boolean detailed, double filterOffset) {
+    public ErrorModuleEnd2End(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, SubstitutionMap substitutionMap, double filterOffset) {
         this.usePolygons = usePolygons;
-        this.detailed = detailed;
+        if (substitutionMap == null) {
+            throw new RuntimeException("substitutionMap have to be one of " + Arrays.asList(SubstitutionMap.values()));
+        }
+        this.substitutionMap = substitutionMap;
         this.mode = mode;
         if (tokenizer == null) {
             throw new RuntimeException("no tokenizer given (is null)");
@@ -140,61 +168,6 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         fileDynProg = file;
     }
 
-    private static class FilterHorizontalFixedLength implements PathCalculatorGraph.PathFilter<String, String> {
-        private TIntDoubleHashMap map = new TIntDoubleHashMap();
-        private final double offset;
-        private final int grid;
-
-        private FilterHorizontalFixedLength(double offset, int grid) {
-            this.offset = offset;
-            this.grid = grid;
-        }
-
-        @Override
-        public void init(String[] strings, String[] strings2) {
-            map.clear();
-        }
-
-        @Override
-        public boolean addNewEdge(PathCalculatorGraph.DistanceSmall newDistance) {
-            final int x = newDistance.point[1];
-            if (x % grid != 0) {
-                return true;
-            }
-            int key = x / grid;
-            if (!map.containsKey(key)) {
-                map.put(key, newDistance.costsAcc);
-                return true;
-            }
-            final double before = map.get(key);
-            double after = newDistance.costsAcc;
-            if (after < before) {
-                map.put(key, after);
-                return true;
-            }
-            if (before + offset < after) {
-                return false;
-            }
-            //before + offset > after : gap is too large!
-            return true;
-        }
-
-        @Override
-        public boolean followPathsFromBestEdge(PathCalculatorGraph.DistanceSmall bestDistance) {
-            final int x = bestDistance.point[1];
-            int key = x / grid + 1;
-            if (!map.containsKey(key)) {
-                return true;
-            }
-            final double before = map.get(key);
-            double after = bestDistance.costsAcc;
-            if (before + offset < after) {
-                return false;
-            }
-            //before + offset > after : gap is too large!
-            return true;
-        }
-    }
 
     private static class PathQuality {
         private double error;
@@ -250,7 +223,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                 "counter=" + counter +
                 ", substitutionCounter=" + substitutionCounter +
                 ", tokenizer=" + tokenizer +
-                ", detailed=" + detailed +
+                ", substitutionMap=" + substitutionMap +
                 ", stringNormalizer=" + stringNormalizer +
                 ", pathCalculator=" + pathCalculator +
                 ", mode=" + mode +
@@ -268,7 +241,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
      * @param ref  reference
      */
     @Override
-    public void calculate(String reco, String ref) {
+    public List<LineComparison> calculate(String reco, String ref, boolean calcLineComparison) {
 //        final String recoOrig = reco;
 //        final String refOrig = ref;
         //use string normalizer, if set
@@ -287,7 +260,12 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         refList.add("\n");
         String[] refs = refList.toArray(new String[0]);
         AlignmentTask result = new AlignmentTask(recos, refs);
-        calculate(result, sizeProcessViewer, fileDynProg);
+        return calculateIntern(result, sizeProcessViewer, fileDynProg, calcLineComparison);
+    }
+
+    @Override
+    public List<LineComparison> calculate(List<String> reco, List<String> ref, boolean calcLineComarison) {
+        return calculate(toOneLine(reco), toOneLine(ref), calcLineComarison);
     }
 
     private void log(PathCalculatorGraph.DistanceMat<String, String> mat, List<PathCalculatorGraph.IDistance<String, String>> calcBestPath, String[] recos, String[] refs) {
@@ -366,27 +344,83 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
 
 
     @Override
-    public void calculateWithSegmentation(List<ILine> reco, List<ILine> ref) {
+    public List<LineComparison> calculateWithSegmentation(List<ILine> reco, List<ILine> ref, boolean calcLineComarison) {
         AlignmentTask lmr = new AlignmentTask(reco, ref, tokenizer, stringNormalizer, thresholdCouverage);
-        calculate(lmr, sizeProcessViewer, fileDynProg);
-
+        return calculateIntern(lmr, sizeProcessViewer, fileDynProg, calcLineComarison);
     }
 
-    private void calculate(AlignmentTask alignmentTask, int sizeProcessViewer, File out) {
-        Pair<ObjectCounter<Count>, ObjectCounter<RecoRef>> pathCount = getPathCount(alignmentTask, sizeProcessViewer, out);
-        ObjectCounter<Count> countActual = pathCount.getFirst();
+    @Override
+    public void calculateWithSegmentation(List<ILine> reco, List<ILine> ref) {
+        calculateWithSegmentation(reco, ref, false);
+    }
+
+    @Override
+    public void calculate(String reco, String ref) {
+        calculate(reco, ref, false);
+    }
+
+    @Override
+    public void calculate(List<String> reco, List<String> ref) {
+        calculate(toOneLine(reco), toOneLine(ref), false);
+    }
+
+    @Override
+    public Map<Metric, Double> getMetrics() {
+        Result res = new Result(Method.CER);
+        res.addCounts(counter);
+        return res.getMetrics();
+    }
+
+    private List<LineComparison> calculateIntern(AlignmentTask alignmentTask, int sizeProcessViewer, File out, boolean calcLineComparison) {
+        PathCountResult pathCountResult = getPathCount(alignmentTask, sizeProcessViewer, out, calcLineComparison);
+        ObjectCounter<Count> countActual = pathCountResult.oc;
         counter.addAll(countActual);
-        if (detailed == null || detailed) {
-            substitutionCounter.addAll(pathCount.getSecond());
+        if (pathCountResult.recoref != null) {
+            substitutionCounter.addAll(pathCountResult.recoref);
         }
-        counter.add(Count.ERR, countActual.get(Count.INS) + countActual.get(Count.DEL) + countActual.get(Count.SUB));
+        counter.set(Count.ERR, counter.get(Count.INS) + counter.get(Count.DEL) + counter.get(Count.SUB));
+        return pathCountResult.lineComparisons;
     }
 
-    private Pair<ObjectCounter<Count>, ObjectCounter<RecoRef>> getPathCount(AlignmentTask alignmentTask, int sizeProcessViewer, File out) {
-        //use dynamic programming to calculate the cheapest path through the dynamic programming tabular
+    private static class PathCountResult {
+        private ObjectCounter<Count> oc;
+        private ObjectCounter<RecoRef> recoref;
+        private List<LineComparison> lineComparisons;
+
+        public PathCountResult() {
+            this(new ObjectCounter<>(), new ObjectCounter<>(), new LinkedList<>());
+        }
+
+        public PathCountResult(ObjectCounter<Count> oc, ObjectCounter<RecoRef> recoref, List<LineComparison> lineComparisons) {
+            this.oc = oc;
+            this.recoref = recoref;
+            this.lineComparisons = lineComparisons;
+        }
+
+        void add(RecoRef recoRef, Count... count) {
+            this.recoref.add(recoRef);
+            for (Count c : count) {
+                oc.add(c);
+            }
+        }
+
+        void add(LineComparison lineComparison) {
+            lineComparisons.add(lineComparison);
+        }
+
+        void addAll(PathCountResult toAdd) {
+            oc.addAll(toAdd.oc);
+            recoref.addAll(toAdd.recoref);
+            if (toAdd.lineComparisons != null) {
+                lineComparisons.addAll(toAdd.lineComparisons);
+            }
+        }
+    }
+
+    private PathCountResult getPathCount(AlignmentTask alignmentTask, int sizeProcessViewer, File out, boolean calcLineComparison) {
+        //use dynamic programming to calculateIntern the cheapest path through the dynamic programming tabular
 //        calcBestPathFast(recos, refs);
-        ObjectCounter<Count> res1 = new ObjectCounter<>();
-        ObjectCounter<RecoRef> res2 = new ObjectCounter<>();
+        PathCountResult res = new PathCountResult();
         if (filter != null) {
             filter.setAlignmentTask(alignmentTask);
         }
@@ -412,8 +446,8 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         int[] usedReco = getUsedRecos(recos, calcBestPath);
         int max = VectorUtil.max(usedReco);
         //if any reference is used, the resulting array "usedReco" should only conatain zeros.
-        if (isRO() || !(max > 1 || countUnusedChars(usedReco, recos) > 0)) {
-            return getPathCounts(calcBestPath, detailed);
+        if (!mode.ignoreReadingOrder() || !(max > 1 || countUnusedChars(usedReco, recos) > 0)) {
+            return getPathCounts(calcBestPath);
         }
         // 1. group path into line-line-path
         // 2. sort paths according quality
@@ -502,14 +536,14 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                 default:
                     throw new RuntimeException("not implemented yet");
             }
-            ErrorModuleEnd2End fallback = new ErrorModuleEnd2End(tokenizer, null, modeFallback, usePolygons, detailed, 0.0);
+            ErrorModuleEnd2End fallback = new ErrorModuleEnd2End(tokenizer, null, modeFallback, usePolygons, substitutionMap, 0.0);
             File outSubProblem = null;
             if (out != null) {
                 String path = out.getPath();
                 path = path.substring(0, path.lastIndexOf(".")) + "_" + path.substring(path.lastIndexOf("."));
                 outSubProblem = new File(path);
             }
-            return fallback.getPathCount(alignmentTask, sizeProcessViewer, outSubProblem);
+            return fallback.getPathCount(alignmentTask, sizeProcessViewer, outSubProblem, calcLineComparison);
         }
         boolean[] maskReco = new boolean[recos.length];
         boolean[] maskRef = new boolean[refs.length];
@@ -524,10 +558,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                 }
             }
             LOG.debug("add count of subpath {}", toDeletePath);
-            Pair<ObjectCounter<Count>, ObjectCounter<RecoRef>> pathCounts = getPathCounts(toDeletePath.path, detailed);
-            res1.addAll(pathCounts.getFirst());
-            res2.addAll(pathCounts.getSecond());
-//            ObjectCounter<Count> count = count(toDeletePath.path, usedReco, recos, refs);
+            res.addAll(getPathCounts(toDeletePath.path));
         }
         String[] refShorter = getSubProblem(refs, maskRef, alignmentTask.getRefLineMap()).getFirst();
         if (countChars(refShorter) == 0) {
@@ -535,16 +566,14 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             for (int i = 0; i < recosShorter.length; i++) {
                 String s = recosShorter[i];
                 if (!voter.isLineBreak(s)) {
-                    if (isSeg() && voter.isSpace(s)) {
+                    if (mode.ignoreSegmentation() && voter.isSpace(s)) {
                         //allow any partition of text - then it is better to substitute spaces by newlines. Do not count spaces.
                         continue;
                     }
-                    res1.add(Count.HYP);
-                    res1.add(Count.DEL);
-                    res2.add(new RecoRef(new String[]{s}, new String[0]));
+                    res.add(new RecoRef(new String[]{s}, new String[0]), null, Count.HYP, Count.DEL);
                 }
             }
-            return new Pair<>(res1, res2);
+            return res;
         }
         File outSubProblem = null;
         if (out != null) {
@@ -553,10 +582,9 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             outSubProblem = new File(path);
         }
         AlignmentTask subProblem = getSubProblem(alignmentTask, maskRef, maskReco);
-        Pair<ObjectCounter<Count>, ObjectCounter<RecoRef>> pathCountSubProblem = getPathCount(subProblem, sizeProcessViewer, outSubProblem);
-        res1.addAll(pathCountSubProblem.getFirst());
-        res2.addAll(pathCountSubProblem.getSecond());
-        return new Pair<>(res1, res2);
+        PathCountResult pathCountResult = getPathCount(subProblem, sizeProcessViewer, outSubProblem, calcLineComparison);
+        res.addAll(pathCountResult);
+        return res;
     }
 
     private AlignmentTask getSubProblem(AlignmentTask original, boolean[] maskRef, boolean[] maskReco) {
@@ -609,15 +637,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         return new Pair<>(res.toArray(new String[0]), idxs);
     }
 
-    private boolean isSeg() {
-        return mode.equals(Mode.RO_SEG) || mode.equals(Mode.NO_RO_SEG);
-    }
-
-    private boolean isRO() {
-        return mode.equals(Mode.RO) || mode.equals(Mode.RO_SEG);
-    }
-
-    private Pair<ObjectCounter<Count>, ObjectCounter<RecoRef>> getPathCounts(List<PathCalculatorGraph.IDistance<String, String>> path, Boolean detailed) {
+    private PathCountResult getPathCounts(List<PathCalculatorGraph.IDistance<String, String>> path) {
         ObjectCounter<Count> res = new ObjectCounter<>();
         ObjectCounter<RecoRef> res2 = new ObjectCounter<>();
 //        int cnt = 0;
@@ -628,21 +648,21 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             }
             switch (DistanceStrStr.TYPE.valueOf(m)) {
                 case DEL:
-                    if (detailed == null || detailed.booleanValue()) {
+                    if (substitutionMap.countSubstitutions) {
                         res2.add(new RecoRef(dist.getRecos(), dist.getReferences()));
                     }
                     res.add(Count.HYP);
                     res.add(Count.DEL);
                     break;
                 case INS:
-                    if (detailed == null || detailed.booleanValue()) {
+                    if (substitutionMap.countSubstitutions) {
                         res2.add(new RecoRef(dist.getRecos(), dist.getReferences()));
                     }
                     res.add(Count.GT);
                     res.add(Count.INS);
                     break;
                 case SUB:
-                    if (detailed == null || detailed.booleanValue()) {
+                    if (substitutionMap.countSubstitutions) {
                         res2.add(new RecoRef(dist.getRecos(), dist.getReferences()));
                     }
                     res.add(Count.HYP);
@@ -653,14 +673,14 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     res.add(Count.HYP);
                     res.add(Count.GT);
                     res.add(Count.COR);
-                    if (detailed != null && detailed.booleanValue()) {
+                    if (substitutionMap.countAll) {
                         res2.add(new RecoRef(dist.getRecos(), dist.getReferences()));
                     }
                     break;
                 case INS_LINE:
                     res.add(Count.GT, dist.getReferences().length);
                     res.add(Count.INS, dist.getReferences().length);
-                    if (detailed == null || (detailed != null && detailed.booleanValue())) {
+                    if (substitutionMap.countSubstitutions) {
                         for (int i = 0; i < dist.getReferences().length; i++) {
                             res2.add(new RecoRef(dist.getRecos(), new String[]{dist.getReferences()[i]}));
                         }
@@ -675,7 +695,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                         }
                         res.add(Count.HYP);
                         res.add(Count.DEL);
-                        if (detailed == null || (detailed != null && detailed.booleanValue())) {
+                        if (substitutionMap.countSubstitutions) {
                             res2.add(new RecoRef(new String[]{reco}, dist.getReferences()));
                         }
                     }
@@ -686,7 +706,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     res.add(Count.HYP);
                     res.add(Count.GT);
                     res.add(Count.COR);
-                    if (detailed != null && detailed.booleanValue()) {
+                    if (substitutionMap.countAll) {
                         //BOTH GET REFERENCE AS VALUE
                         res2.add(new RecoRef(dist.getReferences(), dist.getReferences()));
                     }
@@ -700,7 +720,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     throw new RuntimeException("found type '" + dist.getManipulation() + "'");
             }
         }
-        return new Pair<>(res, res2);
+        return new PathCountResult(res, res2, null);
     }
 
     private int countUnusedChars(int[] usage, String[] out) {
@@ -741,7 +761,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     @Override
     public List<String> getResults() {
         LinkedList<String> res = new LinkedList<>();
-        if (detailed == null || detailed) {
+        if (substitutionMap.countSubstitutions) {
             for (Pair<RecoRef, Long> pair : substitutionCounter.getResultOccurrence()) {
                 RecoRef first = pair.getFirst();
                 String[] recos = first.recos;
@@ -800,11 +820,6 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             sb.append('\n').append(lines.get(i));
         }
         return sb.toString();
-    }
-
-    @Override
-    public void calculate(List<String> reco, List<String> ref) {
-        calculate(toOneLine(reco), toOneLine(ref));
     }
 
     private static class RecoRef {

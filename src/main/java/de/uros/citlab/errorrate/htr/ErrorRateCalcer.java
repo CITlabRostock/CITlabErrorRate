@@ -62,7 +62,6 @@ public class ErrorRateCalcer {
 
 
     private IErrorModule getErrorModule(Method method) {
-        Boolean detailed = Boolean.FALSE;
 
         IStringNormalizer sn = null;
         switch (method) {
@@ -100,11 +99,11 @@ public class ErrorRateCalcer {
             case CER_ALNUM:
             case WER_ALNUM:
                 return useEnd2End ?
-                        new ErrorModuleEnd2End(tok, sn, ErrorModuleEnd2End.Mode.RO, false,detailed):
-                        new ErrorModuleDynProg(tok, sn, detailed) ;
+                        new ErrorModuleEnd2End(tok, sn, ErrorModuleEnd2End.Mode.RO, false, ErrorModuleEnd2End.SubstitutionMap.OFF):
+                        new ErrorModuleDynProg(tok, sn, Boolean.FALSE) ;
             case BOT:
             case BOT_ALNUM:
-                return new ErrorModuleBagOfTokens(tok, sn, detailed);
+                return new ErrorModuleBagOfTokens(tok, sn, Boolean.FALSE);
             default:
                 throw new RuntimeException("unexpected method '" + method + "'.");
         }

@@ -174,7 +174,7 @@ public class TestEnd2EndRealWorld {
 
     public double testGermania(ErrorModuleEnd2End.Mode mode, int image, boolean usePolygons) throws IOException {
         StopWatch sw = new StopWatch();
-        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, mode, usePolygons, false);
+        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, mode, usePolygons, ErrorModuleEnd2End.SubstitutionMap.OFF);
         end2End.setThresholdCouverage(0.1);
 //        end2End.setSizeProcessViewer(6000);
 //        end2End.setFileDynProg(new File(mode + ".png"));
