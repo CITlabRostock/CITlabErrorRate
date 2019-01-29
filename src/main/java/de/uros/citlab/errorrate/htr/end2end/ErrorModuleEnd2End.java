@@ -441,7 +441,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     case DEL:
                     case SUB:
 //                    case DEL_LINE:
-                        {
+                    {
                         DistanceStrStr.TYPE typeBefore = DistanceStrStr.TYPE.valueOf(group.get(group.size() - 1).getManipulation());
                         switch (typeBefore) {
                             case COR:
@@ -536,6 +536,52 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         return grouping;
     }
 
+    private PathCountResult getGroupCount(List<PathQuality> grouping, AlignmentTask alignmentTask, boolean calcLineComparison) {
+        PathCountResult res = new PathCountResult();
+        boolean[] maskReco = new boolean[alignmentTask.getRecos().length];
+        boolean[] maskRef = new boolean[alignmentTask.getRefs().length];
+        for (PathQuality toDeletePath : grouping) {
+            if (toDeletePath.isMerge()) {
+                int startRef = toDeletePath.startRef;
+                if (maskRef[startRef]) {
+                    LOG.debug("skip count of subpath {}, add for next round", toDeletePath);
+                    continue;
+                }
+                //check if it is next to already deleted text
+                //left:
+                if (startRef > 0 && maskRef[startRef - 1]) {
+                    if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
+                        throw new RuntimeException("reference should be used only 1 time in bestPath");
+                    }
+                    LOG.debug("add count of subpath {}", toDeletePath);
+                    res.addAll(getPathCounts(toDeletePath.path, alignmentTask, false));
+                } else if (startRef < maskRef.length - 1 && maskRef[startRef + 1]) {
+                    //or check right otherwise
+                    if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
+                        throw new RuntimeException("reference should be used only 1 time in bestPath");
+                    }
+                    LOG.debug("add count of subpath {}", toDeletePath);
+                    res.addAll(getPathCounts(toDeletePath.path, alignmentTask, false));
+                }
+            } else if (toDeletePath.isSplit()) {
+                //nothing to do: Splits only occur if HYP=" " and GT="\n" -> nothing have to be count.
+            } else {
+                if (!reduceMask(maskReco, toDeletePath.startReco, toDeletePath.endReco)) {
+                    LOG.debug("skip count of subpath {}, add for next round", toDeletePath);
+                    continue;
+                }
+                if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
+                    throw new RuntimeException("reference should be used only 1 time in bestPath");
+                }
+                LOG.debug("add count of subpath {}", toDeletePath);
+                res.addAll(getPathCounts(toDeletePath.path, alignmentTask, calcLineComparison));
+
+            }
+        }
+        return res;
+
+    }
+
     private PathCountResult getPathCount(AlignmentTask alignmentTask, int sizeProcessViewer, File out, boolean calcLineComparison) {
         //use dynamic programming to calculateIntern the cheapest path through the dynamic programming tabular
 //        calcBestPathFast(recos, refs);
@@ -556,59 +602,16 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         log(mat, calcBestPath, recos, refs);
         if (calcBestPath == null) {
             //TODO: return maximal error or throw RuntimeException?
-            LOG.warn("cannot find path between \n" + recoList.toString().replace("\n", "\\n") + " and \n" + refList.toString().replace("\n", "\\n"));
+            LOG.error("cannot find path between \n" + recoList.toString().replace("\n", "\\n") + " and \n" + refList.toString().replace("\n", "\\n"));
             throw new RuntimeException("cannot find path (see Logger.warn) for more information");
         }
-        for (Count c : Count.values()) {
-            counter.add(c, 0L);
-        }
+        List<PathQuality> grouping = getAndSortGroups(calcBestPath);
+        //if any reference is used, the resulting array "usedReco" should only conatain ones and zeros.
         int[] usedReco = getUsedRecos(recos, calcBestPath);
         int max = VectorUtil.max(usedReco);
-        //if any reference is used, the resulting array "usedReco" should only conatain zeros.
-        List<PathQuality> grouping = getAndSortGroups(calcBestPath);
-        if (!mode.ignoreReadingOrder() || !(max > 1 || countUnusedChars(usedReco, recos) > 0)) {
-            boolean[] maskReco = new boolean[recos.length];
-            boolean[] maskRef = new boolean[refs.length];
-            for (PathQuality toDeletePath : grouping) {
-                if (toDeletePath.isMerge()) {
-                    int startRef = toDeletePath.startRef;
-                    if (maskRef[startRef]) {
-                        LOG.debug("skip count of subpath {}, add for next round", toDeletePath);
-                        continue;
-                    }
-                    //check if it is next to already deleted text
-                    //left:
-                    if (startRef > 0 && maskRef[startRef - 1]) {
-                        if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
-                            throw new RuntimeException("reference should be used only 1 time in bestPath");
-                        }
-                        LOG.debug("add count of subpath {}", toDeletePath);
-                        res.addAll(getPathCounts(toDeletePath.path, alignmentTask, false));
-                    } else if (startRef < maskRef.length - 1 && maskRef[startRef + 1]) {
-                        //or check right otherwise
-                        if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
-                            throw new RuntimeException("reference should be used only 1 time in bestPath");
-                        }
-                        LOG.debug("add count of subpath {}", toDeletePath);
-                        res.addAll(getPathCounts(toDeletePath.path, alignmentTask, false));
-                    }
-                } else if (toDeletePath.isSplit()) {
-                    //nothing to do: Splits only occur if HYP=" " and GT="\n" -> nothing have to be count.
-                } else {
-                    if (!reduceMask(maskReco, toDeletePath.startReco, toDeletePath.endReco)) {
-                        LOG.debug("skip count of subpath {}, add for next round", toDeletePath);
-                        continue;
-                    }
-                    if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
-                        throw new RuntimeException("reference should be used only 1 time in bestPath");
-                    }
-                    LOG.debug("add count of subpath {}", toDeletePath);
-                    res.addAll(getPathCounts(toDeletePath.path, alignmentTask, calcLineComparison));
-
-                }
-            }
-            return res;
-//            return getPathCounts(calcBestPath, alignmentTask, calcLineComparison);
+        //no post process have to be done - everything is already used
+        if (!mode.ignoreReadingOrder() || (max <= 1 && countUnusedChars(usedReco, recos) == 0)) {
+            return getGroupCount(grouping, alignmentTask, calcLineComparison);
         }
         if (grouping.isEmpty()) {
             //TODO: is that okay?? or should one slowly increase JUMP_RECO-costs?
@@ -708,7 +711,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         return res;
     }
 
-    private boolean reduceMask(boolean[] mask, int start, int end) {
+    private static boolean reduceMask(boolean[] mask, int start, int end) {
         for (int i = start; i < end + 1; i++) {
             if (mask[i]) {
                 return false;
@@ -908,7 +911,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
 //                    }
                     lc = getLineComparison(
                             -1,
-                            alignmentTask.getRefLineMap()[i-2],
+                            alignmentTask.getRefLineMap()[i - 2],
                             "",
                             refBuilder.toString(),
                             manipulations);
