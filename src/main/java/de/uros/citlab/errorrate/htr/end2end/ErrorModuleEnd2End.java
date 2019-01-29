@@ -427,6 +427,115 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         }
     }
 
+    // 1. group path into line-line-path
+    // 2. sort paths according quality
+    // 3. count paths, which have a unique reco
+    // 4. all other path/recos have to go into the next round!
+    private List<PathQuality> getAndSortGroups(List<PathCalculatorGraph.IDistance<String, String>> path) {
+        List<PathQuality> grouping = GroupUtil.getGrouping(path, new GroupUtil.Joiner<PathCalculatorGraph.IDistance<String, String>>() {
+            @Override
+            public boolean isGroup(List<PathCalculatorGraph.IDistance<String, String>> group, PathCalculatorGraph.IDistance<String, String> element) {
+                switch (DistanceStrStr.TYPE.valueOf(element.getManipulation())) {
+                    case COR:
+                    case INS:
+                    case DEL:
+                    case SUB:
+//                    case DEL_LINE:
+                        {
+                        DistanceStrStr.TYPE typeBefore = DistanceStrStr.TYPE.valueOf(group.get(group.size() - 1).getManipulation());
+                        switch (typeBefore) {
+                            case COR:
+                            case INS:
+                            case DEL:
+                            case SUB:
+//                            case DEL_LINE:
+                                return true;
+                        }
+                        return false;
+                    }
+                    case INS_LINE:
+                    case DEL_LINE:
+                        //{
+//                        return DistanceStrStr.TYPE.valueOf(group.get(group.size() - 1).getManipulation()).equals(DistanceStrStr.TYPE.INS_LINE);
+//                    }
+                    case MERGE_LINE:
+                    case SPLIT_LINE:
+                    case JUMP_RECO:
+                    case COR_LINEBREAK:
+                        return false;
+                    default:
+                        throw new UnsupportedOperationException("cannot interprete " + element.getManipulation() + ".");
+                }
+            }
+
+            @Override
+            public boolean keepElement(PathCalculatorGraph.IDistance<String, String> element) {
+                switch (DistanceStrStr.TYPE.valueOf(element.getManipulation())) {
+                    case COR:
+                    case INS:
+                    case DEL:
+                    case SUB:
+                    case MERGE_LINE:
+                    case INS_LINE:
+                    case SPLIT_LINE:
+                    case DEL_LINE:
+                        return true;
+                    case JUMP_RECO:
+                    case COR_LINEBREAK:
+                        return false;
+                    default:
+                        throw new UnsupportedOperationException("cannot interprete " + element.getManipulation() + ".");
+                }
+            }
+        }, new GroupUtil.Mapper<PathCalculatorGraph.IDistance<String, String>, PathQuality>() {
+            @Override
+            public PathQuality map(List<PathCalculatorGraph.IDistance<String, String>> elements) {
+                switch (DistanceStrStr.TYPE.valueOf(elements.get(0).getManipulation())) {
+                    case INS_LINE: {
+                        PathCalculatorGraph.IDistance<String, String> el = elements.get(0);
+                        return new PathQuality(
+                                (el.getCosts()),
+                                el.getPoint()[0] - 1,
+                                el.getPoint()[0] - 1,
+                                el.getPointPrevious()[1],
+                                el.getPoint()[1] - 1,
+                                elements);
+                    }
+                    case DEL_LINE: {
+                        PathCalculatorGraph.IDistance<String, String> el = elements.get(0);
+                        return new PathQuality(
+                                (el.getCosts()),
+                                el.getPointPrevious()[0],
+                                el.getPoint()[0] - 1,
+                                el.getPoint()[1] - 1,
+                                el.getPoint()[1] - 1,
+                                elements);
+                    }
+                    default:
+                        return new PathQuality(
+                                (elements.get(elements.size() - 1).getCostsAcc() - elements.get(0).getCostsAcc() + elements.get(0).getCosts()),
+                                elements.get(0).getPoint()[0] - 1,
+                                elements.get(elements.size() - 1).getPoint()[0] - 1,
+                                elements.get(0).getPoint()[1] - 1,
+                                elements.get(elements.size() - 1).getPoint()[1] - 1,
+                                elements);
+                }
+            }
+        });
+        grouping.sort(new Comparator<PathQuality>() {
+            @Override
+            public int compare(PathQuality o1, PathQuality o2) {
+                //TODO: better function here - maybe dependent on ref-length or on path-length
+                return o1.isSplitOrMerge() != o2.isSplitOrMerge() ?
+                        o1.isSplitOrMerge() ?
+                                1 :
+                                -1 :
+                        Double.compare((o1.error + 0.01) / Math.max(1, o1.path.size()), (o2.error + 0.01) / Math.max(1, o2.path.size()));
+            }
+        });
+        return grouping;
+    }
+
     private PathCountResult getPathCount(AlignmentTask alignmentTask, int sizeProcessViewer, File out, boolean calcLineComparison) {
         //use dynamic programming to calculateIntern the cheapest path through the dynamic programming tabular
 //        calcBestPathFast(recos, refs);
@@ -456,86 +565,51 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         int[] usedReco = getUsedRecos(recos, calcBestPath);
         int max = VectorUtil.max(usedReco);
         //if any reference is used, the resulting array "usedReco" should only conatain zeros.
+        List<PathQuality> grouping = getAndSortGroups(calcBestPath);
         if (!mode.ignoreReadingOrder() || !(max > 1 || countUnusedChars(usedReco, recos) > 0)) {
-            return getPathCounts(calcBestPath, alignmentTask, calcLineComparison);
-        }
-        // 1. group path into line-line-path
-        // 2. sort paths according quality
-        // 3. count paths, which have a unique reco
-        // 4. all other path/recos have to go into the next round!
-        List<PathQuality> grouping = GroupUtil.getGrouping(calcBestPath, new GroupUtil.Joiner<PathCalculatorGraph.IDistance<String, String>>() {
-            @Override
-            public boolean isGroup(List<PathCalculatorGraph.IDistance<String, String>> group, PathCalculatorGraph.IDistance<String, String> element) {
-                switch (DistanceStrStr.TYPE.valueOf(element.getManipulation())) {
-                    case COR:
-                    case INS:
-                    case DEL:
-                    case SUB:
-                    case DEL_LINE:
-                        DistanceStrStr.TYPE typeBefore = DistanceStrStr.TYPE.valueOf(group.get(group.size() - 1).getManipulation());
-                        switch (typeBefore) {
-                            case COR:
-                            case INS:
-                            case DEL:
-                            case SUB:
-                            case DEL_LINE:
-                                return true;
+            boolean[] maskReco = new boolean[recos.length];
+            boolean[] maskRef = new boolean[refs.length];
+            for (PathQuality toDeletePath : grouping) {
+                if (toDeletePath.isMerge()) {
+                    int startRef = toDeletePath.startRef;
+                    if (maskRef[startRef]) {
+                        LOG.debug("skip count of subpath {}, add for next round", toDeletePath);
+                        continue;
+                    }
+                    //check if it is next to already deleted text
+                    //left:
+                    if (startRef > 0 && maskRef[startRef - 1]) {
+                        if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
+                            throw new RuntimeException("reference should be used only 1 time in bestPath");
                         }
-                        return false;
-                    case MERGE_LINE:
-                    case SPLIT_LINE:
-                    case INS_LINE:
-                    case JUMP_RECO:
-//                    case SPLIT_LINE:
-                    case COR_LINEBREAK:
-                        return false;
-                    default:
-                        throw new UnsupportedOperationException("cannot interprete " + element.getManipulation() + ".");
-                }
-            }
+                        LOG.debug("add count of subpath {}", toDeletePath);
+                        res.addAll(getPathCounts(toDeletePath.path, alignmentTask, false));
+                    } else if (startRef < maskRef.length - 1 && maskRef[startRef + 1]) {
+                        //or check right otherwise
+                        if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
+                            throw new RuntimeException("reference should be used only 1 time in bestPath");
+                        }
+                        LOG.debug("add count of subpath {}", toDeletePath);
+                        res.addAll(getPathCounts(toDeletePath.path, alignmentTask, false));
+                    }
+                } else if (toDeletePath.isSplit()) {
+                    //nothing to do: Splits only occur if HYP=" " and GT="\n" -> nothing have to be count.
+                } else {
+                    if (!reduceMask(maskReco, toDeletePath.startReco, toDeletePath.endReco)) {
+                        LOG.debug("skip count of subpath {}, add for next round", toDeletePath);
+                        continue;
+                    }
+                    if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
+                        throw new RuntimeException("reference should be used only 1 time in bestPath");
+                    }
+                    LOG.debug("add count of subpath {}", toDeletePath);
+                    res.addAll(getPathCounts(toDeletePath.path, alignmentTask, calcLineComparison));
 
-            @Override
-            public boolean keepElement(PathCalculatorGraph.IDistance<String, String> element) {
-                switch (DistanceStrStr.TYPE.valueOf(element.getManipulation())) {
-                    case COR:
-                    case INS:
-                    case DEL:
-                    case SUB:
-                    case MERGE_LINE:
-                    case SPLIT_LINE:
-                        return true;
-                    case JUMP_RECO:
-                    case DEL_LINE:
-                    case INS_LINE:
-                    case COR_LINEBREAK:
-                        return false;
-                    default:
-                        throw new UnsupportedOperationException("cannot interprete " + element.getManipulation() + ".");
                 }
             }
-        }, new GroupUtil.Mapper<PathCalculatorGraph.IDistance<String, String>, PathQuality>() {
-            @Override
-            public PathQuality map(List<PathCalculatorGraph.IDistance<String, String>> elements) {
-                return new PathQuality(
-                        (elements.get(elements.size() - 1).getCostsAcc() - elements.get(0).getCostsAcc() + elements.get(0).getCosts()),
-                        elements.get(0).getPoint()[0] - 1,
-                        elements.get(elements.size() - 1).getPoint()[0] - 1,
-                        elements.get(0).getPoint()[1] - 1,
-                        elements.get(elements.size() - 1).getPoint()[1] - 1,
-                        elements);
-            }
-        });
-        grouping.sort(new Comparator<PathQuality>() {
-            @Override
-            public int compare(PathQuality o1, PathQuality o2) {
-                //TODO: better function here - maybe dependent on ref-length or on path-length
-                return o1.isSplitOrMerge() != o2.isSplitOrMerge() ?
-                        o1.isSplitOrMerge() ?
-                                1 :
-                                -1 :
-                        Double.compare((o1.error + 0.01) / Math.max(1, o1.path.size()), (o2.error + 0.01) / Math.max(1, o2.path.size()));
-            }
-        });
+            return res;
+//            return getPathCounts(calcBestPath, alignmentTask, calcLineComparison);
+        }
         if (grouping.isEmpty()) {
             //TODO: is that okay?? or should one slowly increase JUMP_RECO-costs?
             //ough - shortest path is only done by JUMP_RECO and INS_LINE - try to map without JUMP_RECO, but with DEL_LINE
@@ -652,7 +726,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         LinkedList<Integer> res2 = new LinkedList<>();
 //        cnt = 0;
         for (int i = 0; i < transcripts.length; i++) {
-            if (!toDelete[i]) {
+            if (!toDelete[i] || voter.isLineBreak(transcripts[i])) {
                 res.add(transcripts[i]);
                 if (lineIdxs != null) {
                     res2.add(lineIdxs[i]);
@@ -680,6 +754,36 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             idxs[i] = res2.get(i);
         }
         return new Pair<>(res.toArray(new String[0]), idxs);
+    }
+
+    private LineComparison getLineComparison(int recoIndex, int refIndex, String recoText, String refText, List<IDistance> path) {
+        return new LineComparison() {
+            @Override
+            public int getRecoIndex() {
+                return recoIndex;
+            }
+
+            @Override
+            public int getRefIndex() {
+                return refIndex;
+            }
+
+            @Override
+            public String getRefText() {
+                return refText;
+            }
+
+            @Override
+            public String getRecoText() {
+                return recoText;
+            }
+
+            @Override
+            public List<IDistance> getPath() {
+                return path;
+            }
+        };
+
     }
 
     private PathCountResult getPathCounts(List<PathCalculatorGraph.IDistance<String, String>> path, AlignmentTask alignmentTask, boolean calcLineComparison) {
@@ -723,6 +827,9 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     }
                     break;
                 case INS_LINE:
+                    if (path.size() > 1) {
+                        throw new RuntimeException("path 'INS_LINE' should only have length 1");
+                    }
                     res.add(Count.GT, dist.getReferences().length);
                     res.add(Count.INS, dist.getReferences().length);
                     if (substitutionMap.countSubstitutions) {
@@ -732,6 +839,9 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     }
                     break;
                 case DEL_LINE:
+                    if (path.size() > 1) {
+                        throw new RuntimeException("path 'DEL_LINE' should only have length 1");
+                    }
                     for (int i = 0; i < dist.getRecos().length; i++) {
                         String reco = dist.getRecos()[i];
                         if (voter.isLineBreak(reco)) {
@@ -767,18 +877,81 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         }
         LineComparison lc = null;
         if (calcLineComparison) {
-            StringBuilder recoBuilder = new StringBuilder();
             StringBuilder refBuilder = new StringBuilder();
+            StringBuilder recoBuilder = new StringBuilder();
             final List<IDistance> manipulations = new LinkedList<>();
             for (PathCalculatorGraph.IDistance<String, String> point : path) {
+                if (point.getManipulation().equals("INS_LINE")) {
+                    for (int i = 0; i < point.getReferences().length; i++) {
+                        String refPart = point.getReferences()[i];
+                        refBuilder.append(refPart);
+                        manipulations.add(new IDistance() {
+                            @Override
+                            public Manipulation getManipulation() {
+                                return Manipulation.INS;
+                            }
+
+                            @Override
+                            public String getReco() {
+                                return "";
+                            }
+
+                            @Override
+                            public String getRef() {
+                                return refPart;
+                            }
+                        });
+                    }
+                    int i = path.get(0).getPoint()[1];
+//                    if (alignmentTask.getRefLineMap()[i-2] <0) {
+//                        i--;
+//                    }
+                    lc = getLineComparison(
+                            -1,
+                            alignmentTask.getRefLineMap()[i-2],
+                            "",
+                            refBuilder.toString(),
+                            manipulations);
+                    return new PathCountResult(res, res2, lc == null ? null : Arrays.asList(lc));
+                }
+                if (point.getManipulation().equals("DEL_LINE")) {
+                    for (int i = 0; i < point.getRecos().length; i++) {
+                        String recoPart = point.getRecos()[i];
+                        recoBuilder.append(recoPart);
+                        manipulations.add(new IDistance() {
+                            @Override
+                            public Manipulation getManipulation() {
+                                return Manipulation.DEL;
+                            }
+
+                            @Override
+                            public String getReco() {
+                                return recoPart;
+                            }
+
+                            @Override
+                            public String getRef() {
+                                return "";
+                            }
+                        });
+                    }
+                    lc = getLineComparison(
+                            alignmentTask.getRecoLineMap()[path.get(0).getPoint()[0]],
+                            -1,
+                            recoBuilder.toString(),
+                            "",
+                            manipulations);
+                    return new PathCountResult(res, res2, lc == null ? null : Arrays.asList(lc));
+                }
                 final String reco = point.getRecos() == null ? "" : point.getRecos()[0];
-                final String ref = point.getRecos() == null ? "" : point.getRecos()[0];
+                final String ref = point.getReferences() == null ? "" : point.getReferences()[0];
                 recoBuilder.append(reco);
                 refBuilder.append(ref);
+                final Manipulation manipulation = Manipulation.valueOf(point.getManipulation());
                 manipulations.add(new IDistance() {
                     @Override
                     public Manipulation getManipulation() {
-                        return Manipulation.valueOf(point.getManipulation());
+                        return manipulation;
                     }
 
                     @Override
@@ -792,33 +965,12 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     }
                 });
             }
-            lc = new LineComparison() {
-                @Override
-                public int getRecoIndex() {
-                    return alignmentTask.getRecoLineMap()[path.get(0).getPoint()[0] - 1];
-                }
-
-                @Override
-                public int getRefIndex() {
-                    return alignmentTask.getRefLineMap()[path.get(0).getPoint()[1] - 1];
-                }
-
-                @Override
-                public String getRefText() {
-                    return refBuilder.toString();
-                }
-
-                @Override
-                public String getRecoText() {
-                    return recoBuilder.toString();
-                }
-
-                @Override
-                public List<IDistance> getPath() {
-                    return manipulations;
-                }
-            };
-
+            lc = getLineComparison(
+                    alignmentTask.getRecoLineMap()[path.get(0).getPoint()[0] - 1],
+                    alignmentTask.getRefLineMap()[path.get(0).getPoint()[1] - 1],
+                    recoBuilder.toString(),
+                    refBuilder.toString(),
+                    manipulations);
         }
         return new PathCountResult(res, res2, lc == null ? null : Arrays.asList(lc));
     }

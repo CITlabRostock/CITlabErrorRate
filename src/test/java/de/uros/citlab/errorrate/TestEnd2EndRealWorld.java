@@ -6,6 +6,8 @@
 package de.uros.citlab.errorrate;
 
 import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
+import de.uros.citlab.errorrate.interfaces.IDistance;
+import de.uros.citlab.errorrate.interfaces.IErrorModuleWithSegmentation;
 import de.uros.citlab.errorrate.interfaces.ILine;
 import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.Method;
@@ -81,8 +83,22 @@ public class TestEnd2EndRealWorld {
         File hypFile = new File("src/test/resources/end2end/segment_bug/071_085_002_hyp.xml");
         List<ILine> linesGT = ExtractUtil.getLinesFromFile(gtFile);
         List<ILine> linesHyp = ExtractUtil.getLinesFromFile(hypFile);
-        ErrorModuleEnd2End module = new ErrorModuleEnd2End(ErrorModuleEnd2End.Mode.NO_RO_SEG, true, null);
-        module.calculateWithSegmentation(linesHyp, linesGT);
+        ErrorModuleEnd2End module = new ErrorModuleEnd2End(ErrorModuleEnd2End.Mode.NO_RO_SEG, true, ErrorModuleEnd2End.SubstitutionMap.SUBSTITUTIONS);
+        List<IErrorModuleWithSegmentation.LineComparison> lineComparisons = module.calculateWithSegmentation(linesHyp, linesGT, true);
+        for (IErrorModuleWithSegmentation.LineComparison cmp : lineComparisons) {
+            int cnt = 0;
+            for (IDistance distance : cmp.getPath()) {
+                switch (distance.getManipulation()) {
+                    case INS:
+                    case DEL:
+                    case SUB:
+                        cnt++;
+                }
+            }
+            System.out.println("----------- " + cnt + "/" + cmp.getPath().size() + " -----------");
+            System.out.println(cmp.getRecoIndex() + " '" + cmp.getRecoText() + "'");
+            System.out.println(cmp.getRefIndex() + " '" + cmp.getRefText() + "'");
+        }
     }
 
     @Test
@@ -91,7 +107,7 @@ public class TestEnd2EndRealWorld {
         List<String> linesHyp = Arrays.asList("sde onsdy wantdsto tedst", "isd a ssdarate input", "is asssdgood as a", "combdned", "iaput");
         de.uros.citlab.errorrate.types.Result resExpect = new de.uros.citlab.errorrate.types.Result(Method.CER);
         {
-            ErrorModuleEnd2End module = new ErrorModuleEnd2End(ErrorModuleEnd2End.Mode.RO, false, null);
+            ErrorModuleEnd2End module = new ErrorModuleEnd2End(ErrorModuleEnd2End.Mode.RO, false, ErrorModuleEnd2End.SubstitutionMap.OFF);
             for (int i = 0; i < linesGT.size(); i++) {
                 module.calculate(linesHyp.get(i), linesGT.get(i));
             }
@@ -100,7 +116,7 @@ public class TestEnd2EndRealWorld {
         }
         for (ErrorModuleEnd2End.Mode mode : ErrorModuleEnd2End.Mode.values()) {
             de.uros.citlab.errorrate.types.Result resActual = new de.uros.citlab.errorrate.types.Result(Method.CER);
-            ErrorModuleEnd2End module = new ErrorModuleEnd2End(mode, false, null);
+            ErrorModuleEnd2End module = new ErrorModuleEnd2End(mode, false, ErrorModuleEnd2End.SubstitutionMap.OFF);
             module.calculate(linesHyp, linesGT);
             resActual.addCounts(module.getCounter());
             Map<Count, Long> countActual = resActual.getCounts().getMap();

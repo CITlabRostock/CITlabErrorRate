@@ -156,6 +156,17 @@ public class PathCalculatorGraph<Reco, Reference> {
             }
             throw new RuntimeException("cannot interprete class " + costCalculator.getClass().getName());
         }
+
+        @Override
+        public String toString() {
+            return "DistanceSmall{" +
+                    " pos=" + Arrays.toString(point) +
+                    ", prev=" + Arrays.toString(pointPrevious) +
+                    ", costs=" + costsAcc +
+//                    ", marked=" + marked +
+                    ", CC=" + costCalculator +
+                    '}';
+        }
     }
 
 
