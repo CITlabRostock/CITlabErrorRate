@@ -18,7 +18,7 @@ class CCInsLine extends CCAbstract {
             while (xend < isLineBreakRef.length) {
                 if (isLineBreakRef[xend]) {
                     //-1 because \n does not have to be count
-                    return new PathCalculatorGraph.DistanceSmall(point, new int[]{y, xend}, dist.costsAcc + (xend - xstart - 1) * offsetIns, this);
+                    return new PathCalculatorGraph.DistanceSmall(point, new int[]{y, xend}, dist.costsAcc + (xend - xstart - 1) * offsetIns + offsetRecoJump, this);
                 }
                 xend++;
             }
@@ -41,7 +41,7 @@ class CCInsLine extends CCAbstract {
             return null;
         }
         final int end = lineBreaksRef[idx];
-        final double costs = (end - start - 1) * offsetIns;
+        final double costs = (end - start - 1) * offsetIns + offsetRecoJump;
 //                String[] strings =new String[costs];
         String[] subList = Arrays.copyOfRange(refs, start + 1, end);
 //                        refs.subList(start + 1, end).toArray(new String[0]);

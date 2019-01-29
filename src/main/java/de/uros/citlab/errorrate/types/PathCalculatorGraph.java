@@ -371,18 +371,34 @@ public class PathCalculatorGraph<Reco, Reference> {
         if (ref == null || reco == null) {
             throw new RuntimeException("target or output is null");
         }
-        int recoOffset = (reco.isEmpty() || reco.get(0) != null) ? 1 : 0;
-        int refOffset = (ref.isEmpty() || ref.get(0) != null) ? 1 : 0;
-//        int recoLength = reco.size();
-//        int refLength = ref.size();
-        Reco[] nativeReco = (Reco[]) Array.newInstance(reco.get(0).getClass(), reco.size() + recoOffset);
+        Reco[] nativeReco = (Reco[]) Array.newInstance(reco.get(0).getClass(), reco.size() + 1);
         for (int i = 0; i < reco.size(); i++) {
-            nativeReco[i + recoOffset] = reco.get(i);
+            nativeReco[i + 1] = reco.get(i);
         }
-        Reference[] nativeRef = (Reference[]) Array.newInstance(ref.get(0).getClass(), ref.size() + refOffset);
+        Reference[] nativeRef = (Reference[]) Array.newInstance(ref.get(0).getClass(), ref.size() + 1);
         for (int i = 0; i < ref.size(); i++) {
-            nativeRef[i + refOffset] = ref.get(i);
+            nativeRef[i + 1] = ref.get(i);
         }
+        return calcDynProgInner(nativeReco, nativeRef, maxCount);
+    }
+
+    public DistanceMat<Reco, Reference> calcDynProg(Reco[] reco, Reference[] ref) {
+        return calcDynProg(reco, ref, -1);
+    }
+
+    public DistanceMat<Reco, Reference> calcDynProg(Reco[] reco, Reference[] ref, int maxCount) {
+        if (ref == null || reco == null) {
+            throw new RuntimeException("target or output is null");
+        }
+        Reco[] nativeReco = (Reco[]) Array.newInstance(reco[0].getClass(), reco.length + 1);
+        System.arraycopy(reco, 0, nativeReco, 1, reco.length);
+        Reference[] nativeRef = (Reference[]) Array.newInstance(ref[0].getClass(), ref.length + 1);
+
+        System.arraycopy(ref, 0, nativeRef, 1, ref.length);
+        return calcDynProgInner(nativeReco, nativeRef, maxCount);
+    }
+
+    private DistanceMat<Reco, Reference> calcDynProgInner(Reco[] nativeReco, Reference[] nativeRef, int maxCount) {
 //        Reference[] nativeRef = (Reference[]) reco.toArray();
         DistanceMat<Reco, Reference> distMat = new DistanceMat<>(nativeReco.length, nativeRef.length);
 //        IDistance<Reco, Reference> distanceInfinity = new Distance<>(null, null, 0, Double.MAX_VALUE, null);
@@ -485,7 +501,7 @@ public class PathCalculatorGraph<Reco, Reference> {
             LOG.warn("no path found from start to end with given cost calulators");
         }
         if (LOG.isDebugEnabled()) {
-            LOG.debug("caculate " + cntEdges + " edges for " + ((reco.size() - 1) * (ref.size() - 1)) + "/" + cntVerticies + " verticies");
+            LOG.debug("caculate " + cntEdges + " edges for " + ((nativeReco.length - 1) * (nativeRef.length - 1)) + "/" + cntVerticies + " verticies");
         }
         if (bar != null) {
             bar.dispose();

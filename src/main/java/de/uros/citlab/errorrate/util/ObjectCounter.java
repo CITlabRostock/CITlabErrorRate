@@ -43,6 +43,10 @@ public class ObjectCounter<E> implements Serializable {
         }
     }
 
+    public boolean isEmpty() {
+        return getMap().isEmpty();
+    }
+
     public void reset() {
         map.clear();
     }
