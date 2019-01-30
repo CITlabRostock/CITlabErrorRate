@@ -1,7 +1,10 @@
 
 # Changelog
 
-# 3.4.3
+# 3.5.0
+* Add detailed result structure for error calculation
+* bugfix: fallback-calculation counts correct
+* bugfix: recursive subproblem is set up correctly
 
 # 3.4.2
 * bugfix: fix usage of remaining line breaks and spaces
