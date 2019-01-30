@@ -67,14 +67,18 @@ public class TestEnd2EndRealWorld {
     private static HashMap<ErrorModuleEnd2End.Mode, double[]> expectedsSegmentation = new HashMap<>();
 
     static {
-        expecteds.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.2568149210903874, 0.24629374904478069, 0.19234894529853414, 0.3113595166163142});
-        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.1750358680057389, 0.20892556931071374, 0.19234894529853414, 0.21389728096676738});
+        expecteds.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.2568149210903874, 0.24629374904478069, 0.19234894529853414, 0.3064565204162356});
+        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.1750358680057389, 0.20900198685618218, 0.19234894529853414, 0.21442849354897328});
         expecteds.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.24497847919655666, 0.24232003668042182, 0.1873435824097247, 0.2891238670694864});
-        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16606886657101866, 0.1969129670665546, 0.1873435824097247, 0.17048745173745175});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.2777977044476327, 0.25981965459269446, 0.19234894529853414, 0.3470694864048338});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.17539454806312768, 0.20693871312853432, 0.19234894529853414, 0.22217522658610273});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.2666786226685796, 0.2537062509552193, 0.1873435824097247, 0.3263444108761329});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16624820659971307, 0.19796760391198043, 0.1873435824097247, 0.1785779012867758});
+        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16606886657101866, 0.19715726730857405, 0.1873435824097247, 0.17166163141993956});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.27218507138984277, 0.25981965459269446, 0.19234894529853414, 0.33325106435490837});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.17539454806312768, 0.20395796578967554, 0.19234894529853414, 0.21117400935269506});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.2545123062898815, 0.2537062509552193, 0.1873435824097247, 0.3100012377769526});
+        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16594904915679942, 0.1962015622606831, 0.1873435824097247, 0.17049060288015622});
+        for (ErrorModuleEnd2End.Mode mode : ErrorModuleEnd2End.Mode.values()) {
+            expecteds.put(mode, new double[4]);
+            expectedsSegmentation.put(mode, new double[4]);
+        }
     }
 
     @Test
@@ -144,7 +148,7 @@ public class TestEnd2EndRealWorld {
                     if (i < doubles.length - 1) {
                         sb.append(",");
                     }
-                    Assert.assertEquals("CER of page " + i + " and mode " + mode + " is wrong", expected, cer, 0.00001);
+                    Assert.assertEquals("CER of page " + i + " and mode " + mode + " is wrong", expected, cer, 0.001);
                 }
                 sb.append("});");
                 System.out.println(sb);
