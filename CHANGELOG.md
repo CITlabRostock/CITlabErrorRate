@@ -1,6 +1,9 @@
 
 # Changelog
 
+# 3.5.1
+* bugfix: tests
+
 # 3.5.0
 * Add detailed result structure for error calculation
 * bugfix: fallback-calculation counts correct
