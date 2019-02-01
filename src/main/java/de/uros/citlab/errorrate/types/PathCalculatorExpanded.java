@@ -36,7 +36,7 @@ public class PathCalculatorExpanded<Reco, Reference> {
 
         public boolean isValid(int y, int x);
 
-//        public double getCost(PathCalculatorExpanded.IDistance[][] map, int y, int x);
+//        public double getCost(PathCalculatorExpanded.IPoint[][] map, int y, int x);
         public IDistance<Reco, Reference> getDistance(int y, int x);
 
     }

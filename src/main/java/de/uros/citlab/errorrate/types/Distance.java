@@ -1,8 +1,8 @@
 package de.uros.citlab.errorrate.types;
 
-import de.uros.citlab.errorrate.interfaces.IDistance;
+import de.uros.citlab.errorrate.interfaces.IPoint;
 
-public class Distance implements IDistance {
+public class Distance implements IPoint {
 
     @Override
     public Manipulation getManipulation() {

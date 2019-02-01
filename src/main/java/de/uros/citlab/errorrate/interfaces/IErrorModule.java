@@ -17,14 +17,14 @@ import java.util.List;
  */
 public interface IErrorModule {
 
-    public void calculate(String reco, String ref);
+    void calculate(String reco, String ref);
 
-    public void calculate(List<String> reco, List<String> ref);
+    void calculate(List<String> reco, List<String> ref);
 
-    public List<String> getResults();
+    List<String> getResults();
 
-    public ObjectCounter<Count> getCounter();
+    ObjectCounter<Count> getCounter();
 
-    public void reset();
+    void reset();
 }
 

@@ -6,18 +6,18 @@
 package de.uros.citlab.errorrate.types;
 
 /**
- *
  * @author gundram
  */
 public enum Metric {
 
     /**
-     * Error [0,infinity) (0 = perfect). Mostly in [0,1]<br>
+     * Error [0,infinity) (0 = perfect). Mostly in [0,1]<br/>
      * ERR = (#INS + #DEL + #SUB) / #GT
      */
     ERR,
     /**
-     * Accuracy [0,1], (1 = perfect).<br>
+     * Accuracy [0,1], (1 = perfect).<br/>
+     * The Accuracy can be seen as the intersection of the sets GT and HYP<br/>
      * ACC = #COR / (#GT + #HYP - #COR)
      */
     ACC,
@@ -33,7 +33,7 @@ public enum Metric {
     PREC,
     /**
      * For retrieval measures:<br/>
-     * Recall [0,1], (1 = perfect)<br>
+     * Recall [0,1], (1 = perfect)<br/>
      * REC = #TP / (#FN + #TP)
      * <br/>
      * For error rate measures:<br/>
@@ -42,8 +42,12 @@ public enum Metric {
      */
     REC,
     /**
-     * F-measure [0,1], (1 = perfect)<br>
-     * F = 2*#TP / (2*#TP + #FP + #TP)
+     * For retrieval measures:<br/>
+     * F-measure [0,1], (1 = perfect)<br/>
+     * F = 2 * #TP / (2 * #TP + #FP + #TP)
+     * For error rate measures:<br/>
+     * F-measure [0,1], (1 = perfect)<br/>
+     * F = 2 * #COR / (#GT + #HYP)
      */
     F
 }

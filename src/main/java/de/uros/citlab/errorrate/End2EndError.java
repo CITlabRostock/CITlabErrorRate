@@ -72,12 +72,12 @@ public class End2EndError {
 //                help("the options -d and -D are not supported yet.");
 //            }
             //how detailed should the output be
-            ErrorModuleEnd2End.SubstitutionMap substitutionMap =
+            ErrorModuleEnd2End.CountSubstitutions countSubstitutions =
                     cmd.hasOption('d') ?
-                            ErrorModuleEnd2End.SubstitutionMap.SUBSTITUTIONS :
+                            ErrorModuleEnd2End.CountSubstitutions.ERRORS :
                             cmd.hasOption('D') ?
-                                    ErrorModuleEnd2End.SubstitutionMap.ALL :
-                                    ErrorModuleEnd2End.SubstitutionMap.OFF;
+                                    ErrorModuleEnd2End.CountSubstitutions.ALL :
+                                    ErrorModuleEnd2End.CountSubstitutions.OFF;
             //upper case?
             boolean upper = cmd.hasOption('u');
             //canoncal or compatibility composition form?
@@ -108,7 +108,7 @@ public class End2EndError {
                             cmd.hasOption('s') ?
                                     ErrorModuleEnd2End.Mode.RO_SEG :
                                     ErrorModuleEnd2End.Mode.RO;
-            IErrorModuleWithSegmentation em = new ErrorModuleEnd2End(categorizer, sn, mode, geometry, substitutionMap);
+            IErrorModuleWithSegmentation em = new ErrorModuleEnd2End(categorizer, sn, mode, geometry, countSubstitutions);
             if (cmd.hasOption('t')) {
                 double t = Double.parseDouble(cmd.getOptionValue('t'));
                 if (t < 0.0 || t >= 1.0) {
@@ -152,7 +152,7 @@ public class End2EndError {
             }
             //print statistic to console
 //            List<Pair<Count, Long>> resultOccurrence = em.getCounter().getResultOccurrence();
-            if (substitutionMap.countSubstitutions) {
+            if (countSubstitutions.countSubstitutions) {
                 List<String> results = em.getResults();
                 for (String result : results) {
                     System.out.println(result);

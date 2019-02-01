@@ -6,8 +6,8 @@
 package de.uros.citlab.errorrate;
 
 import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
-import de.uros.citlab.errorrate.interfaces.IDistance;
-import de.uros.citlab.errorrate.interfaces.IErrorModuleWithSegmentation;
+import de.uros.citlab.errorrate.interfaces.ILineComparison;
+import de.uros.citlab.errorrate.interfaces.IPoint;
 import de.uros.citlab.errorrate.interfaces.ILine;
 import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.Method;
@@ -68,7 +68,7 @@ public class TestEnd2EndRealWorld {
 
     static {
         expecteds.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.2568149210903874, 0.24629374904478069, 0.19234894529853414, 0.3064565204162356});
-        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.1750358680057389, 0.20900198685618218, 0.19234894529853414, 0.21442849354897328});
+        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.1750358680057389, 0.20900198685618218, 0.19234894529853414, 0.21256797583081571});
         expecteds.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.24497847919655666, 0.24232003668042182, 0.1873435824097247, 0.2891238670694864});
         expecteds.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16606886657101866, 0.19715726730857405, 0.1873435824097247, 0.17166163141993956});
         expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.27218507138984277, 0.25981965459269446, 0.19234894529853414, 0.33325106435490837});
@@ -83,11 +83,11 @@ public class TestEnd2EndRealWorld {
         File hypFile = new File("src/test/resources/end2end/segment_bug/071_085_002_hyp.xml");
         List<ILine> linesGT = ExtractUtil.getLinesFromFile(gtFile);
         List<ILine> linesHyp = ExtractUtil.getLinesFromFile(hypFile);
-        ErrorModuleEnd2End module = new ErrorModuleEnd2End(ErrorModuleEnd2End.Mode.NO_RO_SEG, true, ErrorModuleEnd2End.SubstitutionMap.SUBSTITUTIONS);
-        List<IErrorModuleWithSegmentation.LineComparison> lineComparisons = module.calculateWithSegmentation(linesHyp, linesGT, true);
-        for (IErrorModuleWithSegmentation.LineComparison cmp : lineComparisons) {
+        ErrorModuleEnd2End module = new ErrorModuleEnd2End(ErrorModuleEnd2End.Mode.NO_RO_SEG, true, ErrorModuleEnd2End.CountSubstitutions.ERRORS);
+        List<ILineComparison> lineComparisons = module.calculateWithSegmentation(linesHyp, linesGT, true);
+        for (ILineComparison cmp : lineComparisons) {
             int cnt = 0;
-            for (IDistance distance : cmp.getPath()) {
+            for (IPoint distance : cmp.getPath()) {
                 switch (distance.getManipulation()) {
                     case INS:
                     case DEL:
@@ -107,7 +107,7 @@ public class TestEnd2EndRealWorld {
         List<String> linesHyp = Arrays.asList("sde onsdy wantdsto tedst", "isd a ssdarate input", "is asssdgood as a", "combdned", "iaput");
         de.uros.citlab.errorrate.types.Result resExpect = new de.uros.citlab.errorrate.types.Result(Method.CER);
         {
-            ErrorModuleEnd2End module = new ErrorModuleEnd2End(ErrorModuleEnd2End.Mode.RO, false, ErrorModuleEnd2End.SubstitutionMap.OFF);
+            ErrorModuleEnd2End module = new ErrorModuleEnd2End(ErrorModuleEnd2End.Mode.RO, false, ErrorModuleEnd2End.CountSubstitutions.OFF);
             for (int i = 0; i < linesGT.size(); i++) {
                 module.calculate(linesHyp.get(i), linesGT.get(i));
             }
@@ -116,7 +116,7 @@ public class TestEnd2EndRealWorld {
         }
         for (ErrorModuleEnd2End.Mode mode : ErrorModuleEnd2End.Mode.values()) {
             de.uros.citlab.errorrate.types.Result resActual = new de.uros.citlab.errorrate.types.Result(Method.CER);
-            ErrorModuleEnd2End module = new ErrorModuleEnd2End(mode, false, ErrorModuleEnd2End.SubstitutionMap.OFF);
+            ErrorModuleEnd2End module = new ErrorModuleEnd2End(mode, false, ErrorModuleEnd2End.CountSubstitutions.OFF);
             module.calculate(linesHyp, linesGT);
             resActual.addCounts(module.getCounter());
             Map<Count, Long> countActual = resActual.getCounts().getMap();
@@ -190,7 +190,7 @@ public class TestEnd2EndRealWorld {
 
     public double testGermania(ErrorModuleEnd2End.Mode mode, int image, boolean usePolygons) throws IOException {
         StopWatch sw = new StopWatch();
-        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, mode, usePolygons, ErrorModuleEnd2End.SubstitutionMap.OFF);
+        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, mode, usePolygons, ErrorModuleEnd2End.CountSubstitutions.OFF);
         end2End.setThresholdCouverage(0.1);
 //        end2End.setSizeProcessViewer(6000);
 //        end2End.setFileDynProg(new File(mode + ".png"));

@@ -99,7 +99,7 @@ public class ErrorRateCalcer {
             case CER_ALNUM:
             case WER_ALNUM:
                 return useEnd2End ?
-                        new ErrorModuleEnd2End(tok, sn, ErrorModuleEnd2End.Mode.RO, false, ErrorModuleEnd2End.SubstitutionMap.OFF):
+                        new ErrorModuleEnd2End(tok, sn, ErrorModuleEnd2End.Mode.RO, false, ErrorModuleEnd2End.CountSubstitutions.OFF):
                         new ErrorModuleDynProg(tok, sn, Boolean.FALSE) ;
             case BOT:
             case BOT_ALNUM:

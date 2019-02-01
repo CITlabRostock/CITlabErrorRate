@@ -1,6 +1,13 @@
 
 # Changelog
 
+# 4.0.0
+* refactor in de.uros.citlab.errorrate. interfaces class IDistance -> IPoint
+* refactor in de.uros.citlab.errorrate IErrorModuleWithSegmentation.LineComparison -> ILineComparison
+* set logger-levels from INFO to TRACE for time measure
+* bugfix: merge lines now handles spaces correctly
+* add some javadocs
+
 # 3.5.1
 * bugfix: tests
 

@@ -160,7 +160,6 @@ public class ErrorModuleDynProg implements IErrorModule {
         String[] refs = tokenizer.tokenize(ref).toArray(new String[0]);
         //use dynamic programming to calculate the cheapest path through the dynamic programming tabular
         calcBestPathFast(recos, refs);
-//        List<PathCalculatorGraph.IDistance<String, String>> calcBestPath = pathCalculator.calcBestPath(recos, refs);
     }
 
     @Override

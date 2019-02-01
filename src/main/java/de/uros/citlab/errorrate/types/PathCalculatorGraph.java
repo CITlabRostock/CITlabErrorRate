@@ -205,7 +205,7 @@ public class PathCalculatorGraph<Reco, Reference> {
 //                if (o == null) {
 //                    return null;
 //                }
-//                return (IDistance<Reco, Reference>) ((TIntObjectHashMap) o).get(x);
+//                return (IPoint<Reco, Reference>) ((TIntObjectHashMap) o).get(x);
 //            }
             return (DistanceSmall) distMap.get(y * sizeX + x);
         }
@@ -401,8 +401,8 @@ public class PathCalculatorGraph<Reco, Reference> {
     private DistanceMat<Reco, Reference> calcDynProgInner(Reco[] nativeReco, Reference[] nativeRef, int maxCount) {
 //        Reference[] nativeRef = (Reference[]) reco.toArray();
         DistanceMat<Reco, Reference> distMat = new DistanceMat<>(nativeReco.length, nativeRef.length);
-//        IDistance<Reco, Reference> distanceInfinity = new Distance<>(null, null, 0, Double.MAX_VALUE, null);
-//        LinkedList<IDistance<Reco, Reference>> candidates = new LinkedList<>();
+//        IPoint<Reco, Reference> distanceInfinity = new Distance<>(null, null, 0, Double.MAX_VALUE, null);
+//        LinkedList<IPoint<Reco, Reference>> candidates = new LinkedList<>();
         for (ICostCalculator<Reco, Reference> costCalculator : costCalculators) {
             costCalculator.init(distMat, nativeReco, nativeRef);
         }
@@ -413,7 +413,7 @@ public class PathCalculatorGraph<Reco, Reference> {
             filter.init(nativeReco, nativeRef);
         }
         TreeSet<DistanceSmall> QSortedCostAcc = new TreeSet<>(cmpCostsAcc);
-//        HashSet<IDistance<Reco, Reference>> G = new LinkedHashSet<>();
+//        HashSet<IPoint<Reco, Reference>> G = new LinkedHashSet<>();
         int[] startPoint = new int[]{0, 0};
         DistanceSmall start = new DistanceSmall(null, startPoint, 0, null);
         distMat.set(startPoint, start);
@@ -427,9 +427,10 @@ public class PathCalculatorGraph<Reco, Reference> {
         int cntVerticies = 0;
 //        int cntEdges = 0;
         boolean[][] isdead = new boolean[distMat.sizeY][distMat.sizeX];
-        StopWatch swCalculators = new StopWatch("calculators");
-        StopWatch swHandle = new StopWatch("handles");
-        StopWatch swCleanup = new StopWatch("cleanup");
+        final boolean log = LOG.isTraceEnabled();
+        StopWatch swCalculators = log ? new StopWatch("calculators") : null;
+        StopWatch swHandle = log ? new StopWatch("handles") : null;
+        StopWatch swCleanup = log ? new StopWatch("cleanup") : null;
         while (!QSortedCostAcc.isEmpty()) {
             cntVerticies++;
             DistanceSmall distActual = QSortedCostAcc.pollFirst();
@@ -440,41 +441,54 @@ public class PathCalculatorGraph<Reco, Reference> {
                 continue;
             }
             isdead[distActual.point[0]][distActual.point[1]] = true;
-            StopWatch.start("FilterAllow");
+            if (log)
+                StopWatch.start("FilterAllow");
             if (filter != null && !filter.followPathsFromBestEdge(distActual)) {
-                StopWatch.stop("FilterAllow");
+                if (log)
+                    StopWatch.stop("FilterAllow");
                 continue;
             }
-            StopWatch.stop("FilterAllow");
+            if (log) StopWatch.stop("FilterAllow");
             final int[] pos = distActual.point;
             if (bar != null) {
                 bar.update(pos, distMat, distActual);
             }
             //all Neighbours v of u
             for (ICostCalculator<Reco, Reference> costCalculator : costCalculators) {
-                StopWatch.start(costCalculator.getClass().getSimpleName());
-                swCalculators.start();
+                if (log) {
+                    StopWatch.start(costCalculator.getClass().getSimpleName());
+                    swCalculators.start();
+                }
                 DistanceSmall distance = costCalculator.getNeighbourSmall(pos, distActual);
-                swCalculators.stop();
-                StopWatch.stop(costCalculator.getClass().getSimpleName());
-                swHandle.start();
+                if (log) {
+                    swCalculators.stop();
+                    StopWatch.stop(costCalculator.getClass().getSimpleName());
+                    swHandle.start();
+                }
                 cntEdges += handleDistance(distance, distMat, QSortedCostAcc);
-                swHandle.stop();
+                if (log)
+                    swHandle.stop();
             }
             for (ICostCalculatorMulti<Reco, Reference> costCalculator : costCalculatorsMutli) {
-                StopWatch.start(costCalculator.getClass().getSimpleName());
-                swCalculators.start();
+                if (log) {
+                    StopWatch.start(costCalculator.getClass().getSimpleName());
+                    swCalculators.start();
+                }
                 List<DistanceSmall> distances = costCalculator.getNeighboursSmall(pos, distActual);
-                swCalculators.stop();
-                StopWatch.stop(costCalculator.getClass().getSimpleName());
+                if (log) {
+                    swCalculators.stop();
+                    StopWatch.stop(costCalculator.getClass().getSimpleName());
+                }
                 if (distances == null) {
                     continue;
                 }
-                swHandle.start();
+                if (log)
+                    swHandle.start();
                 for (DistanceSmall distance : distances) {
                     cntEdges += handleDistance(distance, distMat, QSortedCostAcc);
                 }
-                swHandle.stop();
+                if (log)
+                    swHandle.stop();
             }
             if (maxCount > 0 && cntVerticies >= maxCount) {
                 LOG.debug(String.format("found count = %d, return with so far calculated dynProg.", cntEdges));
@@ -482,17 +496,20 @@ public class PathCalculatorGraph<Reco, Reference> {
             }
 
             if (cntVerticies > boundNextCleanup) {
-                swCleanup.start();
+                if (log)
+                    swCleanup.start();
                 distMat = distMat.cleanup(QSortedCostAcc);
                 boundNextCleanup = cntVerticies + factorNextCleanup;
-//                factorNextCleanup *= 1.0;
-                swCleanup.stop();
+                if (log)
+                    swCleanup.stop();
             }
         }
-        LOG.info("time spent: {}", swCalculators);
-        LOG.info("time spent: {}", swHandle);
-        LOG.info("time spent: {}", swCleanup);
-        LOG.info("time spent: \n{}", StopWatch.getStats());
+        if (log) {
+            LOG.trace("time spent: {}", swCalculators);
+            LOG.trace("time spent: {}", swHandle);
+            LOG.trace("time spent: {}", swCleanup);
+            LOG.trace("time spent: \n{}", StopWatch.getStats());
+        }
         if (bar != null) {
             bar.update(null, distMat, null);
             bar.setEnd();
@@ -574,7 +591,7 @@ public class PathCalculatorGraph<Reco, Reference> {
         }
 
 //        @Override
-//        public IDistance<Reco, Reference> getLargeDistance(DistanceMat<Reco, Reference> mat) {
+//        public IPoint<Reco, Reference> getLargeDistance(DistanceMat<Reco, Reference> mat) {
 //            return this;
 //        }
 
