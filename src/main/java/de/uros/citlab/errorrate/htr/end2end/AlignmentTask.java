@@ -64,7 +64,7 @@ public class AlignmentTask {
         int[] res = new int[line.length];
         int idx = -1;
         for (int i = 0; i < line.length; i++) {
-            if (line[i] == "\n") {
+            if ("\n".equals(line[i])) {
                 idx++;
                 res[i] = -1;
             } else {

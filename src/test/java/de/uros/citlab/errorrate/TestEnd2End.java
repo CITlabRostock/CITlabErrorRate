@@ -7,6 +7,7 @@ package de.uros.citlab.errorrate;
 
 import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
+import de.uros.citlab.errorrate.interfaces.ILineComparison;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
@@ -116,56 +117,56 @@ public class TestEnd2End {
         //best case
         Assert.assertEquals(new Long(bestCase), getCount(false, false, mode, false,
                 "line 1\nline 2\nline 3",
-                "line 1\nline 2\nline 3").getOrDefault(Count.ERR,0L));
+                "line 1\nline 2\nline 3").getOrDefault(Count.ERR, 0L));
         //change two lines ==> 2*2 errors
         Assert.assertEquals(new Long(swapLines), getCount(false, false, mode, false,
                 "ab\ncd\nef\ngh",
-                "ab\nef\ncd\ngh").getOrDefault(Count.ERR,0L));
+                "ab\nef\ncd\ngh").getOrDefault(Count.ERR, 0L));
         //delete one line ==> 2 errors
         Assert.assertEquals(new Long(deleteLine), getCount(false, false, mode, false,
                 "ab\ncd",
-                "ab\nef\ncd").getOrDefault(Count.ERR,0L));
+                "ab\nef\ncd").getOrDefault(Count.ERR, 0L));
         //split one line ==> "cd ef" to "cd" and "" to "ef" ==> 3 + 2 = 5 errors
         Assert.assertEquals(new Long(splitLine), getCount(false, false, mode, false,
                 "ab\ncd ef\ngh",
-                "ab\ncd\nef\ngh").getOrDefault(Count.ERR,0L));
+                "ab\ncd\nef\ngh").getOrDefault(Count.ERR, 0L));
         Assert.assertEquals(new Long(splitWord), getCount(false, false, mode, false,
                 "ab\ncdef\ngh",
-                "ab\ncd\nef\ngh").getOrDefault(Count.ERR,0L));
+                "ab\ncd\nef\ngh").getOrDefault(Count.ERR, 0L));
         //merge two line ==> "cd ef" to "cd" and "" to "ef" ==> 3 + 2 = 5 errors
         Assert.assertEquals(new Long(mergeLine), getCount(false, false, mode, false,
                 "ab\ncd\nef",
-                "ab\ncd ef").getOrDefault(Count.ERR,0L));
+                "ab\ncd ef").getOrDefault(Count.ERR, 0L));
         Assert.assertEquals(new Long(mergeWord), getCount(false, false, mode, false,
                 "ab\ncd\nef",
-                "ab\ncdef").getOrDefault(Count.ERR,0L));
+                "ab\ncdef").getOrDefault(Count.ERR, 0L));
         Assert.assertEquals(new Long(mergeLine), getCount(false, false, mode, false,
                 "ab\ncd\nef\ngh",
-                "ab\ncd ef\ngh").getOrDefault(Count.ERR,0L));
+                "ab\ncd ef\ngh").getOrDefault(Count.ERR, 0L));
         //test if start works
         Assert.assertEquals(new Long(addStart), getCount(false, false, mode, false,
                 "cd\nef\ngh",
-                "ab\ncd\nef\ngh").getOrDefault(Count.ERR,0L));
+                "ab\ncd\nef\ngh").getOrDefault(Count.ERR, 0L));
         Assert.assertEquals(new Long(deleteStart), getCount(false, false, mode, false,
                 "ab\ncd",
-                "cd").getOrDefault(Count.ERR,0L));
+                "cd").getOrDefault(Count.ERR, 0L));
         Assert.assertEquals(new Long(deleteStart), getCount(false, false, mode, false,
                 "ab\ncd\nef",
-                "cd\nef").getOrDefault(Count.ERR,0L));
+                "cd\nef").getOrDefault(Count.ERR, 0L));
         Assert.assertEquals(new Long(deleteStart), getCount(false, false, mode, false,
                 "ab\ncd\nef\ngh",
-                "cd\nef\ngh").getOrDefault(Count.ERR,0L));
+                "cd\nef\ngh").getOrDefault(Count.ERR, 0L));
         //test if end works
         Assert.assertEquals(new Long(deleteEnd), getCount(false, false, mode, false,
                 "ab\ncd\nef\ngh",
-                "ab\ncd\nef").getOrDefault(Count.ERR,0L));
+                "ab\ncd\nef").getOrDefault(Count.ERR, 0L));
         Assert.assertEquals(new Long(addEnd), getCount(false, false, mode, false,
                 "ab\ncd\nef",
-                "ab\ncd\nef\ngh").getOrDefault(Count.ERR,0L));
+                "ab\ncd\nef\ngh").getOrDefault(Count.ERR, 0L));
         //reverse lines
         Assert.assertEquals(new Long(reverseLines), getCount(false, false, mode, false,
                 "ab\ncd\nef",
-                "ef\ncd\nab").getOrDefault(Count.ERR,0L));
+                "ef\ncd\nab").getOrDefault(Count.ERR, 0L));
 
     }
 
@@ -208,7 +209,7 @@ public class TestEnd2End {
             Assert.assertEquals("wrong count GT", Long.valueOf(14), count.get(Count.GT));
             Assert.assertEquals("wrong count COR", Long.valueOf(10), count.get(Count.COR));
             Assert.assertEquals("wrong count INS", Long.valueOf(2), count.get(Count.INS));
-            Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL,0L));
+            Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL, 0L));
             Assert.assertEquals("wrong count SUB", Long.valueOf(2), count.get(Count.SUB));
             Assert.assertEquals("wrong count HYP", Long.valueOf(12), count.get(Count.HYP));
         }
@@ -226,7 +227,7 @@ public class TestEnd2End {
             Assert.assertEquals("wrong count GT", Long.valueOf(reference.length() - 2), count.get(Count.GT));
             Assert.assertEquals("wrong count COR", Long.valueOf(10 - 1), count.get(Count.COR));
             Assert.assertEquals("wrong count INS", Long.valueOf(2), count.get(Count.INS));
-            Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL,0L));
+            Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL, 0L));
             Assert.assertEquals("wrong count SUB", Long.valueOf(2), count.get(Count.SUB));
             Assert.assertEquals("wrong count HYP", Long.valueOf(recognition.length() - 2), count.get(Count.HYP));
         }
@@ -303,9 +304,9 @@ public class TestEnd2End {
         Map<Count, Long> count = getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, gt, hyp);
         System.out.println(count);
         Assert.assertEquals("wrong count GT", gtLength, count.get(Count.GT));
-        Assert.assertEquals("wrong count INS", Long.valueOf(ins), count.getOrDefault(Count.INS,0L));
-        Assert.assertEquals("wrong count DEL", Long.valueOf(del), count.getOrDefault(Count.DEL,0L));
-        Assert.assertEquals("wrong count SUB", Long.valueOf(sub),count.getOrDefault(Count.SUB,0L));
+        Assert.assertEquals("wrong count INS", Long.valueOf(ins), count.getOrDefault(Count.INS, 0L));
+        Assert.assertEquals("wrong count DEL", Long.valueOf(del), count.getOrDefault(Count.DEL, 0L));
+        Assert.assertEquals("wrong count SUB", Long.valueOf(sub), count.getOrDefault(Count.SUB, 0L));
         Assert.assertEquals("wrong count COR", new Long(gtLength.intValue() - sub - ins), count.get(Count.COR));
         Assert.assertEquals("wrong count HYP", Long.valueOf(gtLength + del - ins), count.get(Count.HYP));
     }
@@ -321,7 +322,7 @@ public class TestEnd2End {
             Assert.assertEquals("wrong count GT", Long.valueOf(14 - 1), count.get(Count.GT));
             Assert.assertEquals("wrong count COR", Long.valueOf(10 - 1), count.get(Count.COR));
             Assert.assertEquals("wrong count INS", Long.valueOf(2), count.get(Count.INS));
-            Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL,0L));
+            Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL, 0L));
             Assert.assertEquals("wrong count SUB", Long.valueOf(2), count.get(Count.SUB));
             Assert.assertEquals("wrong count HYP", Long.valueOf(12 - 1), count.get(Count.HYP));
         }
@@ -338,9 +339,9 @@ public class TestEnd2End {
             System.out.println(count);
             Assert.assertEquals("wrong count GT", Long.valueOf(6), count.get(Count.GT));
             Assert.assertEquals("wrong count COR", Long.valueOf(6), count.get(Count.COR));
-            Assert.assertEquals("wrong count INS", Long.valueOf(0), count.getOrDefault(Count.INS,0L));
+            Assert.assertEquals("wrong count INS", Long.valueOf(0), count.getOrDefault(Count.INS, 0L));
             Assert.assertEquals("wrong count DEL", Long.valueOf(3), count.get(Count.DEL));
-            Assert.assertEquals("wrong count SUB", Long.valueOf(0), count.getOrDefault(Count.SUB,0L));
+            Assert.assertEquals("wrong count SUB", Long.valueOf(0), count.getOrDefault(Count.SUB, 0L));
             Assert.assertEquals("wrong count HYP", Long.valueOf(9), count.get(Count.HYP));
         }
     }
@@ -394,6 +395,12 @@ public class TestEnd2End {
 //                "Oel , Zwiebeln , Zucker ,";
 //        Map<Count, Long> count_NO_RO = getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO, false, reference, recognition);
         Map<Count, Long> count_NO_RO_SEG = getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition);
+
+        List<ILineComparison> lineComparison = getLineComparison(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition);
+        for (int i = 0; i < lineComparison.size(); i++) {
+            System.out.println(lineComparison.get(i));
+        }
+
 //        System.out.println("count_NO_RO");
 //        System.out.println(count_NO_RO);
         System.out.println("count_NO_RO_SEG");
@@ -532,9 +539,23 @@ public class TestEnd2End {
         }
         ErrorModuleEnd2End impl = new ErrorModuleEnd2End(tokenizer, sn, mode, false, ErrorModuleEnd2End.CountSubstitutions.ALL);
 //        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
-        impl.calculate(hyp, gt,true);
+        impl.calculate(hyp, gt, true);
 
         return impl.getCounter().getMap();
+    }
+
+    public List<ILineComparison> getLineComparison(boolean upper, boolean word, ErrorModuleEnd2End.Mode mode,
+                                                   boolean letterNumber, String gt, String hyp) {
+        System.out.println((" test \"" + gt + "\" vs \"" + hyp + "\"").replace("\n", "\\n"));
+        ITokenizer tokenizer = new TokenizerCategorizer(word ? new CategorizerWordMergeGroups() : new CategorizerCharacterDft());
+        IStringNormalizer sn = new StringNormalizerDft(Normalizer.Form.NFKC, upper);
+        if (letterNumber) {
+            sn = new StringNormalizerLetterNumber(sn);
+        }
+        ErrorModuleEnd2End impl = new ErrorModuleEnd2End(tokenizer, sn, mode, false, ErrorModuleEnd2End.CountSubstitutions.ALL);
+//        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
+        return impl.calculate(hyp, gt, true);
+
     }
 
 }

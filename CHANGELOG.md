@@ -1,6 +1,9 @@
 
 # Changelog
 
+# 4.0.1
+* bugfix: ILineComparison return right index (was always 0)
+
 # 4.0.0
 * refactor in de.uros.citlab.errorrate. interfaces class IDistance -> IPoint
 * refactor in de.uros.citlab.errorrate IErrorModuleWithSegmentation.LineComparison -> ILineComparison

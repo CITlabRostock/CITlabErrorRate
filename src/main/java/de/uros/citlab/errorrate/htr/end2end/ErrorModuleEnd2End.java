@@ -670,52 +670,34 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     private PathCountResult getPathCount(AlignmentTask alignmentTask, int sizeProcessViewer, File out, boolean calcLineComparison) {
         //use dynamic programming to calculateIntern the cheapest path through the dynamic programming tabular
 //        calcBestPathFast(recos, refs);
+        String[] recos = alignmentTask.getRecos();
+        String[] refs = alignmentTask.getRefs();
+        if (countChars(recos) == 0) {
+            PathCountResult pathCountResult = new PathCountResult();
+            for (int i = 0; i < refs.length; i++) {
+                if (!voter.isLineBreak(refs[i])) {
+                    pathCountResult.add(new RecoRef("", refs[i]), Count.GT, Count.INS);
+                    if (calcLineComparison) {
+                        pathCountResult.add(
+                                getLineComparison(
+                                        -1,
+                                        alignmentTask.getRefLineMap()[i],
+                                        "",
+                                        refs[i],
+                                        Arrays.asList(new Distance(Manipulation.INS, "", refs[i]))
+                                )
+                        );
+                    }
+                }
+            }
+            return pathCountResult;
+        }
         if (filter != null) {
             filter.setAlignmentTask(alignmentTask);
         }
         pathCalculator.setUpdateScheme(PathCalculatorGraph.UpdateScheme.LAZY);
         pathCalculator.setSizeProcessViewer(sizeProcessViewer);
         pathCalculator.setFileDynMat(out);
-        String[] recos = alignmentTask.getRecos();
-        String[] refs = alignmentTask.getRefs();
-        if (countChars(recos) == 0) {
-            PathCountResult pathCountResult = new PathCountResult();
-            int n = countChars(refs);
-            for (int i = 0; i < refs.length; i++) {
-                if (!voter.isLineBreak(refs[i])) {
-                    pathCountResult.add(new RecoRef("", refs[i]), Count.GT, Count.INS);
-                    if (calcLineComparison) {
-                        pathCountResult.add(new ILineComparison() {
-                            @Override
-                            public int getRecoIndex() {
-                                return 0;
-                            }
-
-                            @Override
-                            public int getRefIndex() {
-                                return 0;
-                            }
-
-                            @Override
-                            public String getRefText() {
-                                return null;
-                            }
-
-                            @Override
-                            public String getRecoText() {
-                                return null;
-                            }
-
-                            @Override
-                            public List<IPoint> getPath() {
-                                return null;
-                            }
-                        });
-                    }
-                }
-            }
-            return pathCountResult;
-        }
         PathCalculatorGraph.DistanceMat<String, String> mat = pathCalculator.calcDynProg(recos, refs);
 //        pathCalculator.calcBestPath(mat);
         List<PathCalculatorGraph.IDistance<String, String>> calcBestPath = pathCalculator.calcBestPath(mat);
@@ -914,6 +896,11 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             public List<IPoint> getPath() {
                 return path;
             }
+
+            @Override
+            public String toString() {
+                return String.format("[%2d,%2d]: '%s'=>'%s' %s", recoIndex, refIndex, recoText == null ? "" : recoText, refText == null ? "" : refText, path);
+            }
         };
 
     }
@@ -1081,22 +1068,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                 recoBuilder.append(reco);
                 refBuilder.append(ref);
                 final Manipulation manipulation = Manipulation.valueOf(point.getManipulation());
-                manipulations.add(new IPoint() {
-                    @Override
-                    public Manipulation getManipulation() {
-                        return manipulation;
-                    }
-
-                    @Override
-                    public String getReco() {
-                        return reco;
-                    }
-
-                    @Override
-                    public String getRef() {
-                        return ref;
-                    }
-                });
+                manipulations.add(new Distance(Manipulation.valueOf(point.getManipulation()), reco, ref));
             }
             lc = getLineComparison(
                     alignmentTask.getRecoLineMap()[path.get(0).getPoint()[0] - 1],
