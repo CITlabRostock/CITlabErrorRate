@@ -90,7 +90,7 @@ public class AlignmentTask {
         return refLineMap;
     }
 
-    public AlignmentTask(List<ILine> reco, List<ILine> ref, ITokenizer tokenizer, IStringNormalizer sn, double thresholdCouverage) {
+    public AlignmentTask(List<ILine> reco, List<ILine> ref, ITokenizer wordTokenizer, IStringNormalizer sn, double thresholdCouverage) {
         Polygon[] recos = new Polygon[reco.size()];
         Polygon[] refs = new Polygon[ref.size()];
         Boolean useFilter = null; //only use filter, if baselines are given everywhere
@@ -121,22 +121,22 @@ public class AlignmentTask {
         int[][] gtLists = new BaseLineAligner().getGTLists(refs, null, recos, thresholdCouverage);
         this.adjazent = getMap(gtLists, recos.length, refs.length);
 
-        Pair<String[], int[]> recoTokens = getTokensAndLineIndex(reco, tokenizer, sn);
+        Pair<String[], int[]> recoTokens = getTokensAndLineIndex(reco, wordTokenizer, sn);
         this.recoLineMap = recoTokens.getSecond();
         this.recos = recoTokens.getFirst();
-        Pair<String[], int[]> refTokens = getTokensAndLineIndex(ref, tokenizer, sn);
+        Pair<String[], int[]> refTokens = getTokensAndLineIndex(ref, wordTokenizer, sn);
         this.refLineMap = refTokens.getSecond();
         this.refs = refTokens.getFirst();
     }
 
-    private Pair<String[], int[]> getTokensAndLineIndex(List<ILine> lines, ITokenizer tokenizer, IStringNormalizer sn) {
+    private Pair<String[], int[]> getTokensAndLineIndex(List<ILine> lines, ITokenizer wordTokenizer, IStringNormalizer sn) {
         LinkedList<String> tokens = new LinkedList<>();
         LinkedList<Integer> indexes = new LinkedList<>();
         tokens.add("\n");
         indexes.add(-1);
         for (int i = 0; i < lines.size(); i++) {
             String text = sn == null ? lines.get(i).getText() : sn.normalize(lines.get(i).getText());
-            for (String token : tokenizer.tokenize(text)) {
+            for (String token : wordTokenizer.tokenize(text)) {
                 tokens.add(token);
                 indexes.add(i);
             }

@@ -1,8 +1,10 @@
 
 # Changelog
 
-# 4.0.1
+# 5.0.0
 * bugfix: ILineComparison return right index (was always 0)
+* new feature: first (untested) version for WER
+* simplifying interfaces (have to increase mayor version)
 
 # 4.0.0
 * refactor in de.uros.citlab.errorrate. interfaces class IDistance -> IPoint

@@ -6,15 +6,14 @@
 package de.uros.citlab.errorrate;
 
 import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
+import de.uros.citlab.errorrate.interfaces.ILine;
 import de.uros.citlab.errorrate.interfaces.ILineComparison;
 import de.uros.citlab.errorrate.interfaces.IPoint;
-import de.uros.citlab.errorrate.interfaces.ILine;
 import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.Method;
 import de.uros.citlab.errorrate.types.StopWatch;
 import de.uros.citlab.errorrate.util.ExtractUtil;
 import de.uros.citlab.errorrate.util.ObjectCounter;
-import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -190,7 +189,7 @@ public class TestEnd2EndRealWorld {
 
     public double testGermania(ErrorModuleEnd2End.Mode mode, int image, boolean usePolygons) throws IOException {
         StopWatch sw = new StopWatch();
-        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, mode, usePolygons, ErrorModuleEnd2End.CountSubstitutions.OFF);
+        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(false, null, mode, usePolygons, ErrorModuleEnd2End.CountSubstitutions.OFF);
         end2End.setThresholdCouverage(0.1);
 //        end2End.setSizeProcessViewer(6000);
 //        end2End.setFileDynProg(new File(mode + ".png"));

@@ -80,6 +80,23 @@ public class TestEnd2End {
     }
 
     @Test
+    public void testWER() {
+//        Assert.assertEquals(
+//                new Long(7), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false,
+//                        "for this szenario it should be zero",
+//                        "for this szenario it should be zero").
+//                        get(Count.COR)
+//        );
+        Assert.assertEquals(
+                new Long(6), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false,
+                        "for this szenario\nit should be zero",
+                        "for this szenario it should be zero").
+                        get(Count.ERR)
+        );
+//        Assert.assertEquals(new Long(1), getCount(true, true, ErrorModuleEnd2End.Mode.RO, false, "SA\u0308SSE", "säße").get(Count.COR));
+    }
+
+    @Test
     public void testTokenizer() {
         Assert.assertEquals(new Long(1), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "it's wrong", "its wrong").get(Count.COR));
         Assert.assertEquals(new Long(2), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "its wrong", "its wrong").get(Count.COR));
@@ -532,14 +549,15 @@ public class TestEnd2End {
     public Map<Count, Long> getCount(boolean upper, boolean word, ErrorModuleEnd2End.Mode mode,
                                      boolean letterNumber, String gt, String hyp) {
         System.out.println((" test \"" + gt + "\" vs \"" + hyp + "\"").replace("\n", "\\n"));
-        ITokenizer tokenizer = new TokenizerCategorizer(word ? new CategorizerWordMergeGroups() : new CategorizerCharacterDft());
         IStringNormalizer sn = new StringNormalizerDft(Normalizer.Form.NFKC, upper);
         if (letterNumber) {
             sn = new StringNormalizerLetterNumber(sn);
         }
-        ErrorModuleEnd2End impl = new ErrorModuleEnd2End(tokenizer, sn, mode, false, ErrorModuleEnd2End.CountSubstitutions.ALL);
-//        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
-        impl.calculate(hyp, gt, true);
+        ErrorModuleEnd2End impl = new ErrorModuleEnd2End(word, sn, mode, false, ErrorModuleEnd2End.CountSubstitutions.ALL);
+        impl.setSizeProcessViewer(6000);
+        impl.setFileDynProg(new File("out.png"));
+        List<ILineComparison> calculate = impl.calculate(hyp, gt, true);
+        System.out.println(calculate);
 
         return impl.getCounter().getMap();
     }

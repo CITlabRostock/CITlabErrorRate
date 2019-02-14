@@ -95,8 +95,6 @@ public class End2EndError {
             }
             //STRING NORMALIZER
             IStringNormalizer snd = new StringNormalizerDft(form, upper);
-            //CATEGORIZER
-            ICategorizer categorizer = new CategorizerCharacterDft();
             //normalize to letter or to all codepoints?
             IStringNormalizer sn = cmd.hasOption('l') ? new StringNormalizerLetterNumber(snd) : snd;
             boolean geometry = cmd.hasOption('g');
@@ -108,7 +106,7 @@ public class End2EndError {
                             cmd.hasOption('s') ?
                                     ErrorModuleEnd2End.Mode.RO_SEG :
                                     ErrorModuleEnd2End.Mode.RO;
-            IErrorModuleWithSegmentation em = new ErrorModuleEnd2End(categorizer, sn, mode, geometry, countSubstitutions);
+            IErrorModuleWithSegmentation em = new ErrorModuleEnd2End(false, sn, mode, geometry, countSubstitutions);
             if (cmd.hasOption('t')) {
                 double t = Double.parseDouble(cmd.getOptionValue('t'));
                 if (t < 0.0 || t >= 1.0) {

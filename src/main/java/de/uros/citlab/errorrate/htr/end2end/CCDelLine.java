@@ -24,7 +24,7 @@ class CCDelLine extends CCAbstract {
                     //-1 because \n does not have to be count
                     return new PathCalculatorGraph.DistanceSmall(point, new int[]{yend, x}, dist.costsAcc + cntErrors * offsetDel, this);
                 }
-                //do not count spaces if any segmentation is allowed
+                //do not count spaces if any segmentation is allowed or mode is WER
                 if (countSpaces || !isSpaceReco[yend]) {
                     cntErrors++;
                 }
