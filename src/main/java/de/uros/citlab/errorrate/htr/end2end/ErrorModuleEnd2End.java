@@ -753,33 +753,6 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             LOG.error("cannot find path between \n" + Arrays.toString(recos).replace("\n", "\\n") + " and \n" + Arrays.toString(refs).replace("\n", "\\n"));
             throw new RuntimeException("cannot find path (see Logger.warn) for more information");
         }
-        if (tokenizer != null) {
-            //delete spaces in ins, del, cor
-            List<PathCalculatorGraph.IDistance<String, String>> p = new LinkedList<>();
-            for (int i = 0; i < calcBestPath.size(); i++) {
-                PathCalculatorGraph.IDistance<String, String> dist = calcBestPath.get(i);
-//                switch (dist.getManipulation()) {
-//                    case "INS":
-//                        if (voter.isSpace(dist.getReferences()[0])) {
-//                            continue;
-//                        }
-//                        break;
-//                    case "DEL":
-//                        if (voter.isSpace(dist.getRecos()[0])) {
-//                            continue;
-//                        }
-//                        break;
-//                    case "COR":
-//                        if (voter.isSpace(dist.getReferences()[0])) {
-//                            continue;
-//                        }
-//                        break;
-//                }
-                p.add(dist);
-            }
-            LOG.debug("deleted {} of {} parts because they were spaces", calcBestPath.size() - p.size(), calcBestPath.size());
-            calcBestPath = p;
-        }
         List<PathQuality> grouping = getAndSortGroups(calcBestPath);
         //if any reference is used, the resulting array "usedReco" should only conatain ones and zeros.
         int[] usedReco = getUsedRecos(recos, calcBestPath);

@@ -231,6 +231,23 @@ public class TestEnd2End {
             Assert.assertEquals("wrong count HYP", Long.valueOf(12), count.get(Count.HYP));
         }
     }
+    @Test
+    public void testCountComparisonAcademical1Word() {
+//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+        for (ErrorModuleEnd2End.Mode mode : new ErrorModuleEnd2End.Mode[]{ErrorModuleEnd2End.Mode.NO_RO_SEG}) {
+            String reference = "two three\nthree";
+            String recognition = "one\ntwo three";
+            Map<Count, Long> count = getCount(false, true, mode, false, reference, recognition);
+            System.out.println("count");
+            System.out.println(count);
+            Assert.assertEquals("wrong count GT", Long.valueOf(3), count.get(Count.GT));
+            Assert.assertEquals("wrong count COR", Long.valueOf(2), count.get(Count.COR));
+            Assert.assertEquals("wrong count INS", Long.valueOf(0), count.getOrDefault(Count.INS,0L));
+            Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL, 0L));
+            Assert.assertEquals("wrong count SUB", Long.valueOf(1), count.get(Count.SUB));
+            Assert.assertEquals("wrong count HYP", Long.valueOf(3), count.get(Count.HYP));
+        }
+    }
 
     @Test
     public void testCountComparisonAcademical4() {
@@ -554,10 +571,13 @@ public class TestEnd2End {
             sn = new StringNormalizerLetterNumber(sn);
         }
         ErrorModuleEnd2End impl = new ErrorModuleEnd2End(word, sn, mode, false, ErrorModuleEnd2End.CountSubstitutions.ALL);
-        impl.setSizeProcessViewer(6000);
-        impl.setFileDynProg(new File("out.png"));
+//        impl.setSizeProcessViewer(6000);
+//        impl.setFileDynProg(new File("out.png"));
         List<ILineComparison> calculate = impl.calculate(hyp, gt, true);
-        System.out.println(calculate);
+        for (ILineComparison iLineComparison : calculate) {
+            System.out.println(iLineComparison);
+        }
+
 
         return impl.getCounter().getMap();
     }
