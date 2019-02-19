@@ -29,8 +29,6 @@ import java.util.List;
  */
 public class PathCalculatorGraph<Reco, Reference> {
 
-    private Reco typeReco;
-    private Reference typeReference;
     private UpdateScheme updateScheme = UpdateScheme.LAZY;
     private int sizeProcessViewer = -1;
     private File folderDynMats = null;
@@ -246,7 +244,7 @@ public class PathCalculatorGraph<Reco, Reference> {
         public List<IDistance<Reco, Reference>> getBestPath() {
             DistanceSmall lastElement = getLastElement();
             if (lastElement == null) {
-                LOG.warn("Distance Matrix not completely calculated.");
+                LOG.warn("Point Matrix not completely calculated.");
                 return null;
             }
             LinkedList<IDistance<Reco, Reference>> res = new LinkedList<>();
@@ -401,7 +399,7 @@ public class PathCalculatorGraph<Reco, Reference> {
     private DistanceMat<Reco, Reference> calcDynProgInner(Reco[] nativeReco, Reference[] nativeRef, int maxCount) {
 //        Reference[] nativeRef = (Reference[]) reco.toArray();
         DistanceMat<Reco, Reference> distMat = new DistanceMat<>(nativeReco.length, nativeRef.length);
-//        IPoint<Reco, Reference> distanceInfinity = new Distance<>(null, null, 0, Double.MAX_VALUE, null);
+//        IPoint<Reco, Reference> distanceInfinity = new Point<>(null, null, 0, Double.MAX_VALUE, null);
 //        LinkedList<IPoint<Reco, Reference>> candidates = new LinkedList<>();
         for (ICostCalculator<Reco, Reference> costCalculator : costCalculators) {
             costCalculator.init(distMat, nativeReco, nativeRef);
@@ -549,7 +547,7 @@ public class PathCalculatorGraph<Reco, Reference> {
 
     public static class Distance<Reco, Reference> extends DistanceSmall implements PathCalculatorGraph.IDistance<Reco, Reference> {
 
-        //        private final Distance previousDistance;
+        //        private final Point previousDistance;
         private final String manipulation;
         private final double costs;
         private Reco[] recos;
@@ -678,7 +676,7 @@ public class PathCalculatorGraph<Reco, Reference> {
                 meinPanel.add(progressBar);
                 mainFrame.add(meinPanel);
                 if (size > 0) {
-                    mainFrame.setLocation(new Point((int) (screenSize.getWidth() - mainFrame.getWidth()) / 2, (int) (screenSize.getHeight() - mainFrame.getHeight()) / 2));
+                    mainFrame.setLocation(new java.awt.Point((int) (screenSize.getWidth() - mainFrame.getWidth()) / 2, (int) (screenSize.getHeight() - mainFrame.getHeight()) / 2));
                     mainFrame.setVisible(true);
                     mainFrame.pack();
                 }

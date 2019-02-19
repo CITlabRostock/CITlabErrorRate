@@ -14,6 +14,8 @@ import de.uros.citlab.errorrate.util.GroupUtil;
 import de.uros.citlab.errorrate.util.HeatMapUtil;
 import de.uros.citlab.errorrate.util.ObjectCounter;
 import de.uros.citlab.errorrate.util.VectorUtil;
+import de.uros.citlab.tokenizer.TokenizerCategorizer;
+import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
 import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
 import org.apache.commons.math3.util.Pair;
@@ -33,21 +35,25 @@ import java.util.*;
  */
 public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     private final ObjectCounter<Count> counter = new ObjectCounter<>();
-    private final ObjectCounter<RecoRef> substitutionCounter = new ObjectCounter<>();
-    private final WordTokenizerAddSpaceGap tokenizer;
-    private final CountSubstitutions countManipulations;
-    private final IStringNormalizer stringNormalizer;
+    private final ObjectCounter<Substitution> substitutionCounter = new ObjectCounter<>();
+    private final ITokenizer tokenizer;
+    private CountSubstitutions countManipulations = CountSubstitutions.OFF;
+    private IStringNormalizer stringNormalizer = null;
     private final PathCalculatorGraph<String, String> pathCalculator = new PathCalculatorGraph<>();
-    private final Mode mode;
-    private final double filterOffset;
+    //    private final Mode mode;
+    private double filterOffset = 100;
     private final Voter voter = new Voter();
     private static final Logger LOG = LoggerFactory.getLogger(ErrorModuleEnd2End.class);
     private int sizeProcessViewer = -1;
     private File fileDynProg = null;
     private PathFilterBaselineMatch filter = null;
-    private boolean usePolygons;
+    //    private boolean usePolygons;
+    private final boolean restrictReadingOrder;
+    private final boolean restrictGeometry;
+    private final boolean allowSegmentationErrors;
     private double thresholdCouverage = 0.0;
     private final boolean isWER;
+    private final boolean countSpaces;
 
     public enum CountSubstitutions {
         OFF(false, false),
@@ -62,29 +68,29 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         }
     }
 
-    public enum Mode {
-        RO(false, false),
-        NO_RO(true, false),
-        RO_SEG(false, true),
-        NO_RO_SEG(true, true);
-
-        private boolean ignoreReadingOrder;
-        private boolean ignoreSegmentation;
-
-        Mode(boolean ignoreReadingOrder, boolean ignoreSegmentation) {
-            this.ignoreReadingOrder = ignoreReadingOrder;
-            this.ignoreSegmentation = ignoreSegmentation;
-        }
-
-        public boolean ignoreReadingOrder() {
-            return ignoreReadingOrder;
-        }
-
-        public boolean ignoreSegmentation() {
-            return ignoreSegmentation;
-        }
-
-    }
+//    public enum Mode {
+//        RO(false, false),
+//        NO_RO(true, false),
+//        RO_SEG(false, true),
+//        NO_RO_SEG(true, true);
+//
+//        private boolean ignoreReadingOrder;
+//        private boolean ignoreSegmentation;
+//
+//        Mode(boolean ignoreReadingOrder, boolean ignoreSegmentation) {
+//            this.ignoreReadingOrder = ignoreReadingOrder;
+//            this.ignoreSegmentation = ignoreSegmentation;
+//        }
+//
+//        public boolean ignoreReadingOrder() {
+//            return ignoreReadingOrder;
+//        }
+//
+//        public boolean ignoreSegmentation() {
+//            return ignoreSegmentation;
+//        }
+//
+//    }
 
     private static final class WordTokenizerAddSpaceGap implements ITokenizer {
         private ITokenizer wordTokenizer;
@@ -113,103 +119,88 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         }
     }
 
-    private static final class WordTokenizerIntern implements ITokenizer {
 
-        @Override
-        public List<String> tokenize(String s) {
-            LinkedList<String> ll = new LinkedList<>();
-            String[] split = s.split("\n");
-            for (int i = 0; i < split.length; i++) {
-                ll.addAll(Arrays.asList(split[i].split("\\s")));
-                ll.add("\n");
-            }
-            ll.removeLast();
-            return ll;
-        }
+    public ErrorModuleEnd2End(boolean restrictReadingOrder, boolean restrictGeometry, boolean allowSegmentationErrors, boolean calcWER) {
+        this(restrictReadingOrder, restrictGeometry, allowSegmentationErrors, calcWER ? new WordTokenizerSpaceCategory() : null);
     }
 
-
-    public ErrorModuleEnd2End(Mode mode, boolean usePolygons, CountSubstitutions countManipulations) {
-        this(false, null, mode, usePolygons, countManipulations);
-    }
-
-    public ErrorModuleEnd2End(boolean wer, Mode mode, boolean usePolygons, CountSubstitutions countManipulations) {
-        this(wer ? new WordTokenizerIntern() : null, null, mode, usePolygons, countManipulations);
-    }
-
-
-    public ErrorModuleEnd2End(boolean wer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, CountSubstitutions countManipulations) {
-        this(wer ? new WordTokenizerIntern() : null, stringNormalizer, mode, usePolygons, countManipulations, 100);
-    }
-
-    public ErrorModuleEnd2End(ITokenizer wordTokenizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, CountSubstitutions countManipulations) {
-        this(wordTokenizer, stringNormalizer, mode, usePolygons, countManipulations, 100);
-    }
-
-    public ErrorModuleEnd2End(ITokenizer wordTokenizer, IStringNormalizer stringNormalizer, Mode mode, boolean usePolygons, CountSubstitutions countManipulations, double filterOffset) {
-        this.usePolygons = usePolygons;
+    public ErrorModuleEnd2End(boolean restrictReadingOrder, boolean restrictGeometry, boolean allowSegmentationErrors, ITokenizer wordTokenizer) {
+        this.restrictReadingOrder = restrictReadingOrder;
+        this.restrictGeometry = restrictGeometry;
+        this.allowSegmentationErrors = allowSegmentationErrors;
         this.filterOffset = filterOffset;
-        if (countManipulations == null) {
-            throw new RuntimeException("countManipulations have to be one of " + Arrays.asList(CountSubstitutions.values()));
-        }
-        this.countManipulations = countManipulations;
-        this.mode = mode;
-//        if (tokenizer == null) {
-//            throw new RuntimeException("no tokenizer given (is null)");
-//        }
         isWER = wordTokenizer != null;
+        countSpaces = !isWER && !allowSegmentationErrors;
         this.tokenizer = isWER ?
                 wordTokenizer instanceof WordTokenizerAddSpaceGap ?
                         (WordTokenizerAddSpaceGap) wordTokenizer :
                         new WordTokenizerAddSpaceGap(wordTokenizer) :
-                null;
-        this.stringNormalizer = stringNormalizer;
+                new TokenizerCategorizer(new CategorizerCharacterDft());
         pathCalculator.addCostCalculator(isWER ? new CCWordDel(voter) : new CCDel(voter));
         pathCalculator.addCostCalculator(isWER ? new CCWordIns(voter) : new CCIns(voter));
-        pathCalculator.addCostCalculator(new CCSubOrCor(voter));
+        pathCalculator.addCostCalculator(isWER ? new CCWordSubOrCor(voter) : new CCSubOrCor(voter));
         int grid = 20;
         PathCalculatorGraph.PathFilter filter = null;
-        switch (mode) {
-            case NO_RO_SEG:
+        if (restrictReadingOrder) {
+            if (allowSegmentationErrors) {
                 pathCalculator.addCostCalculator(new CCSubOrCorNL(voter));
-                if (usePolygons) {
-                    pathCalculator.addCostCalculator(isWER ? new CCWordInsLine(voter) : new CCInsLine(voter));
-                }
+            }
+            pathCalculator.addCostCalculator(isWER ? new CCWordInsLine(voter) : new CCInsLine(voter));
+            pathCalculator.addCostCalculator(new CCDelLine(voter, countSpaces));//this cost calculator is not needed for IGNORE_READINGORDER because CCLineBreakRecoJump is cheaper anyway
+            if (filterOffset > 0.0) {
+                filter = new FilterHorizontalFixedLength(filterOffset, grid);
+            }
+        } else {
+            if (restrictGeometry) {
+                pathCalculator.addCostCalculator(isWER ? new CCWordInsLine(voter) : new CCInsLine(voter));
+            }
+            if (allowSegmentationErrors) {
+                pathCalculator.addCostCalculator(new CCSubOrCorNL(voter));
                 CCLineBreakAndSpaceRecoJump ccLineBreakAndSpaceRecoJump = new CCLineBreakAndSpaceRecoJump(voter);
                 pathCalculator.addCostCalculator((PathCalculatorGraph.ICostCalculatorMulti<String, String>) ccLineBreakAndSpaceRecoJump);
                 if (filterOffset > 0.0) {
                     filter = ccLineBreakAndSpaceRecoJump;
                 }
-                break;
-            case NO_RO:
+
+            } else {
                 CCLineBreakRecoJump jumper = new CCLineBreakRecoJump(voter);
-                if (usePolygons) {
-                    pathCalculator.addCostCalculator(isWER ? new CCWordInsLine(voter) : new CCInsLine(voter));
-                }
                 pathCalculator.addCostCalculator((PathCalculatorGraph.ICostCalculatorMulti<String, String>) jumper);
                 if (filterOffset > 0.0) {
                     filter = jumper;
                 }
-                break;
-            case RO_SEG:
-                pathCalculator.addCostCalculator(new CCSubOrCorNL(voter));
-            case RO:
-                pathCalculator.addCostCalculator(isWER ? new CCWordInsLine(voter) : new CCInsLine(voter));
-                pathCalculator.addCostCalculator(new CCDelLine(voter, !isWER && mode.equals(Mode.RO)));//this cost calculator is not needed for IGNORE_READINGORDER because CCLineBreakRecoJump is cheaper anyway
-                if (filterOffset > 0.0) {
-                    filter = new FilterHorizontalFixedLength(filterOffset, grid);
-                }
-                break;
-            default:
-                throw new RuntimeException("not implemented yet");
+            }
         }
-        if (usePolygons) {
+        if (restrictGeometry) {
             this.filter = new PathFilterBaselineMatch(filter);
             pathCalculator.setFilter(this.filter);
         } else {
             this.filter = null;
             pathCalculator.setFilter(filter);
         }
+    }
+
+    /**
+     * especially for very large character comparisons (>10.000 characters) the problem gets too large.
+     * Use branch and bound to only follow paths reference-prefixes, which LD are maximally 'filterOffset' higher
+     * than the best LD for the reference-prefix.
+     * Set filterOffset to -1.0 to not use branch and bound.
+     * default: 100.0
+     *
+     * @param filterOffset
+     */
+    public void setFilterOffset(double filterOffset) {
+        this.filterOffset = filterOffset;
+    }
+
+    /**
+     * String normalization that is applied to all text line strings.
+     * Set null if no String normalization should be done.
+     * defalut: null
+     *
+     * @param stringNormalizer
+     */
+    public void setStringNormalizer(IStringNormalizer stringNormalizer) {
+        this.stringNormalizer = stringNormalizer;
     }
 
     /**
@@ -240,24 +231,26 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         fileDynProg = file;
     }
 
+    /**
+     * @param countManipulations
+     */
+    public void setCountManipulations(CountSubstitutions countManipulations) {
+        this.countManipulations = countManipulations;
+    }
 
     @Override
     public String toString() {
         return "ErrorModuleEnd2End{" +
-                "counter=" + counter +
-                ", substitutionCounter=" + substitutionCounter +
-                ", tokenizer=" + tokenizer +
-                ", countManipulations=" + countManipulations +
-                ", stringNormalizer=" + stringNormalizer +
-                ", pathCalculator=" + pathCalculator +
-                ", mode=" + mode +
-                ", voter=" + voter +
+                "restrictReadingOrder=" + restrictReadingOrder +
+                ", restrictGeometry=" + restrictGeometry +
+                ", allowSegmentationErrors=" + allowSegmentationErrors +
+                ", isWER=" + isWER +
                 '}';
     }
 
     @Override
     public Map<Metric, Double> getMetrics() {
-        Result res = new Result(Method.CER);
+        Result res = new Result(isWER ? Method.WER : Method.CER);
         res.addCounts(counter);
         return res.getMetrics();
     }
@@ -298,6 +291,9 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
      */
     @Override
     public List<ILineComparison> calculate(String reco, String ref, boolean calcLineComparison) {
+        if (restrictGeometry) {
+            throw new RuntimeException("only Strings given but implementations configured to restrict geometric position");
+        }
 //        final String recoOrig = reco;
 //        final String refOrig = ref;
         //use string normalizer, if set
@@ -307,27 +303,31 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         }
 
         //tokenize both strings
-        List<String> recoList = tokenizer.tokenize(reco);
-        recoList.add(0, "\n");
-        recoList.add("\n");
-        String[] recos = recoList.toArray(new String[0]);
-        List<String> refList = tokenizer.tokenize(ref);
-        refList.add(0, "\n");
-        refList.add("\n");
-        String[] refs = refList.toArray(new String[0]);
+        String[] recos = getExpandedTokenization(reco);
+        String[] refs = getExpandedTokenization(ref);
         AlignmentTask result = new AlignmentTask(recos, refs);
         return calculateIntern(result, sizeProcessViewer, fileDynProg, calcLineComparison);
     }
 
+    private String[] getExpandedTokenization(String string) {
+        LinkedList<String> res = new LinkedList<>();
+        res.add("\n");
+        for (String s : string.split("\n")) {
+            res.addAll(tokenizer.tokenize(s));
+            res.add("\n");
+        }
+        return res.toArray(new String[0]);
+    }
+
     private List<ILineComparison> calculateIntern(AlignmentTask alignmentTask, int sizeProcessViewer, File out, boolean calcLineComparison) {
-        PathCountResult pathCountResult = getPathCount(alignmentTask, sizeProcessViewer, out, calcLineComparison);
-        ObjectCounter<Count> countActual = pathCountResult.oc;
+        PathCountResult pathCountResult = getPathCountResult(alignmentTask, sizeProcessViewer, out, calcLineComparison);
+        ObjectCounter<Count> countActual = pathCountResult.getCounter();
         counter.addAll(countActual);
-        if (pathCountResult.recoref != null) {
-            substitutionCounter.addAll(pathCountResult.recoref);
+        if (pathCountResult.getSubstitutions() != null) {
+            substitutionCounter.addAll(pathCountResult.getSubstitutions());
         }
         counter.set(Count.ERR, counter.get(Count.INS) + counter.get(Count.DEL) + counter.get(Count.SUB));
-        return pathCountResult.lineComparisons;
+        return pathCountResult.getLineComparisons();
     }
 
     private static class PathQuality {
@@ -465,42 +465,6 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         return usedReco;
     }
 
-
-    private static class PathCountResult {
-        private ObjectCounter<Count> oc;
-        private ObjectCounter<RecoRef> recoref;
-        private List<ILineComparison> lineComparisons;
-
-        public PathCountResult() {
-            this(new ObjectCounter<>(), new ObjectCounter<>(), new LinkedList<>());
-        }
-
-        public PathCountResult(ObjectCounter<Count> oc, ObjectCounter<RecoRef> recoref, List<ILineComparison> lineComparisons) {
-            this.oc = oc;
-            this.recoref = recoref;
-            this.lineComparisons = lineComparisons;
-        }
-
-        void add(RecoRef recoRef, Count... count) {
-            this.recoref.add(recoRef);
-            for (Count c : count) {
-                oc.add(c);
-            }
-        }
-
-        void add(ILineComparison lineComparison) {
-            lineComparisons.add(lineComparison);
-        }
-
-        void addAll(PathCountResult toAdd) {
-            oc.addAll(toAdd.oc);
-            recoref.addAll(toAdd.recoref);
-            if (toAdd.lineComparisons != null) {
-                lineComparisons.addAll(toAdd.lineComparisons);
-            }
-        }
-    }
-
     // 1. group path into line-line-path
     // 2. sort paths according quality
     // 3. count paths, which have a unique reco
@@ -631,22 +595,21 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         return grouping;
     }
 
-    private static class GroupCountResult {
-        private PathCountResult res;
+    private static class PathCountResultMasked extends PathCountResult {
         private boolean[] maskReco;
         private boolean[] maskRef;
 
-        public GroupCountResult(PathCountResult res, boolean[] maskReco, boolean[] maskRef) {
-            this.res = res;
+        public PathCountResultMasked(boolean[] maskReco, boolean[] maskRef) {
+            super();
             this.maskReco = maskReco;
             this.maskRef = maskRef;
         }
     }
 
-    private GroupCountResult getGroupCount(List<PathQuality> grouping, AlignmentTask alignmentTask, boolean countLineInsertions, boolean calcLineComparison) {
-        PathCountResult res = new PathCountResult();
+    private PathCountResultMasked getPathCountResultMasked(List<PathQuality> grouping, AlignmentTask alignmentTask, boolean countLineInsertions, boolean calcLineComparison) {
         boolean[] maskReco = new boolean[alignmentTask.getRecos().length];
         boolean[] maskRef = new boolean[alignmentTask.getRefs().length];
+        PathCountResultMasked res = new PathCountResultMasked(maskReco, maskRef);
         for (PathQuality toDeletePath : grouping) {
             switch (DistanceStrStr.TYPE.valueOf(toDeletePath.manipulation)) {
                 case MERGE_LINE: {
@@ -685,13 +648,19 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     res.addAll(getPathCounts(toDeletePath.path, alignmentTask, calcLineComparison));
                     break;
                 case INS_LINE:
-                    if (mode.ignoreReadingOrder()) {
+                    if (!restrictReadingOrder) {
                         // nothing to do here. This is only the best solution, if recos are empty.
                         // Otherwise 1 SUB is better than 1 INS + 1 DEL
                         if (!countLineInsertions) {
                             break;
                         }
                     }
+                    if (!reduceMask(maskRef, toDeletePath.startRef, toDeletePath.endRef)) {
+                        throw new RuntimeException("reference should be used only 1 time in bestPath");
+                    }
+                    LOG.debug("add count of subpath {}", toDeletePath);
+                    res.addAll(getPathCounts(toDeletePath.path, alignmentTask, calcLineComparison));
+                    break;
                 default:
                     if (!reduceMask(maskReco, toDeletePath.startReco, toDeletePath.endReco)) {
                         LOG.debug("skip count of subpath {}, add for next round", toDeletePath);
@@ -704,11 +673,11 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     res.addAll(getPathCounts(toDeletePath.path, alignmentTask, calcLineComparison));
             }
         }
-        return new GroupCountResult(res, maskReco, maskRef);
+        return res;
 
     }
 
-    private PathCountResult getPathCount(AlignmentTask alignmentTask, int sizeProcessViewer, File out, boolean calcLineComparison) {
+    private PathCountResult getPathCountResult(AlignmentTask alignmentTask, int sizeProcessViewer, File out, boolean calcLineComparison) {
         //use dynamic programming to calculateIntern the cheapest path through the dynamic programming tabular
 //        calcBestPathFast(recos, refs);
         String[] recos = alignmentTask.getRecos();
@@ -718,11 +687,11 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             for (int i = 0; i < refs.length; i++) {
                 if (!voter.isLineBreak(refs[i])) {
                     if (tokenizer != null) {
-                        if (voter.isSpace(refs[i])) {
+                        if (isWER && voter.isSpace(refs[i])) {
                             continue;
                         }
                     }
-                    pathCountResult.add(new RecoRef("", refs[i]), Count.GT, Count.INS);
+                    pathCountResult.add(new Substitution("", refs[i]), Count.GT, Count.INS);
                     if (calcLineComparison) {
                         pathCountResult.add(
                                 getLineComparison(
@@ -730,7 +699,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                                         alignmentTask.getRefLineMap()[i],
                                         "",
                                         refs[i],
-                                        Arrays.asList(new Distance(Manipulation.INS, "", refs[i]))
+                                        Arrays.asList(new Point(Manipulation.INS, "", refs[i]))
                                 )
                         );
                     }
@@ -759,22 +728,21 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         int max = VectorUtil.max(usedReco);
         //no post process have to be done - everything is already used
         boolean recoHasUnusedChars = countUnusedChars(usedReco, recos) != 0;
-        if (!mode.ignoreReadingOrder() || (max <= 1 && !recoHasUnusedChars)) {
-            return getGroupCount(grouping, alignmentTask, !recoHasUnusedChars, calcLineComparison).res;
+        if (restrictReadingOrder || (max <= 1 && !recoHasUnusedChars)) {
+            return getPathCountResultMasked(grouping, alignmentTask, !recoHasUnusedChars, calcLineComparison);
         }
-        GroupCountResult groupCount = getGroupCount(grouping, alignmentTask, false, calcLineComparison);
-        boolean[] maskReco = groupCount.maskReco;
-        boolean[] maskRef = groupCount.maskRef;
-        PathCountResult res = groupCount.res;
-        if (grouping.isEmpty() || res.oc.isEmpty()) {
+        PathCountResultMasked pathCountResult = getPathCountResultMasked(grouping, alignmentTask, false, calcLineComparison);
+        boolean[] maskReco = pathCountResult.maskReco;
+        boolean[] maskRef = pathCountResult.maskRef;
+        if (grouping.isEmpty() || pathCountResult.getCounter().isEmpty()) {
             File outSubProblem = null;
             if (out != null) {
                 String path = out.getPath();
                 path = path.substring(0, path.lastIndexOf(".")) + "_" + path.substring(path.lastIndexOf("."));
                 outSubProblem = new File(path);
             }
-            res.addAll(getPathCountFallback(alignmentTask, sizeProcessViewer, outSubProblem, calcLineComparison));
-            return res;
+            pathCountResult.addAll(getPathCountResultFallback(alignmentTask, sizeProcessViewer, outSubProblem, calcLineComparison));
+            return pathCountResult;
         }
         Pair<String[], int[]> refSubProblemTranscription = getSubProblemTranscription(refs, maskRef, alignmentTask.getRefLineMap());
         Pair<String[], int[]> recoSubProblemTranscription = getSubProblemTranscription(recos, maskReco, alignmentTask.getRecoLineMap());
@@ -786,14 +754,14 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             for (int i = 0; i < recoSubProblem.length; i++) {
                 String s = recoSubProblem[i];
                 if (!voter.isLineBreak(s)) {
-                    if (mode.ignoreSegmentation() && voter.isSpace(s)) {
+                    if (allowSegmentationErrors && voter.isSpace(s)) {
                         //allow any partition of text - then it is better to substitute spaces by newlines. Do not count spaces.
                         continue;
                     }
-                    res.add(new RecoRef(new String[]{s}, new String[0]), Count.HYP, Count.DEL);
+                    pathCountResult.add(new Substitution(new String[]{s}, new String[0]), Count.HYP, Count.DEL);
                 }
             }
-            return res;
+            return pathCountResult;
         }
         //if subproblem is not trivial, solve it recursively.
         File outSubProblem = null;
@@ -832,31 +800,22 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             }
         }
 
-        PathCountResult pathCountResult = getPathCount(subProblem, sizeProcessViewer, out, calcLineComparison);
-        res.addAll(pathCountResult);
-        return res;
+        pathCountResult.addAll(getPathCountResult(subProblem, sizeProcessViewer, out, calcLineComparison));
+        return pathCountResult;
     }
 
-    private PathCountResult getPathCountFallback(AlignmentTask alignmentTask, int sizeProcessViewer, File out, boolean calcLineComparison) {
-        Mode modeFallback = null;
-        switch (this.mode) {
-            case NO_RO:
-                modeFallback = Mode.RO;
-                break;
-            case NO_RO_SEG:
-                modeFallback = Mode.RO_SEG;
-                break;
-            default:
-                throw new RuntimeException("no fallback for mode having reading order");
+    private PathCountResult getPathCountResultFallback(AlignmentTask alignmentTask, int sizeProcessViewer, File out, boolean calcLineComparison) {
+        if (!restrictReadingOrder) {
+            throw new RuntimeException("fallback only possible when mode was without reading order");
         }
-        ErrorModuleEnd2End fallback = new ErrorModuleEnd2End(this.tokenizer, null, modeFallback, usePolygons, countManipulations, filterOffset);
+        ErrorModuleEnd2End fallback = new ErrorModuleEnd2End(true, restrictGeometry, allowSegmentationErrors, tokenizer);
         File outSubProblem = null;
         if (out != null) {
             String path = out.getPath();
             path = path.substring(0, path.lastIndexOf(".")) + "_" + path.substring(path.lastIndexOf("."));
             outSubProblem = new File(path);
         }
-        return fallback.getPathCount(alignmentTask, sizeProcessViewer, outSubProblem, calcLineComparison);
+        return fallback.getPathCountResult(alignmentTask, sizeProcessViewer, outSubProblem, calcLineComparison);
 
     }
 
@@ -953,7 +912,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
 
     private PathCountResult getPathCounts(List<PathCalculatorGraph.IDistance<String, String>> path, AlignmentTask alignmentTask, boolean calcLineComparison) {
         ObjectCounter<Count> res = new ObjectCounter<>();
-        ObjectCounter<RecoRef> res2 = new ObjectCounter<>();
+        ObjectCounter<Substitution> res2 = new ObjectCounter<>();
 //        int cnt = 0;
         for (PathCalculatorGraph.IDistance<String, String> dist : path) {
             String m = dist.getManipulation();
@@ -966,7 +925,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                         break;
                     }
                     if (countManipulations.countSubstitutions) {
-                        res2.add(new RecoRef(dist.getRecos(), dist.getReferences()));
+                        res2.add(new Substitution(dist.getRecos(), dist.getReferences()));
                     }
                     res.add(Count.HYP);
                     res.add(Count.DEL);
@@ -976,7 +935,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                         break;
                     }
                     if (countManipulations.countSubstitutions) {
-                        res2.add(new RecoRef(dist.getRecos(), dist.getReferences()));
+                        res2.add(new Substitution(dist.getRecos(), dist.getReferences()));
                     }
                     res.add(Count.GT);
                     res.add(Count.INS);
@@ -986,7 +945,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                         break;
                     }
                     if (countManipulations.countSubstitutions) {
-                        res2.add(new RecoRef(dist.getRecos(), dist.getReferences()));
+                        res2.add(new Substitution(dist.getRecos(), dist.getReferences()));
                     }
                     res.add(Count.HYP);
                     res.add(Count.GT);
@@ -1000,7 +959,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     res.add(Count.GT);
                     res.add(Count.COR);
                     if (countManipulations.countAll) {
-                        res2.add(new RecoRef(dist.getRecos(), dist.getReferences()));
+                        res2.add(new Substitution(dist.getRecos(), dist.getReferences()));
                     }
                     break;
                 case INS_LINE:
@@ -1014,7 +973,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                         res.add(Count.GT);
                         res.add(Count.INS);
                         if (countManipulations.countSubstitutions) {
-                            res2.add(new RecoRef(dist.getRecos(), new String[]{dist.getReferences()[i]}));
+                            res2.add(new Substitution(dist.getRecos(), new String[]{dist.getReferences()[i]}));
                         }
                     }
                     break;
@@ -1023,13 +982,13 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                         throw new RuntimeException("path 'DEL_LINE' should only have length 1");
                     }
                     for (int i = 0; i < dist.getRecos().length; i++) {
-                        if (isWER && voter.isSpace(dist.getRecos()[i])) {
+                        if ((isWER || !countSpaces) && voter.isSpace(dist.getRecos()[i])) {
                             continue;
                         }
-                        res.add(Count.GT);
+                        res.add(Count.HYP);
                         res.add(Count.DEL);
                         if (countManipulations.countSubstitutions) {
-                            res2.add(new RecoRef(new String[]{dist.getRecos()[i]}, dist.getReferences()));
+                            res2.add(new Substitution(new String[]{dist.getRecos()[i]}, dist.getReferences()));
                         }
                     }
                     break;
@@ -1044,7 +1003,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     res.add(Count.COR);
                     if (countManipulations.countAll) {
                         //BOTH GET REFERENCE AS VALUE
-                        res2.add(new RecoRef(dist.getReferences(), dist.getReferences()));
+                        res2.add(new Substitution(dist.getReferences(), dist.getReferences()));
                     }
                     break;
                 //all other cases will not be count
@@ -1130,7 +1089,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                 recoBuilder.append(reco);
                 refBuilder.append(ref);
                 final Manipulation manipulation = Manipulation.valueOf(point.getManipulation());
-                manipulations.add(new Distance(Manipulation.valueOf(point.getManipulation()), reco, ref));
+                manipulations.add(new Point(Manipulation.valueOf(point.getManipulation()), reco, ref));
             }
             lc = getLineComparison(
                     alignmentTask.getRecoLineMap()[path.get(0).getPoint()[0] - 1],
@@ -1181,8 +1140,8 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     public List<String> getResults() {
         LinkedList<String> res = new LinkedList<>();
         if (countManipulations.countSubstitutions) {
-            for (Pair<RecoRef, Long> pair : substitutionCounter.getResultOccurrence()) {
-                RecoRef first = pair.getFirst();
+            for (Pair<Substitution, Long> pair : substitutionCounter.getResultOccurrence()) {
+                Substitution first = pair.getFirst();
                 String reco = first.getReco();
                 String ref = first.getRef();
                 String key1 = reco == null ? "" : reco;

@@ -79,12 +79,14 @@ public class ErrorRateCalcer {
         }
 
         ITokenizer tok = null;
+        boolean isWER = false;
         switch (method) {
             case BOT:
             case BOT_ALNUM:
             case WER:
             case WER_ALNUM:
                 tok = new TokenizerCategorizer(new CategorizerWordMergeGroups());
+                isWER = true;
                 break;
             case CER:
             case CER_ALNUM:
@@ -98,9 +100,14 @@ public class ErrorRateCalcer {
             case WER:
             case CER_ALNUM:
             case WER_ALNUM:
-                return useEnd2End ?
-                        new ErrorModuleEnd2End(tok, sn, ErrorModuleEnd2End.Mode.RO, false, ErrorModuleEnd2End.CountSubstitutions.OFF):
-                        new ErrorModuleDynProg(tok, sn, Boolean.FALSE) ;
+                if (useEnd2End) {
+                    if (isWER) {
+                        return new ErrorModuleEnd2End(true, false, false, tok);
+                    } else {
+                        return new ErrorModuleEnd2End(true, false, false, false);
+                    }
+                }
+                return new ErrorModuleDynProg(tok, sn, Boolean.FALSE);
             case BOT:
             case BOT_ALNUM:
                 return new ErrorModuleBagOfTokens(tok, sn, Boolean.FALSE);

@@ -4,12 +4,12 @@ package de.uros.citlab.errorrate.types;
 import java.util.Arrays;
 import java.util.Objects;
 
-public class RecoRef {
+public class Substitution {
 
-    private String reco;
-    private String ref;
+    private final String reco;
+    private final String ref;
 
-    public RecoRef(String[] recos, String[] refs) {
+    public Substitution(String[] recos, String[] refs) {
         reco = recos == null || recos.length == 0 ? null : recos[0];
         ref = refs == null || refs.length == 0 ? null : refs[0];
         if (recos != null && recos.length > 1) {
@@ -20,7 +20,7 @@ public class RecoRef {
         }
     }
 
-    public RecoRef(String reco, String ref) {
+    public Substitution(String reco, String ref) {
         this.reco = reco;
         this.ref = ref;
     }
@@ -31,6 +31,11 @@ public class RecoRef {
 
     public String getRef() {
         return ref;
+    }
+
+    @Override
+    public String toString() {
+        return "['" + (reco == null ? "" : reco) + "'=>'" + (ref == null ? "" : ref) + "']";
     }
 
     @Override
@@ -52,7 +57,7 @@ public class RecoRef {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final RecoRef other = (RecoRef) obj;
+        final Substitution other = (Substitution) obj;
         return Objects.equals(this.reco, other.reco) && Objects.equals(this.ref, other.ref);
     }
 

@@ -2,14 +2,14 @@ package de.uros.citlab.errorrate.types;
 
 import de.uros.citlab.errorrate.interfaces.IPoint;
 
-public class Distance implements IPoint {
+public class Point implements IPoint {
 
 
     private final Manipulation manipulation;
     private final String reco;
     private final String ref;
 
-    public Distance(Manipulation manipulation, String reco, String ref) {
+    public Point(Manipulation manipulation, String reco, String ref) {
         this.manipulation = manipulation;
         this.reco = reco;
         this.ref = ref;

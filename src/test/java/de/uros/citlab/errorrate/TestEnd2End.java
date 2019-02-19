@@ -5,12 +5,14 @@
  */
 package de.uros.citlab.errorrate;
 
+import de.uros.citlab.errorrate.htr.ErrorModuleBagOfTokens;
 import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
-import de.uros.citlab.errorrate.interfaces.IErrorModule;
+import de.uros.citlab.errorrate.interfaces.ILine;
 import de.uros.citlab.errorrate.interfaces.ILineComparison;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
+import de.uros.citlab.errorrate.types.WordTokenizerSpaceCategory;
 import de.uros.citlab.tokenizer.TokenizerCategorizer;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
 import de.uros.citlab.tokenizer.categorizer.CategorizerWordMergeGroups;
@@ -19,9 +21,11 @@ import eu.transkribus.interfaces.ITokenizer;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.awt.*;
 import java.io.File;
 import java.text.Normalizer;
 import java.util.*;
+import java.util.List;
 
 /**
  * Here every one can add groundtruth (GT) and hypothesis (HYP) text. Then some
@@ -64,60 +68,67 @@ public class TestEnd2End {
 
     @Test
     public void testLineBreak() {
-        Assert.assertEquals(new Long(4), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "\n this is \n with\n linebreaks\n ", "this is with linebreaks").get(Count.COR));
+        Assert.assertEquals(new Long(2), getCount(false, true, true, false, false,
+                "\nthis is\nwith\nlinebreaks\n ",
+                "this is with linebreaks").get(Count.COR));
+        Assert.assertEquals(new Long(4), getCount(false, true, true, true, false,
+                "\nthis is\nwith\nlinebreaks\n ",
+                "this is with linebreaks").get(Count.COR));
     }
+
 
     @Test
     public void testOrder() {
-        Assert.assertEquals(new Long(1), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "this is text ", "is this text").get(Count.COR));
+        Assert.assertEquals(new Long(1), getCount(false, true, true, false, false, "this is text ", "is this text").get(Count.COR));
 //        Assert.assertEquals(new Long(3), getCount(false, true, true, false, "this is text ", "is this text").get(Count.TP));
     }
 
     @Test
     public void testComposition() {
-        Assert.assertEquals(new Long(1), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "sa\u0308ße", "säße").get(Count.COR));
-        Assert.assertEquals(new Long(1), getCount(true, true, ErrorModuleEnd2End.Mode.RO, false, "SA\u0308SSE", "säße").get(Count.COR));
+        Assert.assertEquals(new Long(1), getCount(false, true, true, false, false, "sa\u0308ße", "säße").get(Count.COR));
+        Assert.assertEquals(new Long(1), getCount(true, true, true, false, false, "SA\u0308SSE", "säße").get(Count.COR));
     }
 
     @Test
     public void testWER() {
 //        Assert.assertEquals(
-//                new Long(7), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false,
+//                new Long(7), getCount(false, true, true,false, false,
 //                        "for this szenario it should be zero",
 //                        "for this szenario it should be zero").
 //                        get(Count.COR)
 //        );
         Assert.assertEquals(
-                new Long(6), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false,
+                new Long(6), getCount(false, true, true, false, false,
                         "for this szenario\nit should be zero",
                         "for this szenario it should be zero").
                         get(Count.ERR)
         );
-//        Assert.assertEquals(new Long(1), getCount(true, true, ErrorModuleEnd2End.Mode.RO, false, "SA\u0308SSE", "säße").get(Count.COR));
+//        Assert.assertEquals(new Long(1), getCount(true, true, true,false, false, "SA\u0308SSE", "säße").get(Count.COR));
     }
 
     @Test
     public void testTokenizer() {
-        Assert.assertEquals(new Long(1), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "it's wrong", "its wrong").get(Count.COR));
-        Assert.assertEquals(new Long(2), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "its wrong", "its wrong").get(Count.COR));
-        Assert.assertEquals(new Long(3), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "its, wrong", "its, wrong").get(Count.COR));
+        Assert.assertEquals(new Long(1), getCount(false, true, true, false, false, "it's wrong", "its wrong").get(Count.COR));
+        Assert.assertEquals(new Long(2), getCount(false, true, true, false, false, "its wrong", "its wrong").get(Count.COR));
+        Assert.assertEquals(new Long(3), getCount(false, true, true, false, false, "its, wrong", "its, wrong").get(Count.COR));
 //        Assert.assertEquals(2, get(false, true, false, true, "COR", "it's wrong", "its wrong"));
     }
 
     @Test
     public void testErrorType() {
-        Assert.assertEquals(new Long(1), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "its, wrong", "its wrong").get(Count.INS));
-        Assert.assertEquals(new Long(1), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "its, wrong", "its. wrong").get(Count.SUB));//substitution
-        Assert.assertEquals(new Long(2), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "its, wrong", "its. wrong").get(Count.COR));//correct
+        Assert.assertEquals(new Long(1), getCount(false, true, true, false, false, "its, wrong", "its wrong").get(Count.INS));
+        Assert.assertEquals(new Long(1), getCount(false, true, true, false, false, "its, wrong", "its. wrong").get(Count.SUB));//substitution
+        Assert.assertEquals(new Long(2), getCount(false, true, true, false, false, "its, wrong", "its. wrong").get(Count.COR));//correct
 //        Assert.assertEquals(new Long(2), getCount(false, true, true, false, "its, wrong", "its. wrong").get(Count.TP));//true positive
 //        Assert.assertEquals(new Long(1), getCount(false, true, true, false, "its, wrong", "its. wrong").get(Count.FN));//false negative
 //        Assert.assertEquals(new Long(1), getCount(false, true, true, false, "its, wrong", "its. wrong").get(Count.FP));//false positive
-        Assert.assertEquals(new Long(2), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "wrong", "its, wrong").get(Count.DEL));
+        Assert.assertEquals(new Long(2), getCount(false, true, true, false, false, "wrong", "its, wrong").get(Count.DEL));
 //        Assert.assertEquals(new Long(2), getCount(false, true, true, false, "wrong", "its, wrong").get(Count.FP));
 //        Assert.assertEquals(2, get(false, true, false, true, "COR", "it's wrong", "its wrong"));
     }
 
-    public void testCases(ErrorModuleEnd2End.Mode mode,
+    public void testCases(boolean restrictReadingOrder,
+                          boolean allowSegmentationErrors,
                           int bestCase,
                           int swapLines,
                           int deleteLine,
@@ -132,56 +143,56 @@ public class TestEnd2End {
                           int reverseLines
     ) {
         //best case
-        Assert.assertEquals(new Long(bestCase), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(bestCase), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "line 1\nline 2\nline 3",
                 "line 1\nline 2\nline 3").getOrDefault(Count.ERR, 0L));
         //change two lines ==> 2*2 errors
-        Assert.assertEquals(new Long(swapLines), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(swapLines), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "ab\ncd\nef\ngh",
                 "ab\nef\ncd\ngh").getOrDefault(Count.ERR, 0L));
         //delete one line ==> 2 errors
-        Assert.assertEquals(new Long(deleteLine), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(deleteLine), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "ab\ncd",
                 "ab\nef\ncd").getOrDefault(Count.ERR, 0L));
         //split one line ==> "cd ef" to "cd" and "" to "ef" ==> 3 + 2 = 5 errors
-        Assert.assertEquals(new Long(splitLine), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(splitLine), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "ab\ncd ef\ngh",
                 "ab\ncd\nef\ngh").getOrDefault(Count.ERR, 0L));
-        Assert.assertEquals(new Long(splitWord), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(splitWord), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "ab\ncdef\ngh",
                 "ab\ncd\nef\ngh").getOrDefault(Count.ERR, 0L));
         //merge two line ==> "cd ef" to "cd" and "" to "ef" ==> 3 + 2 = 5 errors
-        Assert.assertEquals(new Long(mergeLine), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(mergeLine), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "ab\ncd\nef",
                 "ab\ncd ef").getOrDefault(Count.ERR, 0L));
-        Assert.assertEquals(new Long(mergeWord), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(mergeWord), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "ab\ncd\nef",
                 "ab\ncdef").getOrDefault(Count.ERR, 0L));
-        Assert.assertEquals(new Long(mergeLine), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(mergeLine), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "ab\ncd\nef\ngh",
                 "ab\ncd ef\ngh").getOrDefault(Count.ERR, 0L));
         //test if start works
-        Assert.assertEquals(new Long(addStart), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(addStart), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "cd\nef\ngh",
                 "ab\ncd\nef\ngh").getOrDefault(Count.ERR, 0L));
-        Assert.assertEquals(new Long(deleteStart), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(deleteStart), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "ab\ncd",
                 "cd").getOrDefault(Count.ERR, 0L));
-        Assert.assertEquals(new Long(deleteStart), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(deleteStart), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "ab\ncd\nef",
                 "cd\nef").getOrDefault(Count.ERR, 0L));
-        Assert.assertEquals(new Long(deleteStart), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(deleteStart), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "ab\ncd\nef\ngh",
                 "cd\nef\ngh").getOrDefault(Count.ERR, 0L));
         //test if end works
-        Assert.assertEquals(new Long(deleteEnd), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(deleteEnd), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "ab\ncd\nef\ngh",
                 "ab\ncd\nef").getOrDefault(Count.ERR, 0L));
-        Assert.assertEquals(new Long(addEnd), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(addEnd), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "ab\ncd\nef",
                 "ab\ncd\nef\ngh").getOrDefault(Count.ERR, 0L));
         //reverse lines
-        Assert.assertEquals(new Long(reverseLines), getCount(false, false, mode, false,
+        Assert.assertEquals(new Long(reverseLines), getCount(false, false, restrictReadingOrder, allowSegmentationErrors, false,
                 "ab\ncd\nef",
                 "ef\ncd\nab").getOrDefault(Count.ERR, 0L));
 
@@ -191,80 +202,75 @@ public class TestEnd2End {
     public void testNormalLines() {
         String reco = "Sujanterie an zablreicen Gtellen zum Eingriff vor. gum";
         String ref = "Infanterie an zahlreichen Stellen zum A ngriff vor. Am";
-        Assert.assertEquals(new Long(10), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, ref, reco).get(Count.ERR));
+        Assert.assertEquals(new Long(10), getCount(false, false, true, false, false, ref, reco).get(Count.ERR));
     }
 
     @Test
     public void testWithReadingOrder() {
-        testCases(ErrorModuleEnd2End.Mode.RO, 0, 4, 2, 5, 4, 5, 4, 2, 2, 2, 2, 4);
+        testCases(true, false, 0, 4, 2, 5, 4, 5, 4, 2, 2, 2, 2, 4);
     }
 
     @Test
     public void testIgnoreReadingOrder() {
-        testCases(ErrorModuleEnd2End.Mode.NO_RO, 0, 0, 2, 5, 4, 5, 4, 2, 2, 2, 2, 0);
+        testCases(false, false, 0, 0, 2, 5, 4, 5, 4, 2, 2, 2, 2, 0);
     }
 
     @Test
     public void testIgnoreSegmentation() {
-        testCases(ErrorModuleEnd2End.Mode.RO_SEG, 0, 4, 2, 0, 4, 0, 4, 2, 2, 2, 2, 4);
+        testCases(true, true, 0, 4, 2, 0, 4, 0, 4, 2, 2, 2, 2, 4);
     }
 
     @Test
     public void testIgnoreReadingOrderSegmentation() {
-        testCases(ErrorModuleEnd2End.Mode.NO_RO_SEG, 0, 0, 2, 0, 4, 0, 4, 2, 2, 2, 2, 0);
+        testCases(false, true, 0, 0, 2, 0, 4, 0, 4, 2, 2, 2, 2, 0);
     }
 
     @Test
     public void testCountComparisonAcademical1() {
-//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
-        for (ErrorModuleEnd2End.Mode mode : new ErrorModuleEnd2End.Mode[]{ErrorModuleEnd2End.Mode.NO_RO_SEG}) {
-            String reference = "two three\nthree";
-            String recognition = "one\ntwo three";
-            Map<Count, Long> count = getCount(false, false, mode, false, reference, recognition);
-            System.out.println("count");
-            System.out.println(count);
-            Assert.assertEquals("wrong count GT", Long.valueOf(14), count.get(Count.GT));
-            Assert.assertEquals("wrong count COR", Long.valueOf(10), count.get(Count.COR));
-            Assert.assertEquals("wrong count INS", Long.valueOf(2), count.get(Count.INS));
-            Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL, 0L));
-            Assert.assertEquals("wrong count SUB", Long.valueOf(2), count.get(Count.SUB));
-            Assert.assertEquals("wrong count HYP", Long.valueOf(12), count.get(Count.HYP));
-        }
+//        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
+        String reference = "two three\nthree";
+        String recognition = "one\ntwo three";
+        Map<Count, Long> count = getCount(false, false, false, true, false, reference, recognition);
+        System.out.println("count");
+        System.out.println(count);
+        Assert.assertEquals("wrong count GT", Long.valueOf(14), count.get(Count.GT));
+        Assert.assertEquals("wrong count COR", Long.valueOf(10), count.get(Count.COR));
+        Assert.assertEquals("wrong count INS", Long.valueOf(2), count.get(Count.INS));
+        Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL, 0L));
+        Assert.assertEquals("wrong count SUB", Long.valueOf(2), count.get(Count.SUB));
+        Assert.assertEquals("wrong count HYP", Long.valueOf(12), count.get(Count.HYP));
     }
+
     @Test
     public void testCountComparisonAcademical1Word() {
-//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
-        for (ErrorModuleEnd2End.Mode mode : new ErrorModuleEnd2End.Mode[]{ErrorModuleEnd2End.Mode.NO_RO_SEG}) {
-            String reference = "two three\nthree";
-            String recognition = "one\ntwo three";
-            Map<Count, Long> count = getCount(false, true, mode, false, reference, recognition);
-            System.out.println("count");
-            System.out.println(count);
-            Assert.assertEquals("wrong count GT", Long.valueOf(3), count.get(Count.GT));
-            Assert.assertEquals("wrong count COR", Long.valueOf(2), count.get(Count.COR));
-            Assert.assertEquals("wrong count INS", Long.valueOf(0), count.getOrDefault(Count.INS,0L));
-            Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL, 0L));
-            Assert.assertEquals("wrong count SUB", Long.valueOf(1), count.get(Count.SUB));
-            Assert.assertEquals("wrong count HYP", Long.valueOf(3), count.get(Count.HYP));
-        }
+//        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
+        String reference = "two three\nthree";
+        String recognition = "one\ntwo three";
+        Map<Count, Long> count = getCount(false, true, false, true, false, reference, recognition);
+        System.out.println("count");
+        System.out.println(count);
+        Assert.assertEquals("wrong count GT", Long.valueOf(3), count.get(Count.GT));
+        Assert.assertEquals("wrong count COR", Long.valueOf(2), count.get(Count.COR));
+        Assert.assertEquals("wrong count INS", Long.valueOf(0), count.getOrDefault(Count.INS, 0L));
+        Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL, 0L));
+        Assert.assertEquals("wrong count SUB", Long.valueOf(1), count.get(Count.SUB));
+        Assert.assertEquals("wrong count HYP", Long.valueOf(3), count.get(Count.HYP));
     }
 
     @Test
     public void testCountComparisonAcademical4() {
-//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
-        for (ErrorModuleEnd2End.Mode mode : new ErrorModuleEnd2End.Mode[]{ErrorModuleEnd2End.Mode.NO_RO_SEG}) {
-            String reference = "two\nthree\nthree";
-            String recognition = "one two\nthree";
-            Map<Count, Long> count = getCount(false, false, mode, false, reference, recognition);
-            System.out.println("count");
-            System.out.println(count);
-            Assert.assertEquals("wrong count GT", Long.valueOf(reference.length() - 2), count.get(Count.GT));
-            Assert.assertEquals("wrong count COR", Long.valueOf(10 - 1), count.get(Count.COR));
-            Assert.assertEquals("wrong count INS", Long.valueOf(2), count.get(Count.INS));
-            Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL, 0L));
-            Assert.assertEquals("wrong count SUB", Long.valueOf(2), count.get(Count.SUB));
-            Assert.assertEquals("wrong count HYP", Long.valueOf(recognition.length() - 2), count.get(Count.HYP));
-        }
+//        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
+        String reference = "two\nthree\nthree";
+        String recognition = "one two\nthree";
+        Map<Count, Long> count = getCount(false, false, false, true, false, reference, recognition);
+        System.out.println("count");
+        System.out.println(count);
+        Assert.assertEquals("wrong count GT", Long.valueOf(reference.length() - 2), count.get(Count.GT));
+        Assert.assertEquals("wrong count COR", Long.valueOf(10 - 1), count.get(Count.COR));
+        Assert.assertEquals("wrong count INS", Long.valueOf(2), count.get(Count.INS));
+        Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL, 0L));
+        Assert.assertEquals("wrong count SUB", Long.valueOf(2), count.get(Count.SUB));
+        Assert.assertEquals("wrong count HYP", Long.valueOf(recognition.length() - 2), count.get(Count.HYP));
     }
 
     @Test
@@ -334,8 +340,8 @@ public class TestEnd2End {
         Long gtLength = new Long(gt.replace("\n", "").length());
         Long hypLength = new Long(hyp.replace("\n", "").length());
 //        Assert.assertNotEquals("for test, length of hyp and gt should differ", gtLength, hypLength);
-//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
-        Map<Count, Long> count = getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, gt, hyp);
+//        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
+        Map<Count, Long> count = getCount(false, false, false, true, false, gt, hyp);
         System.out.println(count);
         Assert.assertEquals("wrong count GT", gtLength, count.get(Count.GT));
         Assert.assertEquals("wrong count INS", Long.valueOf(ins), count.getOrDefault(Count.INS, 0L));
@@ -347,28 +353,26 @@ public class TestEnd2End {
 
     @Test
     public void testCountComparisonAcademical3() {
-//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
-        for (ErrorModuleEnd2End.Mode mode : new ErrorModuleEnd2End.Mode[]{ErrorModuleEnd2End.Mode.NO_RO_SEG}) {
-            String reference = "two\nthree\nthree";
-            String recognition = "one\ntwo three";
-            Map<Count, Long> count = getCount(false, false, mode, false, reference, recognition);
-            System.out.println(count);
-            Assert.assertEquals("wrong count GT", Long.valueOf(14 - 1), count.get(Count.GT));
-            Assert.assertEquals("wrong count COR", Long.valueOf(10 - 1), count.get(Count.COR));
-            Assert.assertEquals("wrong count INS", Long.valueOf(2), count.get(Count.INS));
-            Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL, 0L));
-            Assert.assertEquals("wrong count SUB", Long.valueOf(2), count.get(Count.SUB));
-            Assert.assertEquals("wrong count HYP", Long.valueOf(12 - 1), count.get(Count.HYP));
-        }
+//        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
+        String reference = "two\nthree\nthree";
+        String recognition = "one\ntwo three";
+        Map<Count, Long> count = getCount(false, false, false, true, false, reference, recognition);
+        System.out.println(count);
+        Assert.assertEquals("wrong count GT", Long.valueOf(14 - 1), count.get(Count.GT));
+        Assert.assertEquals("wrong count COR", Long.valueOf(10 - 1), count.get(Count.COR));
+        Assert.assertEquals("wrong count INS", Long.valueOf(2), count.get(Count.INS));
+        Assert.assertEquals("wrong count DEL", Long.valueOf(0), count.getOrDefault(Count.DEL, 0L));
+        Assert.assertEquals("wrong count SUB", Long.valueOf(2), count.get(Count.SUB));
+        Assert.assertEquals("wrong count HYP", Long.valueOf(12 - 1), count.get(Count.HYP));
     }
 
     @Test
     public void testCountComparisonAcademical2() {
-//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
-        for (ErrorModuleEnd2End.Mode mode : new ErrorModuleEnd2End.Mode[]{ErrorModuleEnd2End.Mode.RO_SEG, ErrorModuleEnd2End.Mode.NO_RO_SEG}) {
+//        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
+        for (boolean RO : new boolean[]{true, false}) {
             String recognition = "one two\ntm o";
             String reference = "one\ntwo";
-            Map<Count, Long> count = getCount(false, false, mode, false, reference, recognition);
+            Map<Count, Long> count = getCount(false, false, RO, true, false, reference, recognition);
             System.out.println("count");
             System.out.println(count);
             Assert.assertEquals("wrong count GT", Long.valueOf(6), count.get(Count.GT));
@@ -382,11 +386,11 @@ public class TestEnd2End {
 
     @Test
     public void testCountComparisonSmall() {
-//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+//        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
 
         String recognition = "a";
         String reference = "a b c d";
-        Map<Count, Long> count_NO_RO_SEG = getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition);
+        Map<Count, Long> count_NO_RO_SEG = getCount(false, false, false, true, false, reference, recognition);
         System.out.println("count_NO_RO_SEG");
         System.out.println(count_NO_RO_SEG);
         Assert.assertEquals("ground truth should have the same length", Long.valueOf(reference.replaceAll("\n", "").length()), count_NO_RO_SEG.get(Count.GT));
@@ -394,7 +398,7 @@ public class TestEnd2End {
 
     @Test
     public void testCountComparison() {
-//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+//        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
 
         String recognition = "und\n" +
                 "Feriogsadlat\n" +
@@ -427,10 +431,10 @@ public class TestEnd2End {
                 "Oel , Zwiebeln , Zucker ,\n" +
                 "Dressing";
 //                "Oel , Zwiebeln , Zucker ,";
-//        Map<Count, Long> count_NO_RO = getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO, false, reference, recognition);
-        Map<Count, Long> count_NO_RO_SEG = getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition);
+//        Map<Count, Long> count_NO_RO = getCount(false, false, false,false, false, reference, recognition);
+        Map<Count, Long> count_NO_RO_SEG = getCount(false, false, false, true, false, reference, recognition);
 
-        List<ILineComparison> lineComparison = getLineComparison(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition);
+        List<ILineComparison> lineComparison = getLineComparison(false, false, false, true, false, reference, recognition);
         for (int i = 0; i < lineComparison.size(); i++) {
             System.out.println(lineComparison.get(i));
         }
@@ -444,36 +448,116 @@ public class TestEnd2End {
 
     @Test
     public void testLongerText() {
-//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+//        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
 
         String recognition = "ein zwei drei\nvier fünf sechs\nsieben\nacht\nneun zehn elf zwölf";
         String reference = "ein zwei drei\nsieben acht\nvier fünf sechs\nneun ze\nhn elf zwölf";
         //11 DEL (sieben acht), 3 INS (sie), 6 SUB/INS  7 INS (neun ze)=27
-        Assert.assertEquals(new Long(29), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, reference, recognition).get(Count.ERR));
+        Assert.assertEquals(new Long(29), getCount(false, false, true, false, false, reference, recognition).get(Count.ERR));
 
-        Long count = getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference.replace("\n", " "), recognition.replace("\n", " ")).get(Count.ERR);
+        Long count = getCount(false, false, true, true, false, reference.replace("\n", " "), recognition.replace("\n", " ")).get(Count.ERR);
         Assert.assertEquals(new Long(19), count);
         //+2 for deleting "ze" and +2 for insert "ze" in other line
-        Assert.assertEquals(new Long(count + 4), getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference, recognition).get(Count.ERR));
+        Assert.assertEquals(new Long(count + 4), getCount(false, false, true, true, false, reference, recognition).get(Count.ERR));
         // 5 DEL ("sieben acht" => "sieben"), 4 SUB + 3 DEL ("neun se" => "acht"), 7 INS ("" => "neun ze")
-        Assert.assertEquals(new Long(19), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO, false, reference, recognition).get(Count.ERR));
+        Assert.assertEquals(new Long(19), getCount(false, false, false, false, false, reference, recognition).get(Count.ERR));
         //zero - can repair everything excepte zehn -> ze\nhn: +2 ins +2 del (double-use fore space and lb not allowed)
-        Assert.assertEquals(new Long(5), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
+        Assert.assertEquals(new Long(5), getCount(false, false, false, true, false, reference, recognition).get(Count.ERR));
     }
 
     @Test
     public void testLongerText2() {
-//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+//        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
 
         String recognition = "neun zehn";
         String reference = "neun ze\nhn";
         //zero - can repair everything excepte zehn -> ze\nhn: +2 ins +2 del +1 del of Space (double-use fore space and lb not allowed
-        Assert.assertEquals(new Long(4), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
+        Assert.assertEquals(new Long(4), getCount(false, false, false, true, false, reference, recognition).get(Count.ERR));
+    }
+
+    @Test
+    public void testTextOfPaper() {
+//        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
+
+        String reference = "Liblbuk flieht\nLingSufinur\nLiblbuk\n\"\nLut.\nLa\nSindelbrunn\nXburg\nSindelbrunn\n102\n103\n104";
+        String recognition = "Liblbuk flieht\nLingSufinur\nLiblbuk\n\"\nLut.\nLa\nSindelbrunn\nXburg\nSindelbrunn\n102\n103\n104";
+        LinkedList<ILine> reco = new LinkedList<>();
+        LinkedList<ILine> ref = new LinkedList<>();
+        ref.add(getLine("A B", 1, 1));
+        ref.add(getLine("C D", 1, 2));
+        ref.add(getLine("E F", 1, 3));
+        ref.add(getLine("\"", 2, 1));
+        ref.add(getLine("G", 2, 2));
+        ref.add(getLine("H", 2, 3));
+        ref.add(getLine("I", 3, 1));
+        ref.add(getLine("J", 3, 2));
+        ref.add(getLine("I", 3, 3));
+        ref.add(getLine("1", 3, 1));
+        ref.add(getLine("2", 3, 2));
+        ref.add(getLine("3", 3, 3));
+
+        reco.add(getLine("A B", 1, 2, 1));
+        reco.add(getLine("C D G", 1, 2, 2));
+        reco.add(getLine("EF H", 1, 2, 3));
+        reco.add(getLine("I", 3, 1));
+        reco.add(getLine("J", 3, 2));
+        reco.add(getLine("K", 3, 3));
+        reco.add(getLine("3", 3, 1));
+        reco.add(getLine("2", 3, 2));
+        reco.add(getLine("4", 3, 3));
+        boolean[] truefalse = new boolean[]{true, false};
+        for (boolean restrictReadingOrder : truefalse) {
+            for (boolean allowSegmentationErrors : truefalse) {
+                for (boolean restrictGeometry : truefalse) {
+                    ErrorModuleEnd2End impl = new ErrorModuleEnd2End(restrictReadingOrder, restrictGeometry, allowSegmentationErrors, true);
+                    List<ILineComparison> iLineComparisons = impl.calculateWithSegmentation(reco, ref, true);
+                    for (ILineComparison iLineComparison : iLineComparisons) {
+//            System.out.println(iLineComparison);
+                    }
+                    System.out.println("restrictReadingOrder " + restrictReadingOrder);
+                    System.out.println("allowSegmentationErrors " + allowSegmentationErrors);
+                    System.out.println("restrictGeometry " + restrictGeometry);
+                    System.out.println(impl.getMetrics());
+                    System.out.println(impl.getCounter());
+                }
+            }
+            //zero - can repair everything excepte zehn -> ze\nhn: +2 ins +2 del +1 del of Space (double-use fore space and lb not allowed
+        }
+        ErrorModuleBagOfTokens bow = new ErrorModuleBagOfTokens(new WordTokenizerSpaceCategory(), null, false);
+        List<ILineComparison> iLineComparisons = bow.calculateWithSegmentation(reco, ref, true);
+        System.out.println(iLineComparisons);
+        System.out.println(bow.getMetrics());
+
+    }
+
+    private Polygon getPoly(int xMin, int xMax, int y) {
+        Polygon p = new Polygon();
+        p.addPoint(xMin * 50 - 20, y);
+        p.addPoint(xMax * 50 + 20, y);
+        return p;
+    }
+
+    private ILine getLine(String text, int x, int y) {
+        return getLine(text, x, x, y);
+    }
+
+    private ILine getLine(String text, int xMin, int xMax, int y) {
+        return new ILine() {
+            @Override
+            public String getText() {
+                return text;
+            }
+
+            @Override
+            public Polygon getBaseline() {
+                return getPoly(xMin, xMax, y);
+            }
+        };
     }
 
     @Test
     public void testVeryLongerText() {
-//        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+//        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
         //TODO: change reco and ref
         String recognition = "ein zwei drei\nvier fünf sechs\nsieben\nacht\nneun zehn elf zwölf";
         String reference = "ein zwei drei\nsieben acht\nvier fünf sechs\nneun ze\nhn elf zwölf";
@@ -488,20 +572,20 @@ public class TestEnd2End {
 //        232 116*2 58*4 29*8
 //        152 76*2 38*4 19*8
 //        11 DEL (sieben acht), 3 INS (sie), 6 SUB/INS  7 INS (neun ze)=27
-        Assert.assertEquals(new Long(29 * factor), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, reference, recognition).get(Count.ERR));
+        Assert.assertEquals(new Long(29 * factor), getCount(false, false, true, false, false, reference, recognition).get(Count.ERR));
         //one more than substituting "\n" by " ": zehn vs. "ze\nhn"
-        Long count = getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference.replace("\n", " "), recognition.replace("\n", " ")).get(Count.ERR);
+        Long count = getCount(false, false, true, true, false, reference.replace("\n", " "), recognition.replace("\n", " ")).get(Count.ERR);
         Assert.assertEquals(new Long(19 * factor), count);
-        Assert.assertEquals(new Long(count + 4 * factor), getCount(false, false, ErrorModuleEnd2End.Mode.RO_SEG, false, reference, recognition).get(Count.ERR));
+        Assert.assertEquals(new Long(count + 4 * factor), getCount(false, false, true, true, false, reference, recognition).get(Count.ERR));
         // 3 INS (sie), 3 DEL (sie), 7 INS (neun ze), 7 DEL (neun ze)
-        Assert.assertEquals(new Long(19 * factor), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO, false, reference, recognition).get(Count.ERR));
+        Assert.assertEquals(new Long(19 * factor), getCount(false, false, false, false, false, reference, recognition).get(Count.ERR));
 //        zero - can repair everything except zehn -> ze\nhn: +2 ins +2 del +1 del NL
-        Assert.assertEquals(new Long(5 * factor), getCount(false, false, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
+        Assert.assertEquals(new Long(5 * factor), getCount(false, false, false, true, false, reference, recognition).get(Count.ERR));
     }
 
 //    @Test
 //    public void testVeryLongerTextWord() {
-////        Assert.assertEquals(new Long(6), getCount(false, false, ErrorModuleEnd2End.Mode.RO, false, "sieben\nacht", "neun ze").get(Count.ERR));
+////        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
 //
 //        String reference = "ein zwei drei\nvier fünf sechs\nsieben\nacht\nneun zehn elf zwölf";
 //        String recognition = "ein zwei drei\nsieben acht\nvier fünf sechs\nneun ze\nhn elf zwölf";
@@ -510,22 +594,22 @@ public class TestEnd2End {
 //            recognition += "\n" + recognition;
 //        }
 //        //11 DEL (sieben acht), 3 INS (sie), 6 SUB/INS  7 INS (neun ze)=27
-//        Assert.assertEquals(new Long(6 * 8), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, reference, recognition).get(Count.ERR));
+//        Assert.assertEquals(new Long(6 * 8), getCount(false, true, true,false, false, reference, recognition).get(Count.ERR));
 //        //one more than substituting "\n" by " ": zehn vs. "ze\nhn"
-//        Long count = getCount(false, true, ErrorModuleEnd2End.Mode.RO_SEG, false, reference.replace("\n", " "), recognition.replace("\n", " ")).get(Count.ERR);
+//        Long count = getCount(false, true, true,true, false, reference.replace("\n", " "), recognition.replace("\n", " ")).get(Count.ERR);
 //        Assert.assertEquals(new Long(6 * 8), count);
-//        Assert.assertEquals(new Long(count), getCount(false, true, ErrorModuleEnd2End.Mode.RO_SEG, false, reference, recognition).get(Count.ERR));
+//        Assert.assertEquals(new Long(count), getCount(false, true, true,true, false, reference, recognition).get(Count.ERR));
 //        // 3 INS (sie), 3 DEL (sie), 7 INS (neun ze), 7 DEL (neun ze)
-//        Assert.assertEquals(new Long(6 * 8), getCount(false, true, ErrorModuleEnd2End.Mode.NO_RO, false, reference, recognition).get(Count.ERR));
+//        Assert.assertEquals(new Long(6 * 8), getCount(false, true, false,false, false, reference, recognition).get(Count.ERR));
 //        //zero - can repair everything!!
-//        Assert.assertEquals(new Long(6 * 8), getCount(false, true, ErrorModuleEnd2End.Mode.NO_RO_SEG, false, reference, recognition).get(Count.ERR));
+//        Assert.assertEquals(new Long(6 * 8), getCount(false, true, false,true, false, reference, recognition).get(Count.ERR));
 //    }
 
     @Test
     public void testLetter() {
-        Assert.assertEquals(new Long(1), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "it's wrong", "its wrong").get(Count.COR));
-        Assert.assertEquals(new Long(2), getCount(false, true, ErrorModuleEnd2End.Mode.RO, true, "it's wrong", "its wrong").get(Count.COR));
-        Assert.assertEquals(new Long(3), getCount(false, true, ErrorModuleEnd2End.Mode.RO, false, "its, wrong", "its, wrong").get(Count.COR));
+        Assert.assertEquals(new Long(1), getCount(false, true, true, false, false, "it's wrong", "its wrong").get(Count.COR));
+        Assert.assertEquals(new Long(2), getCount(false, true, true, false, true, "it's wrong", "its wrong").get(Count.COR));
+        Assert.assertEquals(new Long(3), getCount(false, true, true, false, false, "its, wrong", "its, wrong").get(Count.COR));
 //        Assert.assertEquals(new Long(4), getCount(true, true, true, true, "30 examples, just some...", "('just') <SOME> 30examples??;:").get(Count.TP));
     }
 
@@ -536,7 +620,9 @@ public class TestEnd2End {
         System.out.println((" test \"" + gt + "\" vs \"" + hyp + "\"").replace("\n", "\\n"));
         ITokenizer tokenizer = new TokenizerCategorizer(new CategorizerCharacterDft());
         IStringNormalizer sn = new StringNormalizerDft(Normalizer.Form.NFKC, false);
-        IErrorModule impl = new ErrorModuleEnd2End(tokenizer, sn, ErrorModuleEnd2End.Mode.RO_SEG, false, ErrorModuleEnd2End.CountSubstitutions.ERRORS);
+        ErrorModuleEnd2End impl = new ErrorModuleEnd2End(false, false, false, false);
+        impl.setStringNormalizer(sn);
+        impl.setCountManipulations(ErrorModuleEnd2End.CountSubstitutions.ERRORS);
 //        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
         impl.calculate(hyp, gt);
         List<String> results = impl.getResults();
@@ -563,15 +649,22 @@ public class TestEnd2End {
         }
     }
 
-    public Map<Count, Long> getCount(boolean upper, boolean word, ErrorModuleEnd2End.Mode mode,
+    public Map<Count, Long> getCount(boolean upper, boolean word, boolean restrictReadingOrder, boolean allowSegmentation,
                                      boolean letterNumber, String gt, String hyp) {
         System.out.println((" test \"" + gt + "\" vs \"" + hyp + "\"").replace("\n", "\\n"));
         IStringNormalizer sn = new StringNormalizerDft(Normalizer.Form.NFKC, upper);
         if (letterNumber) {
             sn = new StringNormalizerLetterNumber(sn);
         }
-        ErrorModuleEnd2End impl = new ErrorModuleEnd2End(word, sn, mode, false, ErrorModuleEnd2End.CountSubstitutions.ALL);
-//        impl.setSizeProcessViewer(6000);
+        ErrorModuleEnd2End impl = word ?
+                new ErrorModuleEnd2End(restrictReadingOrder, false, allowSegmentation, new TokenizerCategorizer(new CategorizerWordMergeGroups())) :
+                new ErrorModuleEnd2End(restrictReadingOrder, false, allowSegmentation, false);
+
+        if (sn != null) {
+            impl.setStringNormalizer(sn);
+        }
+
+        //        impl.setSizeProcessViewer(6000);
 //        impl.setFileDynProg(new File("out.png"));
         List<ILineComparison> calculate = impl.calculate(hyp, gt, true);
         for (ILineComparison iLineComparison : calculate) {
@@ -582,7 +675,7 @@ public class TestEnd2End {
         return impl.getCounter().getMap();
     }
 
-    public List<ILineComparison> getLineComparison(boolean upper, boolean word, ErrorModuleEnd2End.Mode mode,
+    public List<ILineComparison> getLineComparison(boolean upper, boolean word, boolean restrictReadingOrder, boolean allowSegmentation,
                                                    boolean letterNumber, String gt, String hyp) {
         System.out.println((" test \"" + gt + "\" vs \"" + hyp + "\"").replace("\n", "\\n"));
         ITokenizer tokenizer = new TokenizerCategorizer(word ? new CategorizerWordMergeGroups() : new CategorizerCharacterDft());
@@ -590,7 +683,9 @@ public class TestEnd2End {
         if (letterNumber) {
             sn = new StringNormalizerLetterNumber(sn);
         }
-        ErrorModuleEnd2End impl = new ErrorModuleEnd2End(tokenizer, sn, mode, false, ErrorModuleEnd2End.CountSubstitutions.ALL);
+        ErrorModuleEnd2End impl = new ErrorModuleEnd2End(restrictReadingOrder, false,allowSegmentation,  word);
+        impl.setStringNormalizer(sn);
+        impl.setCountManipulations(ErrorModuleEnd2End.CountSubstitutions.ALL);
 //        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
         return impl.calculate(hyp, gt, true);
 

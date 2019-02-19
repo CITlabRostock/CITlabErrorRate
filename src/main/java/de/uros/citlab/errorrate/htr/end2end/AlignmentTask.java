@@ -43,7 +43,7 @@ public class AlignmentTask {
         if (j < 0) {
             return true;
         }
-        return adjazent[i][j];
+        return  adjazent[i][j];
     }
 
     public AlignmentTask(String[] recos, String[] refs) {

@@ -34,5 +34,6 @@ public interface ILineComparison {
      * @return List of manipulations that had to be done to come from the recognition to the reference
      */
     List<IPoint> getPath();
+
 }
 

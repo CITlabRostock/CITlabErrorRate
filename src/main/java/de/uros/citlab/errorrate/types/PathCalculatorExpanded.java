@@ -51,7 +51,7 @@ public class PathCalculatorExpanded<Reco, Reference> {
     }
 
     /**
-     * Distance type of the dynamic programming table
+     * Point type of the dynamic programming table
      *
  * @param <Reco> hypothesis type
  * @param <Reference> reference type
@@ -195,7 +195,7 @@ public class PathCalculatorExpanded<Reco, Reference> {
         public List<IDistance<Reco, Reference>> getBestPath() {
             IDistance<Reco, Reference> lastElement = getLastElement();
             if (lastElement == null) {
-                throw new RuntimeException("Distance Matrix not completely calculated.");
+                throw new RuntimeException("Point Matrix not completely calculated.");
             }
             LinkedList<IDistance<Reco, Reference>> res = new LinkedList<>();
             res.add(lastElement);
@@ -307,13 +307,13 @@ public class PathCalculatorExpanded<Reco, Reference> {
     }
 
     /**
-     * Distance matrix
+     * Point matrix
  * @param <Reco> hypothesis type
  * @param <Reference> reference type
      */
     public static class Distance<Reco, Reference> implements IDistance<Reco, Reference> {
 
-//        private final Distance previousDistance;
+//        private final Point previousDistance;
         private final Manipulation manipulation;
         private final double costs;
         private final double costsAcc;
