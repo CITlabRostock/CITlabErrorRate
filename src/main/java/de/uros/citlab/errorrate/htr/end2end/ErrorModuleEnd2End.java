@@ -805,7 +805,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     }
 
     private PathCountResult getPathCountResultFallback(AlignmentTask alignmentTask, int sizeProcessViewer, File out, boolean calcLineComparison) {
-        if (!restrictReadingOrder) {
+        if (restrictReadingOrder) {
             throw new RuntimeException("fallback only possible when mode was without reading order");
         }
         ErrorModuleEnd2End fallback = new ErrorModuleEnd2End(true, restrictGeometry, allowSegmentationErrors, tokenizer);

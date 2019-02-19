@@ -61,21 +61,22 @@ public class TestEnd2EndRealWorld {
         }
     }
 
+    final static int[] testIndexes = new int[]{0};
     private static final boolean[] trueFalse = new boolean[]{true, false};
     //    private static HashMap<boolean[], double[]> expecteds = new HashMap<>();
     private static double[][][][] expectedsSegmentation = new double[2][2][2][];
 
     static {
         //restrict reading order - restrict geometry - allow segmentation
-        expectedsSegmentation[0][1][1] = new double[]{0.16594904915679942, 0.1962015622606831, 0.1873435824097247, 0.17049060288015622};
-        expectedsSegmentation[0][1][0] = new double[]{0.17539454806312768, 0.20395796578967554, 0.19234894529853414, 0.21117400935269506};
-        expectedsSegmentation[0][0][1] = new double[]{0.16606886657101866, 0.19715726730857405, 0.1873435824097247, 0.17166163141993956};
         expectedsSegmentation[0][0][0] = new double[]{0.1750358680057389, 0.20900198685618218, 0.19234894529853414, 0.21256797583081571};
+        expectedsSegmentation[0][0][1] = new double[]{0.16606886657101866, 0.19715726730857405, 0.1873435824097247, 0.17166163141993956};
+        expectedsSegmentation[0][1][0] = new double[]{0.17539454806312768, 0.20395796578967554, 0.19234894529853414, 0.21117400935269506};
+        expectedsSegmentation[0][1][1] = new double[]{0.16594904915679942, 0.19749312136961175, 0.1873435824097247, 0.175577597677513};
 
-        expectedsSegmentation[1][1][1] = new double[]{0.2545123062898815, 0.2537062509552193, 0.1873435824097247, 0.3100012377769526};
-        expectedsSegmentation[1][1][0] = new double[]{0.27218507138984277, 0.25981965459269446, 0.19234894529853414, 0.33325106435490837};
+        expectedsSegmentation[1][0][0] = new double[]{0.2568149210903874, 0.24629374904478069, 0.19234894529853414, 0.3113595166163142};
         expectedsSegmentation[1][0][1] = new double[]{0.24497847919655666, 0.24232003668042182, 0.1873435824097247, 0.2891238670694864};
-        expectedsSegmentation[1][0][0] = new double[]{0.2568149210903874, 0.24629374904478069, 0.19234894529853414, 0.3064565204162356};
+        expectedsSegmentation[1][1][0] = new double[]{0.2777977044476327, 0.25981965459269446, 0.19234894529853414, 0.3444712990936556};
+        expectedsSegmentation[1][1][1] = new double[]{0.2666786226685796, 0.2537062509552193, 0.1873435824097247, 0.32235649546827794};
 
     }
 
@@ -137,23 +138,23 @@ public class TestEnd2EndRealWorld {
         for (boolean restrictReadingOrder : new boolean[]{true, false}) {
             for (boolean restrictGeometry : new boolean[]{true, false}) {
                 for (boolean allowSegmentationErrors : new boolean[]{true, false}) {
-                    StringBuilder sb = new StringBuilder();
+//                    StringBuilder sb = new StringBuilder();
                     double[] doubles = expectedsSegmentation[restrictReadingOrder ? 1 : 0][restrictGeometry ? 1 : 0][allowSegmentationErrors ? 1 : 0];
-                    sb.append("expectedsSegmentation").append(".put(new boolean[]{" + restrictReadingOrder + "," + restrictGeometry + "," + allowSegmentationErrors + "}, new double[]{");
-                    for (int i = 0; i < doubles.length; i++) {
-                        double expected = doubles[i];
+//                    sb.append("expectedsSegmentation").append(".put(new boolean[]{" + restrictReadingOrder + "," + restrictGeometry + "," + allowSegmentationErrors + "}, new double[]{");
+                    for (int i =0; i < testIndexes.length; i++) {
+                        double expected = doubles[testIndexes[i]];
 //                if (expected != 0.0) {
 //                    continue;
 //                }
-                        double cer = testGermania(restrictReadingOrder, restrictGeometry, allowSegmentationErrors, i);
-                        sb.append(cer);
-                        if (i < doubles.length - 1) {
-                            sb.append(",");
-                        }
+                        double cer = testGermania(restrictReadingOrder, restrictGeometry, allowSegmentationErrors, testIndexes[i]);
+//                        sb.append(cer);
+//                        if (i < doubles.length - 1) {
+//                            sb.append(",");
+//                        }
                         Assert.assertEquals("CER of page " + i + " and mode R=" + restrictReadingOrder + ", G=" + restrictGeometry + ", S=" + allowSegmentationErrors + " is wrong", expected, cer, 0.001);
                     }
-                    sb.append("});");
-                    System.out.println(sb);
+//                    sb.append("});");
+//                    System.out.println(sb);
                 }
             }
         }
@@ -186,8 +187,8 @@ public class TestEnd2EndRealWorld {
         StopWatch sw = new StopWatch();
         ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(restrictReadingOrder, restrictGeometry, allowSegmentationErrors, false);
 //        end2End.setThresholdCouverage(0.0);
-        end2End.setSizeProcessViewer(6000);
-        end2End.setFileDynProg(new File("out.png"));
+//        end2End.setSizeProcessViewer(6000);
+//        end2End.setFileDynProg(new File("out.png"));
         Result gtResult = Result.F1_ATR1;
         Result hypResult = Result.F3_ATR2;
         File[] gts = new File(gtResult.getPath().getPath()).listFiles();
