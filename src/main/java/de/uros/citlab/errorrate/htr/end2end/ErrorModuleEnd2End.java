@@ -53,6 +53,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     private final boolean allowSegmentationErrors;
     private double thresholdCouverage = 0.0;
     private final boolean isWER;
+    private final boolean isBOW;
     private final boolean countSpaces;
 
     public enum CountSubstitutions {
@@ -68,35 +69,15 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         }
     }
 
-//    public enum Mode {
-//        RO(false, false),
-//        NO_RO(true, false),
-//        RO_SEG(false, true),
-//        NO_RO_SEG(true, true);
-//
-//        private boolean ignoreReadingOrder;
-//        private boolean ignoreSegmentation;
-//
-//        Mode(boolean ignoreReadingOrder, boolean ignoreSegmentation) {
-//            this.ignoreReadingOrder = ignoreReadingOrder;
-//            this.ignoreSegmentation = ignoreSegmentation;
-//        }
-//
-//        public boolean ignoreReadingOrder() {
-//            return ignoreReadingOrder;
-//        }
-//
-//        public boolean ignoreSegmentation() {
-//            return ignoreSegmentation;
-//        }
-//
-//    }
-
     private static final class WordTokenizerAddSpaceGap implements ITokenizer {
         private ITokenizer wordTokenizer;
 
         public WordTokenizerAddSpaceGap(ITokenizer wordTokenizer) {
             this.wordTokenizer = wordTokenizer;
+        }
+
+        public ITokenizer getWordTokenizer() {
+            return wordTokenizer;
         }
 
         @Override
@@ -125,15 +106,26 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     }
 
     public ErrorModuleEnd2End(boolean restrictReadingOrder, boolean restrictGeometry, boolean allowSegmentationErrors, ITokenizer wordTokenizer) {
+        this(restrictReadingOrder, restrictGeometry, allowSegmentationErrors, wordTokenizer, false);
+    }
+
+    public ErrorModuleEnd2End(boolean restrictReadingOrder, boolean restrictGeometry, boolean allowSegmentationErrors, boolean calcWER, boolean BOW) {
+        this(restrictReadingOrder, restrictGeometry, allowSegmentationErrors, calcWER ? new WordTokenizerSpaceCategory() : null, BOW);
+    }
+
+    public ErrorModuleEnd2End(boolean restrictReadingOrder, boolean restrictGeometry, boolean allowSegmentationErrors, ITokenizer wordTokenizer, boolean BOW) {
         this.restrictReadingOrder = restrictReadingOrder;
         this.restrictGeometry = restrictGeometry;
         this.allowSegmentationErrors = allowSegmentationErrors;
-        this.filterOffset = filterOffset;
         isWER = wordTokenizer != null;
+        isBOW = BOW;
+        if (isBOW && (!isWER || restrictReadingOrder)) {
+            throw new RuntimeException("bag of words (BOW) only possible if calcWER=true or wordTokenizer is given and restrictReadingOrder=false.");
+        }
         countSpaces = !isWER && !allowSegmentationErrors;
         this.tokenizer = isWER ?
                 wordTokenizer instanceof WordTokenizerAddSpaceGap ?
-                        (WordTokenizerAddSpaceGap) wordTokenizer :
+                        wordTokenizer :
                         new WordTokenizerAddSpaceGap(wordTokenizer) :
                 new TokenizerCategorizer(new CategorizerCharacterDft());
         pathCalculator.addCostCalculator(isWER ? new CCWordDel(voter) : new CCDel(voter));
@@ -305,7 +297,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         //tokenize both strings
         String[] recos = getExpandedTokenization(reco);
         String[] refs = getExpandedTokenization(ref);
-        AlignmentTask result = new AlignmentTask(recos, refs);
+        AlignmentTask result = new AlignmentTask(recos, refs, isBOW ? ((WordTokenizerAddSpaceGap) tokenizer).getWordTokenizer() : null);
         return calculateIntern(result, sizeProcessViewer, fileDynProg, calcLineComparison);
     }
 

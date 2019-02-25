@@ -43,54 +43,82 @@ public class AlignmentTask {
         if (j < 0) {
             return true;
         }
-        return  adjazent[i][j];
+        return adjazent[i][j];
     }
 
     public AlignmentTask(String[] recos, String[] refs) {
-        this(recos, null, refs, null, null);
+        this(recos, refs, null);
+    }
+
+    public AlignmentTask(String[] recos, String[] refs, ITokenizer splitBOW) {
+        this(recos, null, refs, null, null, splitBOW);
     }
 
     private AlignmentTask(String[] recos, int[] recoLineMap, String[] refs, int[] refLineMap, boolean[][] adjazent) {
-        this.recos = recos;
-        this.recoLineMap = recoLineMap == null ? getDefaultLineMap(recos) : recoLineMap;
-        this.refs = refs;
-        this.refLineMap = refLineMap == null ? getDefaultLineMap(refs) : refLineMap;
+        this(recos, recoLineMap, refs, refLineMap, adjazent, null);
+    }
+
+    private AlignmentTask(String[] recos, int[] recoLineMap, String[] refs, int[] refLineMap, boolean[][] adjazent, ITokenizer splitBOW) {
+        if (splitBOW != null) {
+            Pair<String[], int[]> pair = splitLines(recos, recoLineMap, splitBOW);
+            this.recos = pair.getFirst();
+            this.recoLineMap = pair.getSecond();
+            Pair<String[], int[]> pair2 = splitLines(refs, refLineMap, splitBOW);
+            this.refs = pair2.getFirst();
+            this.refLineMap = pair2.getSecond();
+        } else {
+            this.recos = recos;
+            this.recoLineMap = recoLineMap == null ? getDefaultLineMap(recos) : recoLineMap;
+            this.refs = refs;
+            this.refLineMap = refLineMap == null ? getDefaultLineMap(refs) : refLineMap;
+        }
         this.adjazent = adjazent;
         this.useFilter = adjazent != null;
 
     }
 
-    private final int[] getDefaultLineMap(String[] line) {
-        int[] res = new int[line.length];
-        int idx = -1;
-        for (int i = 0; i < line.length; i++) {
-            if ("\n".equals(line[i])) {
-                idx++;
-                res[i] = -1;
+    Pair<String[], int[]> splitLines(String[] lines, int[] lineMap, ITokenizer tokenizer) {
+        List<String> words = new LinkedList<>();
+        List<Integer> lineIdxs = new LinkedList<>();
+//        words.add("\n");
+//        lineIdxs.add(-1);
+        int cntLB = -1;
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            int idx = lineMap == null ? i : lineMap[i];
+//            List<String> tokens = tokenizer.tokenize(line);
+//            for (String token : tokens) {
+            if (line.equals("\n")) {
+                words.add(line);
+                lineIdxs.add(-1);
+                cntLB++;
+            } else if (line.equals(" ")) {
+                words.add("\n");
+                lineIdxs.add(-1);
             } else {
-                res[i] = idx;
+                words.add(line);
+                lineIdxs.add(cntLB);
             }
+//                words.add("\n");
+//                lineIdxs.add(-1);
+//            }
         }
-        return res;
+        int[] res = new int[words.size()];
+        for (int i = 0; i < res.length; i++) {
+            res[i] = lineIdxs.get(i);
+        }
+        return new Pair<>(words.toArray(new String[0]), res);
     }
 
     public AlignmentTask(Pair<String[], int[]> recos, Pair<String[], int[]> refs, boolean[][] adjazent) {
         this(recos.getFirst(), recos.getSecond(), refs.getFirst(), refs.getSecond(), adjazent);
     }
 
-    public boolean[][] getAdjazent() {
-        return adjazent;
-    }
-
-    public int[] getRecoLineMap() {
-        return recoLineMap;
-    }
-
-    public int[] getRefLineMap() {
-        return refLineMap;
-    }
-
     public AlignmentTask(List<ILine> reco, List<ILine> ref, ITokenizer wordTokenizer, IStringNormalizer sn, double thresholdCouverage) {
+        this(reco, ref, wordTokenizer, sn, thresholdCouverage, false);
+    }
+
+    public AlignmentTask(List<ILine> reco, List<ILine> ref, ITokenizer wordTokenizer, IStringNormalizer sn, double thresholdCouverage, boolean splitBOW) {
         Polygon[] recos = new Polygon[reco.size()];
         Polygon[] refs = new Polygon[ref.size()];
         Boolean useFilter = null; //only use filter, if baselines are given everywhere
@@ -121,15 +149,42 @@ public class AlignmentTask {
         int[][] gtLists = new BaseLineAligner().getGTLists(refs, null, recos, thresholdCouverage);
         this.adjazent = getMap(gtLists, recos.length, refs.length);
 
-        Pair<String[], int[]> recoTokens = getTokensAndLineIndex(reco, wordTokenizer, sn);
+        Pair<String[], int[]> recoTokens = getTokensAndLineIndex(reco, wordTokenizer, sn, splitBOW);
         this.recoLineMap = recoTokens.getSecond();
         this.recos = recoTokens.getFirst();
-        Pair<String[], int[]> refTokens = getTokensAndLineIndex(ref, wordTokenizer, sn);
+        Pair<String[], int[]> refTokens = getTokensAndLineIndex(ref, wordTokenizer, sn, splitBOW);
         this.refLineMap = refTokens.getSecond();
         this.refs = refTokens.getFirst();
     }
 
-    private Pair<String[], int[]> getTokensAndLineIndex(List<ILine> lines, ITokenizer wordTokenizer, IStringNormalizer sn) {
+    private final int[] getDefaultLineMap(String[] line) {
+        int[] res = new int[line.length];
+        int idx = -1;
+        for (int i = 0; i < line.length; i++) {
+            if ("\n".equals(line[i])) {
+                idx++;
+                res[i] = -1;
+            } else {
+                res[i] = idx;
+            }
+        }
+        return res;
+    }
+
+
+    public boolean[][] getAdjazent() {
+        return adjazent;
+    }
+
+    public int[] getRecoLineMap() {
+        return recoLineMap;
+    }
+
+    public int[] getRefLineMap() {
+        return refLineMap;
+    }
+
+    private Pair<String[], int[]> getTokensAndLineIndex(List<ILine> lines, ITokenizer wordTokenizer, IStringNormalizer sn, boolean splitBOW) {
         LinkedList<String> tokens = new LinkedList<>();
         LinkedList<Integer> indexes = new LinkedList<>();
         tokens.add("\n");

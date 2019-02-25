@@ -5,14 +5,12 @@
  */
 package de.uros.citlab.errorrate;
 
-import de.uros.citlab.errorrate.htr.ErrorModuleBagOfTokens;
 import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
 import de.uros.citlab.errorrate.interfaces.ILine;
 import de.uros.citlab.errorrate.interfaces.ILineComparison;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
-import de.uros.citlab.errorrate.types.WordTokenizerSpaceCategory;
 import de.uros.citlab.tokenizer.TokenizerCategorizer;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
 import de.uros.citlab.tokenizer.categorizer.CategorizerWordMergeGroups;
@@ -483,28 +481,34 @@ public class TestEnd2End {
         String recognition = "Liblbuk flieht\nLingSufinur\nLiblbuk\n\"\nLut.\nLa\nSindelbrunn\nXburg\nSindelbrunn\n102\n103\n104";
         LinkedList<ILine> reco = new LinkedList<>();
         LinkedList<ILine> ref = new LinkedList<>();
-        ref.add(getLine("A B", 1, 1));
-        ref.add(getLine("C D", 1, 2));
-        ref.add(getLine("E F", 1, 3));
+        ref.add(getLine("Küblböck Elise", 1, 1));
+        ref.add(getLine("Kainz Josina", 1, 2));
+        ref.add(getLine("Küblböck Led.", 1, 3));
         ref.add(getLine("\"", 2, 1));
-        ref.add(getLine("G", 2, 2));
-        ref.add(getLine("H", 2, 3));
-        ref.add(getLine("I", 3, 1));
-        ref.add(getLine("J", 3, 2));
-        ref.add(getLine("I", 3, 3));
-        ref.add(getLine("1", 3, 1));
-        ref.add(getLine("2", 3, 2));
-        ref.add(getLine("3", 3, 3));
+        ref.add(getLine("Led.", 2, 2));
+        ref.add(getLine("L.", 2, 3));
+        ref.add(getLine("Schönbrunn", 3, 1));
+        ref.add(getLine("Aberg", 3, 2));
+        ref.add(getLine("Schönbrunn", 3, 3));
+        ref.add(getLine("102", 3, 1));
+        ref.add(getLine("103", 3, 2));
+        ref.add(getLine("104", 3, 3));
 
-        reco.add(getLine("A B", 1, 2, 1));
-        reco.add(getLine("C D G", 1, 2, 2));
-        reco.add(getLine("EF H", 1, 2, 3));
-        reco.add(getLine("I", 3, 1));
-        reco.add(getLine("J", 3, 2));
-        reco.add(getLine("K", 3, 3));
-        reco.add(getLine("3", 3, 1));
-        reco.add(getLine("2", 3, 2));
-        reco.add(getLine("4", 3, 3));
+        reco.add(getLine("Küblböck Elise", 1, 2, 1));
+        reco.add(getLine("Kainz Josina Led.", 1, 2, 2));
+        reco.add(getLine("KüblböckLed. L.", 1, 2, 3));
+        reco.add(getLine("Schönbrunn", 3, 1));
+        reco.add(getLine("Aberg", 3, 2));
+        reco.add(getLine("Schönbrunn", 3, 3));
+        reco.add(getLine("10", 3, 1));
+        reco.add(getLine("103", 3, 2));
+        reco.add(getLine("102", 3, 3));
+        {
+            ErrorModuleEnd2End impl = new ErrorModuleEnd2End(true, false, false, false);
+            List<ILineComparison> iLineComparisons = impl.calculateWithSegmentation(reco, ref, true);
+            System.out.println(impl.getMetrics());
+            System.out.println(impl.getCounter());
+        }
         boolean[] truefalse = new boolean[]{true, false};
         for (boolean restrictReadingOrder : truefalse) {
             for (boolean allowSegmentationErrors : truefalse) {
@@ -514,19 +518,26 @@ public class TestEnd2End {
                     for (ILineComparison iLineComparison : iLineComparisons) {
 //            System.out.println(iLineComparison);
                     }
-                    System.out.println("restrictReadingOrder " + restrictReadingOrder);
-                    System.out.println("allowSegmentationErrors " + allowSegmentationErrors);
-                    System.out.println("restrictGeometry " + restrictGeometry);
+                    System.out.println();
+                    System.out.println("R = " + restrictReadingOrder + " G = " + restrictGeometry + " S = " + allowSegmentationErrors);
                     System.out.println(impl.getMetrics());
                     System.out.println(impl.getCounter());
                 }
             }
             //zero - can repair everything excepte zehn -> ze\nhn: +2 ins +2 del +1 del of Space (double-use fore space and lb not allowed
         }
-        ErrorModuleBagOfTokens bow = new ErrorModuleBagOfTokens(new WordTokenizerSpaceCategory(), null, false);
-        List<ILineComparison> iLineComparisons = bow.calculateWithSegmentation(reco, ref, true);
-        System.out.println(iLineComparisons);
-        System.out.println(bow.getMetrics());
+        for (boolean restrictGeometry : truefalse) {
+            System.out.println("BOW");
+            System.out.println("restrictGeometry " + restrictGeometry);
+            ErrorModuleEnd2End impl = new ErrorModuleEnd2End(false, restrictGeometry, true, true, true);
+            List<ILineComparison> iLineComparisons = impl.calculateWithSegmentation(reco, ref, true);
+//            for (ILineComparison iLineComparison : iLineComparisons) {
+//                System.out.println(iLineComparison);
+//            }
+
+            System.out.println(impl.getMetrics());
+            System.out.println(impl.getCounter());
+        }
 
     }
 
@@ -583,27 +594,16 @@ public class TestEnd2End {
         Assert.assertEquals(new Long(5 * factor), getCount(false, false, false, true, false, reference, recognition).get(Count.ERR));
     }
 
-//    @Test
-//    public void testVeryLongerTextWord() {
-////        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
-//
-//        String reference = "ein zwei drei\nvier fünf sechs\nsieben\nacht\nneun zehn elf zwölf";
-//        String recognition = "ein zwei drei\nsieben acht\nvier fünf sechs\nneun ze\nhn elf zwölf";
-//        for (int i = 0; i < 3; i++) {
-//            reference += "\n" + reference;
-//            recognition += "\n" + recognition;
-//        }
-//        //11 DEL (sieben acht), 3 INS (sie), 6 SUB/INS  7 INS (neun ze)=27
-//        Assert.assertEquals(new Long(6 * 8), getCount(false, true, true,false, false, reference, recognition).get(Count.ERR));
-//        //one more than substituting "\n" by " ": zehn vs. "ze\nhn"
-//        Long count = getCount(false, true, true,true, false, reference.replace("\n", " "), recognition.replace("\n", " ")).get(Count.ERR);
-//        Assert.assertEquals(new Long(6 * 8), count);
-//        Assert.assertEquals(new Long(count), getCount(false, true, true,true, false, reference, recognition).get(Count.ERR));
-//        // 3 INS (sie), 3 DEL (sie), 7 INS (neun ze), 7 DEL (neun ze)
-//        Assert.assertEquals(new Long(6 * 8), getCount(false, true, false,false, false, reference, recognition).get(Count.ERR));
-//        //zero - can repair everything!!
-//        Assert.assertEquals(new Long(6 * 8), getCount(false, true, false,true, false, reference, recognition).get(Count.ERR));
-//    }
+    @Test
+    public void testBagOfWord() {
+        //TODO: change reco and ref
+        String reference = "eins drei zwei drei\nvier fünf drei sechs";
+        String recognition = "drei zwei\ndrei eins vier\ndrei sechs fünf";
+        System.out.println("testBagOfWord");
+//        Assert.assertEquals(new Long(6 ), getCount(false, true, true, false, false, reference, recognition,false).get(Count.ERR));
+        Assert.assertEquals(new Long(0), getCount(false, true, false, false, false, reference, recognition, true).get(Count.ERR));
+        Assert.assertEquals(new Long(8), getCount(false, true, false, false, false, reference, recognition, true).get(Count.COR));
+    }
 
     @Test
     public void testLetter() {
@@ -651,13 +651,18 @@ public class TestEnd2End {
 
     public Map<Count, Long> getCount(boolean upper, boolean word, boolean restrictReadingOrder, boolean allowSegmentation,
                                      boolean letterNumber, String gt, String hyp) {
+        return getCount(upper, word, restrictReadingOrder, allowSegmentation, letterNumber, gt, hyp, false);
+    }
+
+    public Map<Count, Long> getCount(boolean upper, boolean word, boolean restrictReadingOrder, boolean allowSegmentation,
+                                     boolean letterNumber, String gt, String hyp, boolean BOW) {
         System.out.println((" test \"" + gt + "\" vs \"" + hyp + "\"").replace("\n", "\\n"));
         IStringNormalizer sn = new StringNormalizerDft(Normalizer.Form.NFKC, upper);
         if (letterNumber) {
             sn = new StringNormalizerLetterNumber(sn);
         }
         ErrorModuleEnd2End impl = word ?
-                new ErrorModuleEnd2End(restrictReadingOrder, false, allowSegmentation, new TokenizerCategorizer(new CategorizerWordMergeGroups())) :
+                new ErrorModuleEnd2End(restrictReadingOrder, false, allowSegmentation, new TokenizerCategorizer(new CategorizerWordMergeGroups()), BOW) :
                 new ErrorModuleEnd2End(restrictReadingOrder, false, allowSegmentation, false);
 
         if (sn != null) {
@@ -683,7 +688,7 @@ public class TestEnd2End {
         if (letterNumber) {
             sn = new StringNormalizerLetterNumber(sn);
         }
-        ErrorModuleEnd2End impl = new ErrorModuleEnd2End(restrictReadingOrder, false,allowSegmentation,  word);
+        ErrorModuleEnd2End impl = new ErrorModuleEnd2End(restrictReadingOrder, false, allowSegmentation, word);
         impl.setStringNormalizer(sn);
         impl.setCountManipulations(ErrorModuleEnd2End.CountSubstitutions.ALL);
 //        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
