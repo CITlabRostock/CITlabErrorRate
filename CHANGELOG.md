@@ -1,6 +1,9 @@
 
 # Changelog
 
+# 5.0.1
+* bugfix: LineComparison now includes Hypothesis (False Positives)
+
 # 5.0.0
 * bugfix: ILineComparison return right index (was always 0)
 * new feature: first (untested) version for WER

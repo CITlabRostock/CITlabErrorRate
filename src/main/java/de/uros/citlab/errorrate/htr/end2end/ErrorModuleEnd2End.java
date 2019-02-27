@@ -740,11 +740,12 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         Pair<String[], int[]> recoSubProblemTranscription = getSubProblemTranscription(recos, maskReco, alignmentTask.getRecoLineMap());
         //if reference length of subproblem is 0, any recognition have to be deleted.
         // Count as HYP and DEL - but skip spaces, if mode is ignoreSegmentation (artificially segment at spaces => no count)
-        String[] refSubProblem = refSubProblemTranscription.getFirst();
-        String[] recoSubProblem = recoSubProblemTranscription.getFirst();
-        if (countChars(refSubProblem) == 0) {
+        if (countChars(refSubProblemTranscription.getFirst()) == 0) {
+            String[] recoSubProblem = recoSubProblemTranscription.getFirst();
+            int[] recoSubProblemIndex = recoSubProblemTranscription.getSecond();
             for (int i = 0; i < recoSubProblem.length; i++) {
                 String s = recoSubProblem[i];
+                pathCountResult.add(getLineComparison(recoSubProblemIndex[i], -1, s, null, Arrays.asList(new Point(Manipulation.DEL, s, null))));
                 if (!voter.isLineBreak(s)) {
                     if (allowSegmentationErrors && voter.isSpace(s)) {
                         //allow any partition of text - then it is better to substitute spaces by newlines. Do not count spaces.
