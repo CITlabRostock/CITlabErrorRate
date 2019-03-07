@@ -445,6 +445,17 @@ public class TestEnd2End {
     }
 
     @Test
+    public void testGTEmpty() {
+        System.out.println("textGTEmpty");
+//        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
+
+        String recognition = "just one line";
+        String reference = "";
+        Map<Count, Long> count_NO_RO_SEG = getCount(false, false, false, false, false, reference, recognition);
+        Assert.assertEquals("error should be the length of the line", (long) recognition.length(), (long) count_NO_RO_SEG.getOrDefault(Count.ERR, 0L));
+    }
+
+    @Test
     public void testLongerText() {
 //        Assert.assertEquals(new Long(6), getCount(false, false, true,false, false, "sieben\nacht", "neun ze").get(Count.ERR));
 

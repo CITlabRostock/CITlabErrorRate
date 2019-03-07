@@ -305,7 +305,11 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         LinkedList<String> res = new LinkedList<>();
         res.add("\n");
         for (String s : string.split("\n")) {
-            res.addAll(tokenizer.tokenize(s));
+            List<String> tokenize = tokenizer.tokenize(s);
+            if (tokenize.isEmpty()) {
+                continue;
+            }
+            res.addAll(tokenize);
             res.add("\n");
         }
         return res.toArray(new String[0]);
@@ -801,7 +805,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         if (restrictReadingOrder) {
             throw new RuntimeException("fallback only possible when mode was without reading order");
         }
-        ErrorModuleEnd2End fallback = new ErrorModuleEnd2End(true, restrictGeometry, allowSegmentationErrors, tokenizer);
+        ErrorModuleEnd2End fallback = new ErrorModuleEnd2End(true, restrictGeometry, allowSegmentationErrors, isWER ? tokenizer : null);
         File outSubProblem = null;
         if (out != null) {
             String path = out.getPath();
