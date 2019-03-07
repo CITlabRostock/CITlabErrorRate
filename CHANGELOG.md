@@ -1,6 +1,8 @@
 
 # Changelog
 
+# 5.0.2
+
 # 5.0.1
 * bugfix: LineComparison now includes Hypothesis (False Positives)
 * bugfix: For not-emtpy hypothesis and empty reference, calculation is correct
