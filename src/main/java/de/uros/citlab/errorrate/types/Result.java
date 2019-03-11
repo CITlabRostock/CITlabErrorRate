@@ -61,6 +61,7 @@ public class Result {
                     metrics.put(Metric.ACC, gt + hyp == 0 ? 1.0 : cor / (gt + hyp - cor));
                     metrics.put(Metric.PREC, hyp == 0 ? 1.0 : cor / hyp);
                     metrics.put(Metric.REC, gt == 0 ? 1.0 : cor / gt);
+                    metrics.put(Metric.F, gt + hyp == 0 ? 1.0 : 2 * cor / (gt + hyp));
                     break;
                 default:
                     throw new RuntimeException("unknown method '" + method + "'.");

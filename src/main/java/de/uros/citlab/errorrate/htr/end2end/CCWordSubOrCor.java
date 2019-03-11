@@ -2,9 +2,9 @@ package de.uros.citlab.errorrate.htr.end2end;
 
 import de.uros.citlab.errorrate.types.PathCalculatorGraph;
 
-class CCSubOrCor extends CCAbstract {
+class CCWordSubOrCor extends CCAbstract {
 
-    public CCSubOrCor(Voter voter) {
+    public CCWordSubOrCor(Voter voter) {
         super(voter);
     }
 
@@ -18,6 +18,9 @@ class CCSubOrCor extends CCAbstract {
             }
             if (isLineBreakReco[y] || isLineBreakRef[x]) {
                 //if only one of these is a line break: it is not allowed to substitute one character against one line break!
+                return null;
+            }
+            if (isSpaceReco[y] != isSpaceRef[x]) {
                 return null;
             }
             //normal case: characters are unequal

@@ -24,7 +24,7 @@ class CCDelLine extends CCAbstract {
                     //-1 because \n does not have to be count
                     return new PathCalculatorGraph.DistanceSmall(point, new int[]{yend, x}, dist.costsAcc + cntErrors * offsetDel, this);
                 }
-                //do not count spaces if any segmentation is allowed
+                //do not count spaces if any segmentation is allowed or mode is WER
                 if (countSpaces || !isSpaceReco[yend]) {
                     cntErrors++;
                 }
@@ -41,20 +41,20 @@ class CCDelLine extends CCAbstract {
         final int start = previous[0];
         final int end = next[0];
         final String[] subList;
-        if (countSpaces) {
+//        if (countSpaces) {
             subList = Arrays.copyOfRange(recos, start + 1, end);
-        } else {
-            subList = new String[end - start - 1];
-            int k=0;
-            for (int i = start + 1; i < end; i++) {
-                if (isSpaceReco[i]) {
-                    subList[k]="\n";
-                }else{
-                    subList[k]=recos[i];
-                }
-                k++;
-            }
-        }
+//        } else {
+//            subList = new String[end - start - 1];
+//            int k=0;
+//            for (int i = start + 1; i < end; i++) {
+//                if (isSpaceReco[i]) {
+//                    subList[k]="\n";
+//                }else{
+//                    subList[k]=recos[i];
+//                }
+//                k++;
+//            }
+//        }
         final int ystart = dist.pointPrevious[0];
         int yend = ystart + 1;
         int cntErrors = 0;

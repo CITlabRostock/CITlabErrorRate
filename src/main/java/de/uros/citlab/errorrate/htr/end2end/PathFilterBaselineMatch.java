@@ -25,7 +25,7 @@ public class PathFilterBaselineMatch implements PathCalculatorGraph.PathFilter<S
     @Override
     public boolean addNewEdge(PathCalculatorGraph.DistanceSmall newDistance) {
         int[] point = newDistance.point;
-        //-1 because epty element is added at the beginning of reco and ref
+        //-1 because empty element is added at the beginning of reco and ref
         if (alignmentTask.isSameLine(point[0] - 1, point[1] - 1)) {
             return intern == null ? true : intern.addNewEdge(newDistance);
         }

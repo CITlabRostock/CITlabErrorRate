@@ -56,9 +56,6 @@ public class ErrorRateCalcerTest {
         files.removeIf(file -> file.getName().equals("doc.xml"));
         File[] res = files.toArray(new File[0]);
         Arrays.sort(res);
-        if(res.length>28){
-            System.out.println("stop");
-        }
         return res;
     }
 

@@ -5,20 +5,20 @@
  */
 package de.uros.citlab.errorrate;
 
-import de.uros.citlab.errorrate.htr.ErrorModuleBagOfTokens;
 import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
+import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Count;
+import de.uros.citlab.tokenizer.TokenizerConfig;
 import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
-import de.uros.citlab.tokenizer.TokenizerConfig;
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.text.Normalizer;
 import java.util.Map;
-import org.junit.Assert;
-import org.junit.Test;
 
 /**
  * Here every one can add groundtruth (GT) and hypothesis (HYP) text. Then some
@@ -48,7 +48,7 @@ public class TestErrorRatesASV {
     @Test
     public void testOrder() {
         Assert.assertEquals(new Long(1), getCount(false, true, false, false, "this is text ", "is this text").get(Count.COR));
-        Assert.assertEquals(new Long(3), getCount(false, true, true, false, "this is text ", "is this text").get(Count.TP));
+        Assert.assertEquals(new Long(3), getCount(false, true, true, false, "this is text ", "is this text").get(Count.COR));
     }
 
     @Test
@@ -68,13 +68,23 @@ public class TestErrorRatesASV {
     @Test
     public void testErrorType() {
         Assert.assertEquals(new Long(1), getCount(false, true, false, false, "its, wrong", "its wrong").get(Count.INS));
-        Assert.assertEquals(new Long(1), getCount(false, true, false, false, "its, wrong", "its. wrong").get(Count.SUB));//substitution
-        Assert.assertEquals(new Long(2), getCount(false, true, false, false, "its, wrong", "its. wrong").get(Count.COR));//correct
-        Assert.assertEquals(new Long(2), getCount(false, true, true, false, "its, wrong", "its. wrong").get(Count.TP));//true positive
-        Assert.assertEquals(new Long(1), getCount(false, true, true, false, "its, wrong", "its. wrong").get(Count.FN));//false negative
-        Assert.assertEquals(new Long(1), getCount(false, true, true, false, "its, wrong", "its. wrong").get(Count.FP));//false positive
+        Assert.assertEquals(new Long(1), getCount(false, true, false, false, "its, wrong", "its. wrong").getOrDefault(Count.SUB, 0L));//substitution
+        Assert.assertEquals(new Long(2), getCount(false, true, false, false, "its, wrong", "its. wrong").getOrDefault(Count.COR, 0L));//correct
+        Assert.assertEquals(new Long(2), getCount(false, true, true, false, "its, wrong", "its. wrong").getOrDefault(Count.COR, 0L));//true positive
+        Assert.assertEquals(new Long(1), (Long) (
+                getCount(false, true, true, false, "its, wrong", "its. wrong").getOrDefault(Count.INS, 0L) +
+                        getCount(false, true, true, false, "its, wrong", "its. wrong").getOrDefault(Count.SUB, 0L)
+        ));//false negative
+        Assert.assertEquals(new Long(1), (Long) (
+                getCount(false, true, true, false, "its, wrong", "its. wrong").getOrDefault(Count.DEL, 0L) +
+                        getCount(false, true, true, false, "its, wrong", "its. wrong").getOrDefault(Count.SUB, 0L)
+        ));//false positive
         Assert.assertEquals(new Long(2), getCount(false, true, false, false, "wrong", "its, wrong").get(Count.DEL));
-        Assert.assertEquals(new Long(2), getCount(false, true, true, false, "wrong", "its, wrong").get(Count.FP));
+        Assert.assertEquals(new Long(2), (Long) (
+                getCount(false, true, true, false, "wrong", "its, wrong").getOrDefault(Count.DEL, 0L) +
+                        getCount(false, true, true, false, "wrong", "its, wrong").getOrDefault(Count.SUB, 0L)
+        ));//false positive
+//        Assert.assertEquals(new Long(2), getCount(false, true, true, false, "wrong", "its, wrong").get(Count.COR));
 //        Assert.assertEquals(2, get(false, true, false, true, "COR", "it's wrong", "its wrong"));
     }
 
@@ -93,7 +103,10 @@ public class TestErrorRatesASV {
             sn = new StringNormalizerLetterNumber(sn);
         }
 
-        IErrorModule impl = bagoftokens ? new ErrorModuleBagOfTokens(tokenizer, sn, false) : new ErrorModuleDynProg(tokenizer, sn, false);
+        IErrorModule impl = bagoftokens ? new ErrorModuleEnd2End(false, false, true, tokenizer, true) : new ErrorModuleDynProg(tokenizer, sn, false);
+        if (sn != null && bagoftokens) {
+            ((ErrorModuleEnd2End) impl).setStringNormalizer(sn);
+        }
         impl.calculate(hyp, gt);
         return impl.getCounter().getMap();
     }

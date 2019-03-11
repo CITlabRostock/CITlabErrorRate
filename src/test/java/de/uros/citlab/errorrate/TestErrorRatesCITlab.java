@@ -5,8 +5,8 @@
  */
 package de.uros.citlab.errorrate;
 
-import de.uros.citlab.errorrate.htr.ErrorModuleBagOfTokens;
 import de.uros.citlab.errorrate.htr.ErrorModuleDynProg;
+import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
 import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
 import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
@@ -50,7 +50,7 @@ public class TestErrorRatesCITlab {
     @Test
     public void testOrder() {
         Assert.assertEquals(new Long(1), getCount(false, true, false, false, "this is text ", "is this text").get(Count.COR));
-        Assert.assertEquals(new Long(3), getCount(false, true, true, false, "this is text ", "is this text").get(Count.TP));
+        Assert.assertEquals(new Long(3), getCount(false, true, true, false, "this is text ", "is this text").get(Count.COR));
     }
 
     @Test
@@ -72,11 +72,21 @@ public class TestErrorRatesCITlab {
         Assert.assertEquals(new Long(1), getCount(false, true, false, false, "its, wrong", "its wrong").get(Count.INS));
         Assert.assertEquals(new Long(1), getCount(false, true, false, false, "its, wrong", "its. wrong").get(Count.SUB));//substitution
         Assert.assertEquals(new Long(2), getCount(false, true, false, false, "its, wrong", "its. wrong").get(Count.COR));//correct
-        Assert.assertEquals(new Long(2), getCount(false, true, true, false, "its, wrong", "its. wrong").get(Count.TP));//true positive
-        Assert.assertEquals(new Long(1), getCount(false, true, true, false, "its, wrong", "its. wrong").get(Count.FN));//false negative
-        Assert.assertEquals(new Long(1), getCount(false, true, true, false, "its, wrong", "its. wrong").get(Count.FP));//false positive
+        Assert.assertEquals(new Long(2), getCount(false, true, true, false, "its, wrong", "its. wrong").get(Count.COR));//true positive
+        Assert.assertEquals(new Long(1), (Long) (
+                getCount(false, true, true, false, "its, wrong", "its. wrong").getOrDefault(Count.INS, 0L) +
+                        getCount(false, true, true, false, "its, wrong", "its. wrong").getOrDefault(Count.SUB, 0L)
+        ));//false negative
+        Assert.assertEquals(new Long(1), (Long) (
+                getCount(false, true, true, false, "its, wrong", "its. wrong").getOrDefault(Count.DEL, 0L) +
+                        getCount(false, true, true, false, "its, wrong", "its. wrong").getOrDefault(Count.SUB, 0L)
+        ));//false positive
         Assert.assertEquals(new Long(2), getCount(false, true, false, false, "wrong", "its, wrong").get(Count.DEL));
-        Assert.assertEquals(new Long(2), getCount(false, true, true, false, "wrong", "its, wrong").get(Count.FP));
+        Assert.assertEquals(new Long(2), (Long) (
+                getCount(false, true, true, false, "wrong", "its, wrong").getOrDefault(Count.DEL, 0L) +
+                        getCount(false, true, true, false, "wrong", "its, wrong").getOrDefault(Count.SUB, 0L)
+        ));//false positive
+//        Assert.assertEquals(new Long(2), getCount(false, true, true, false, "wrong", "its, wrong").get(Count.COR));
 //        Assert.assertEquals(2, get(false, true, false, true, "COR", "it's wrong", "its wrong"));
     }
 
@@ -85,7 +95,7 @@ public class TestErrorRatesCITlab {
         Assert.assertEquals(new Long(1), getCount(false, true, false, false, "it's wrong", "its wrong").get(Count.COR));
         Assert.assertEquals(new Long(2), getCount(false, true, false, true, "it's wrong", "its wrong").get(Count.COR));
         Assert.assertEquals(new Long(3), getCount(false, true, false, false, "its, wrong", "its, wrong").get(Count.COR));
-        Assert.assertEquals(new Long(4), getCount(true, true, true, true, "30 examples, just some...", "('just') <SOME> 30examples??;:").get(Count.TP));
+        Assert.assertEquals(new Long(4), getCount(true, true, true, true, "30 examples, just some...", "('just') <SOME> 30examples??;:").get(Count.COR));
     }
 
     public Map<Count, Long> getCount(boolean upper, boolean word, boolean bagoftokens, boolean letterNumber, String gt, String hyp) {
@@ -95,7 +105,10 @@ public class TestErrorRatesCITlab {
         if (letterNumber) {
             sn = new StringNormalizerLetterNumber(sn);
         }
-        IErrorModule impl = bagoftokens ? new ErrorModuleBagOfTokens(tokenizer, sn, false) : new ErrorModuleDynProg(tokenizer, sn, false);
+        IErrorModule impl = bagoftokens ? new ErrorModuleEnd2End(false, false, true, tokenizer, true) : new ErrorModuleDynProg(tokenizer, sn, false);
+        if(sn!=null&&bagoftokens){
+            ((ErrorModuleEnd2End)impl).setStringNormalizer(sn);
+        }
         impl.calculate(hyp, gt);
         return impl.getCounter().getMap();
     }

@@ -8,13 +8,13 @@
 
     <groupId>de.uros.citlab</groupId>
     <artifactId>errorrate</artifactId>
-    <version>3.4.1</version>
+    <version>5.0.1</version>
     <packaging>jar</packaging>
 
     <parent>
         <groupId>de.uros.citlab</groupId>
         <artifactId>parent_pom</artifactId>
-        <version>1.2</version>
+        <version>1.3</version>
     </parent>
     <dependencies>
         <!--CITLAB ROSTOCK-->

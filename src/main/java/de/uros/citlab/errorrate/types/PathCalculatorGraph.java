@@ -29,8 +29,6 @@ import java.util.List;
  */
 public class PathCalculatorGraph<Reco, Reference> {
 
-    private Reco typeReco;
-    private Reference typeReference;
     private UpdateScheme updateScheme = UpdateScheme.LAZY;
     private int sizeProcessViewer = -1;
     private File folderDynMats = null;
@@ -156,6 +154,17 @@ public class PathCalculatorGraph<Reco, Reference> {
             }
             throw new RuntimeException("cannot interprete class " + costCalculator.getClass().getName());
         }
+
+        @Override
+        public String toString() {
+            return "DistanceSmall{" +
+                    " pos=" + Arrays.toString(point) +
+                    ", prev=" + Arrays.toString(pointPrevious) +
+                    ", costs=" + costsAcc +
+//                    ", marked=" + marked +
+                    ", CC=" + costCalculator +
+                    '}';
+        }
     }
 
 
@@ -194,7 +203,7 @@ public class PathCalculatorGraph<Reco, Reference> {
 //                if (o == null) {
 //                    return null;
 //                }
-//                return (IDistance<Reco, Reference>) ((TIntObjectHashMap) o).get(x);
+//                return (IPoint<Reco, Reference>) ((TIntObjectHashMap) o).get(x);
 //            }
             return (DistanceSmall) distMap.get(y * sizeX + x);
         }
@@ -235,7 +244,7 @@ public class PathCalculatorGraph<Reco, Reference> {
         public List<IDistance<Reco, Reference>> getBestPath() {
             DistanceSmall lastElement = getLastElement();
             if (lastElement == null) {
-                LOG.warn("Distance Matrix not completely calculated.");
+                LOG.warn("Point Matrix not completely calculated.");
                 return null;
             }
             LinkedList<IDistance<Reco, Reference>> res = new LinkedList<>();
@@ -360,22 +369,38 @@ public class PathCalculatorGraph<Reco, Reference> {
         if (ref == null || reco == null) {
             throw new RuntimeException("target or output is null");
         }
-        int recoOffset = (reco.isEmpty() || reco.get(0) != null) ? 1 : 0;
-        int refOffset = (ref.isEmpty() || ref.get(0) != null) ? 1 : 0;
-//        int recoLength = reco.size();
-//        int refLength = ref.size();
-        Reco[] nativeReco = (Reco[]) Array.newInstance(reco.get(0).getClass(), reco.size() + recoOffset);
+        Reco[] nativeReco = (Reco[]) Array.newInstance(reco.get(0).getClass(), reco.size() + 1);
         for (int i = 0; i < reco.size(); i++) {
-            nativeReco[i + recoOffset] = reco.get(i);
+            nativeReco[i + 1] = reco.get(i);
         }
-        Reference[] nativeRef = (Reference[]) Array.newInstance(ref.get(0).getClass(), ref.size() + refOffset);
+        Reference[] nativeRef = (Reference[]) Array.newInstance(ref.get(0).getClass(), ref.size() + 1);
         for (int i = 0; i < ref.size(); i++) {
-            nativeRef[i + refOffset] = ref.get(i);
+            nativeRef[i + 1] = ref.get(i);
         }
+        return calcDynProgInner(nativeReco, nativeRef, maxCount);
+    }
+
+    public DistanceMat<Reco, Reference> calcDynProg(Reco[] reco, Reference[] ref) {
+        return calcDynProg(reco, ref, -1);
+    }
+
+    public DistanceMat<Reco, Reference> calcDynProg(Reco[] reco, Reference[] ref, int maxCount) {
+        if (ref == null || reco == null) {
+            throw new RuntimeException("target or output is null");
+        }
+        Reco[] nativeReco = (Reco[]) Array.newInstance(reco[0].getClass(), reco.length + 1);
+        System.arraycopy(reco, 0, nativeReco, 1, reco.length);
+        Reference[] nativeRef = (Reference[]) Array.newInstance(ref[0].getClass(), ref.length + 1);
+
+        System.arraycopy(ref, 0, nativeRef, 1, ref.length);
+        return calcDynProgInner(nativeReco, nativeRef, maxCount);
+    }
+
+    private DistanceMat<Reco, Reference> calcDynProgInner(Reco[] nativeReco, Reference[] nativeRef, int maxCount) {
 //        Reference[] nativeRef = (Reference[]) reco.toArray();
         DistanceMat<Reco, Reference> distMat = new DistanceMat<>(nativeReco.length, nativeRef.length);
-//        IDistance<Reco, Reference> distanceInfinity = new Distance<>(null, null, 0, Double.MAX_VALUE, null);
-//        LinkedList<IDistance<Reco, Reference>> candidates = new LinkedList<>();
+//        IPoint<Reco, Reference> distanceInfinity = new Point<>(null, null, 0, Double.MAX_VALUE, null);
+//        LinkedList<IPoint<Reco, Reference>> candidates = new LinkedList<>();
         for (ICostCalculator<Reco, Reference> costCalculator : costCalculators) {
             costCalculator.init(distMat, nativeReco, nativeRef);
         }
@@ -386,7 +411,7 @@ public class PathCalculatorGraph<Reco, Reference> {
             filter.init(nativeReco, nativeRef);
         }
         TreeSet<DistanceSmall> QSortedCostAcc = new TreeSet<>(cmpCostsAcc);
-//        HashSet<IDistance<Reco, Reference>> G = new LinkedHashSet<>();
+//        HashSet<IPoint<Reco, Reference>> G = new LinkedHashSet<>();
         int[] startPoint = new int[]{0, 0};
         DistanceSmall start = new DistanceSmall(null, startPoint, 0, null);
         distMat.set(startPoint, start);
@@ -400,9 +425,10 @@ public class PathCalculatorGraph<Reco, Reference> {
         int cntVerticies = 0;
 //        int cntEdges = 0;
         boolean[][] isdead = new boolean[distMat.sizeY][distMat.sizeX];
-        StopWatch swCalculators = new StopWatch("calculators");
-        StopWatch swHandle = new StopWatch("handles");
-        StopWatch swCleanup = new StopWatch("cleanup");
+        final boolean log = LOG.isTraceEnabled();
+        StopWatch swCalculators = log ? new StopWatch("calculators") : null;
+        StopWatch swHandle = log ? new StopWatch("handles") : null;
+        StopWatch swCleanup = log ? new StopWatch("cleanup") : null;
         while (!QSortedCostAcc.isEmpty()) {
             cntVerticies++;
             DistanceSmall distActual = QSortedCostAcc.pollFirst();
@@ -413,41 +439,54 @@ public class PathCalculatorGraph<Reco, Reference> {
                 continue;
             }
             isdead[distActual.point[0]][distActual.point[1]] = true;
-            StopWatch.start("FilterAllow");
+            if (log)
+                StopWatch.start("FilterAllow");
             if (filter != null && !filter.followPathsFromBestEdge(distActual)) {
-                StopWatch.stop("FilterAllow");
+                if (log)
+                    StopWatch.stop("FilterAllow");
                 continue;
             }
-            StopWatch.stop("FilterAllow");
+            if (log) StopWatch.stop("FilterAllow");
             final int[] pos = distActual.point;
             if (bar != null) {
                 bar.update(pos, distMat, distActual);
             }
             //all Neighbours v of u
             for (ICostCalculator<Reco, Reference> costCalculator : costCalculators) {
-                StopWatch.start(costCalculator.getClass().getSimpleName());
-                swCalculators.start();
+                if (log) {
+                    StopWatch.start(costCalculator.getClass().getSimpleName());
+                    swCalculators.start();
+                }
                 DistanceSmall distance = costCalculator.getNeighbourSmall(pos, distActual);
-                swCalculators.stop();
-                StopWatch.stop(costCalculator.getClass().getSimpleName());
-                swHandle.start();
+                if (log) {
+                    swCalculators.stop();
+                    StopWatch.stop(costCalculator.getClass().getSimpleName());
+                    swHandle.start();
+                }
                 cntEdges += handleDistance(distance, distMat, QSortedCostAcc);
-                swHandle.stop();
+                if (log)
+                    swHandle.stop();
             }
             for (ICostCalculatorMulti<Reco, Reference> costCalculator : costCalculatorsMutli) {
-                StopWatch.start(costCalculator.getClass().getSimpleName());
-                swCalculators.start();
+                if (log) {
+                    StopWatch.start(costCalculator.getClass().getSimpleName());
+                    swCalculators.start();
+                }
                 List<DistanceSmall> distances = costCalculator.getNeighboursSmall(pos, distActual);
-                swCalculators.stop();
-                StopWatch.stop(costCalculator.getClass().getSimpleName());
+                if (log) {
+                    swCalculators.stop();
+                    StopWatch.stop(costCalculator.getClass().getSimpleName());
+                }
                 if (distances == null) {
                     continue;
                 }
-                swHandle.start();
+                if (log)
+                    swHandle.start();
                 for (DistanceSmall distance : distances) {
                     cntEdges += handleDistance(distance, distMat, QSortedCostAcc);
                 }
-                swHandle.stop();
+                if (log)
+                    swHandle.stop();
             }
             if (maxCount > 0 && cntVerticies >= maxCount) {
                 LOG.debug(String.format("found count = %d, return with so far calculated dynProg.", cntEdges));
@@ -455,17 +494,20 @@ public class PathCalculatorGraph<Reco, Reference> {
             }
 
             if (cntVerticies > boundNextCleanup) {
-                swCleanup.start();
+                if (log)
+                    swCleanup.start();
                 distMat = distMat.cleanup(QSortedCostAcc);
                 boundNextCleanup = cntVerticies + factorNextCleanup;
-//                factorNextCleanup *= 1.0;
-                swCleanup.stop();
+                if (log)
+                    swCleanup.stop();
             }
         }
-        LOG.info("time spent: {}", swCalculators);
-        LOG.info("time spent: {}", swHandle);
-        LOG.info("time spent: {}", swCleanup);
-        LOG.info("time spent: \n{}", StopWatch.getStats());
+        if (log) {
+            LOG.trace("time spent: {}", swCalculators);
+            LOG.trace("time spent: {}", swHandle);
+            LOG.trace("time spent: {}", swCleanup);
+            LOG.trace("time spent: \n{}", StopWatch.getStats());
+        }
         if (bar != null) {
             bar.update(null, distMat, null);
             bar.setEnd();
@@ -474,7 +516,7 @@ public class PathCalculatorGraph<Reco, Reference> {
             LOG.warn("no path found from start to end with given cost calulators");
         }
         if (LOG.isDebugEnabled()) {
-            LOG.debug("caculate " + cntEdges + " edges for " + ((reco.size() - 1) * (ref.size() - 1)) + "/" + cntVerticies + " verticies");
+            LOG.debug("caculate " + cntEdges + " edges for " + ((nativeReco.length - 1) * (nativeRef.length - 1)) + "/" + cntVerticies + " verticies");
         }
         if (bar != null) {
             bar.dispose();
@@ -505,7 +547,7 @@ public class PathCalculatorGraph<Reco, Reference> {
 
     public static class Distance<Reco, Reference> extends DistanceSmall implements PathCalculatorGraph.IDistance<Reco, Reference> {
 
-        //        private final Distance previousDistance;
+        //        private final Point previousDistance;
         private final String manipulation;
         private final double costs;
         private Reco[] recos;
@@ -547,7 +589,7 @@ public class PathCalculatorGraph<Reco, Reference> {
         }
 
 //        @Override
-//        public IDistance<Reco, Reference> getLargeDistance(DistanceMat<Reco, Reference> mat) {
+//        public IPoint<Reco, Reference> getLargeDistance(DistanceMat<Reco, Reference> mat) {
 //            return this;
 //        }
 
@@ -634,7 +676,7 @@ public class PathCalculatorGraph<Reco, Reference> {
                 meinPanel.add(progressBar);
                 mainFrame.add(meinPanel);
                 if (size > 0) {
-                    mainFrame.setLocation(new Point((int) (screenSize.getWidth() - mainFrame.getWidth()) / 2, (int) (screenSize.getHeight() - mainFrame.getHeight()) / 2));
+                    mainFrame.setLocation(new java.awt.Point((int) (screenSize.getWidth() - mainFrame.getWidth()) / 2, (int) (screenSize.getHeight() - mainFrame.getHeight()) / 2));
                     mainFrame.setVisible(true);
                     mainFrame.pack();
                 }

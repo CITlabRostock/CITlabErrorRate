@@ -1,6 +1,35 @@
 
 # Changelog
 
+# 5.0.1
+* bugfix: LineComparison now includes Hypothesis (False Positives)
+* bugfix: For not-emtpy hypothesis and empty reference, calculation is correct
+
+# 5.0.0
+* bugfix: ILineComparison return right index (was always 0)
+* new feature: first (untested) version for WER
+* simplifying interfaces (have to increase mayor version)
+
+# 4.0.0
+* refactor in de.uros.citlab.errorrate. interfaces class IDistance -> IPoint
+* refactor in de.uros.citlab.errorrate IErrorModuleWithSegmentation.LineComparison -> ILineComparison
+* set logger-levels from INFO to TRACE for time measure
+* bugfix: merge lines now handles spaces correctly
+* add some javadocs
+
+# 3.5.1
+* bugfix: tests
+
+# 3.5.0
+* Add detailed result structure for error calculation
+* bugfix: fallback-calculation counts correct
+* bugfix: recursive subproblem is set up correctly
+
+# 3.4.2
+* bugfix: fix usage of remaining line breaks and spaces
+* bugfix: Calculation of count ERR
+* better implementation of greedy-algorithm if reading order is ignored
+
 # 3.4.1
 * bugfix: modify test error rates because of changes in 3.4.0 
 

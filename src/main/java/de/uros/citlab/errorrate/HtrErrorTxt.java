@@ -14,6 +14,7 @@ import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.Method;
 import de.uros.citlab.errorrate.types.Metric;
 import de.uros.citlab.errorrate.types.Result;
+import de.uros.citlab.tokenizer.TokenizerCategorizer;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterConfigurable;
 import de.uros.citlab.tokenizer.categorizer.CategorizerWordDftConfigurable;
 import de.uros.citlab.tokenizer.interfaces.ICategorizer;
@@ -132,7 +133,7 @@ public class HtrErrorTxt {
             //normalize to letter or to all codepoints?
             IStringNormalizer sn = cmd.hasOption('l') ? new StringNormalizerLetterNumber(snd) : snd;
             boolean bagOfWords = cmd.hasOption('b');
-            IErrorModule em = bagOfWords ? new ErrorModuleBagOfTokens(categorizer, sn, detailed)
+            IErrorModule em = bagOfWords ? new ErrorModuleBagOfTokens(new TokenizerCategorizer(categorizer), sn, detailed)
                     : new ErrorModuleDynProg(categorizer, sn, detailed);
             Result res = null;
             if (bagOfWords) {

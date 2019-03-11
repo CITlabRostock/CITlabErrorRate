@@ -5,21 +5,18 @@
  */
 package de.uros.citlab.errorrate.htr;
 
-import de.uros.citlab.errorrate.interfaces.IErrorModule;
-import de.uros.citlab.errorrate.types.Count;
+import de.uros.citlab.errorrate.htr.end2end.AlignmentTask;
+import de.uros.citlab.errorrate.interfaces.IErrorModuleWithSegmentation;
+import de.uros.citlab.errorrate.interfaces.ILine;
+import de.uros.citlab.errorrate.interfaces.ILineComparison;
+import de.uros.citlab.errorrate.interfaces.IPoint;
+import de.uros.citlab.errorrate.types.*;
 import de.uros.citlab.errorrate.util.ObjectCounter;
 import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
-import de.uros.citlab.tokenizer.TokenizerCategorizer;
-
-import de.uros.citlab.tokenizer.interfaces.ICategorizer;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
 import org.apache.commons.math3.util.Pair;
+
+import java.util.*;
 
 /**
  * Module, which counts the differences between two bag of tokens, namely the
@@ -31,23 +28,19 @@ import org.apache.commons.math3.util.Pair;
  *
  * @author gundram
  */
-public class ErrorModuleBagOfTokens implements IErrorModule {
+public class ErrorModuleBagOfTokens implements IErrorModuleWithSegmentation {
 
     private final ObjectCounter<Count> counter = new ObjectCounter<>();
-    private final ObjectCounter<String> counterIntersect = new ObjectCounter<>();
-    private final ObjectCounter<String> counterOnlyReco = new ObjectCounter<>();
-    private final ObjectCounter<String> counterOnlyRef = new ObjectCounter<>();
+    private final ObjectCounter<Substitution> substitutionCounter = new ObjectCounter<>();
+    //    private final ObjectCounter<String> counterTP = new ObjectCounter<>();
+//    private final ObjectCounter<String> counterFP = new ObjectCounter<>();
+//    private final ObjectCounter<String> counterFN = new ObjectCounter<>();
     private final ITokenizer tokenizer;
     private final Boolean detailed;
     private final IStringNormalizer stringNormalizer;
 
-    public ErrorModuleBagOfTokens(ICategorizer categorizer, IStringNormalizer stringNormalizer, Boolean detailed) {
-        this(new TokenizerCategorizer(categorizer), stringNormalizer, detailed);
-    }
-
     public ErrorModuleBagOfTokens(ITokenizer tokenizer, IStringNormalizer stringNormalizer, Boolean detailed) {
         this.detailed = detailed;
-//        this.categorizer = cactegorizer;
         if (tokenizer == null) {
             throw new RuntimeException("no tokenizer given (is null)");
         }
@@ -55,79 +48,170 @@ public class ErrorModuleBagOfTokens implements IErrorModule {
         this.stringNormalizer = stringNormalizer;
     }
 
+    private static final class Token implements Comparable<Token> {
+        private final String value;
+        private final int lineIdx;
+
+        public Token(String value, int lineIdx) {
+            this.value = value;
+            this.lineIdx = lineIdx;
+        }
+
+        @Override
+        public int compareTo(Token o) {
+            final int res = value.compareTo(o.value);
+            if (res != 0) return res;
+            return Integer.compare(lineIdx, o.lineIdx);
+        }
+
+        @Override
+        public String toString() {
+            return "Token{" +
+                    "value='" + value + '\'' +
+                    ", lineIdx=" + lineIdx +
+                    '}';
+        }
+    }
+
     /**
      * normalize and tokenize both inputs. Afterwards find the cheapest cost to
      * manipulate the recognition tokens to come to the reference tokens. Count
      * the manipulation which had to be done. If detailed==null or
      * detailed==True, confusion/substitution map is filled.
-     *
-     * @param reco hypothesis
-     * @param ref reference
      */
-    @Override
-    public void calculate(String reco, String ref) {
-        //use string normalizer, if set
-        if (stringNormalizer != null) {
-            reco = stringNormalizer.normalize(reco);
-            ref = stringNormalizer.normalize(ref);
+    List<ILineComparison> calculateIntern(AlignmentTask alignmentTask, boolean calcLineComparison) {
+        LinkedList<Token> recoTokens = new LinkedList<>();
+        String[] recosLst = alignmentTask.getRecos();
+        int[] recoLineMap = alignmentTask.getRecoLineMap();
+        for (int i = 0; i < recosLst.length; i++) {
+            if(recosLst[i].equals("\n")){
+                continue;
+            }
+            int lineID = recoLineMap == null ? -1 : recoLineMap[i];
+//            for (String token : tokenizer.tokenize(recosLst[i])) {
+            recoTokens.add(new Token(recosLst[i], lineID));
+//            }
         }
-        //tokenize both strings
-        List<String> recos = tokenizer.tokenize(reco);
-        List<String> refs = tokenizer.tokenize(ref);
-
-        Collections.sort(refs);
-        Collections.sort(recos);
+        LinkedList<Token> refTokens = new LinkedList<>();
+        String[] refsLst = alignmentTask.getRefs();
+        int[] refLineMap = alignmentTask.getRefLineMap();
+        for (int i = 0; i < refsLst.length; i++) {
+            if(refsLst[i].equals("\n")){
+                continue;
+            }
+            int lineID = refLineMap == null ? -1 : refLineMap[i];
+//            for (String token : tokenizer.tokenize(refsLst[i])) {
+            refTokens.add(new Token(refsLst[i], lineID));
+//            }
+        }
+        List<ILineComparison> res = calcLineComparison ? new LinkedList<>() : null;
+        Collections.sort(refTokens);
+        Collections.sort(recoTokens);
         int idxRef = 0;
         int idxReco = 0;
-        while (idxReco < recos.size() && idxRef < refs.size()) {
-            String recoToken = recos.get(idxReco);
-            String refToken = refs.get(idxRef);
+        for (int i = 0; i < refTokens.size(); i++) {
+
+//        while (idxReco < recoTokens.size() && idxRef < refTokens.size()) {
+            Token recoToken = recoTokens.get(idxReco);
+            Token refToken = refTokens.get(idxRef);
             int cmp = refToken.compareTo(recoToken);
+            Count c = null;
             if (cmp == 0) {
+                c = Count.TP;
                 counter.add(Count.TP);
+                counter.add(Count.GT);
+                counter.add(Count.HYP);
                 idxReco++;
                 idxRef++;
                 if (detailed != null && detailed) {
-                    counterIntersect.add(refToken);
+                    substitutionCounter.add(new Substitution(recoToken.value, refToken.value));
                 }
             } else if (cmp > 0) {
+                c = Count.FP;
+                counter.add(Count.HYP);
                 counter.add(Count.FP);
                 idxReco++;
                 if (detailed == null || detailed) {
-                    counterOnlyReco.add(recoToken);
+                    substitutionCounter.add(new Substitution(recoToken.value, null));
                 }
             } else {
+                c = Count.FN;
+                counter.add(Count.GT);
                 counter.add(Count.FN);
                 idxRef++;
                 if (detailed == null || detailed) {
-                    counterOnlyRef.add(refToken);
+                    substitutionCounter.add(new Substitution(null, refToken.value));
                 }
             }
+            if (calcLineComparison) {
+                res.add(getLineComparison(recoToken, refToken, c));
+            }
+//        }
         }
-        for (; idxRef < refs.size(); idxRef++) {
-            String refToken = refs.get(idxRef);
+        for (; idxRef < refTokens.size(); idxRef++) {
+            Token refToken = refTokens.get(idxRef);
+            counter.add(Count.GT);
             counter.add(Count.FN);
             if (detailed == null || detailed) {
-                counterOnlyRef.add(refToken);
+                substitutionCounter.add(new Substitution(null, refToken.value));
             }
         }
-        for (; idxReco < recos.size(); idxReco++) {
-            String recoToken = recos.get(idxReco);
+        for (; idxReco < recoTokens.size(); idxReco++) {
+            Token recoToken = recoTokens.get(idxReco);
+            counter.add(Count.HYP);
             counter.add(Count.FP);
             if (detailed == null || detailed) {
-                counterOnlyReco.add(recoToken);
+                substitutionCounter.add(new Substitution(recoToken.value, null));
             }
         }
-        counter.add(Count.HYP, recos.size());
-        counter.add(Count.GT, refs.size());
+        return res;
+    }
+
+    private ILineComparison getLineComparison(Token reco, Token ref, Count count) {
+        return new ILineComparison() {
+            @Override
+            public int getRecoIndex() {
+                return reco == null ? -1 : reco.lineIdx;
+            }
+
+            @Override
+            public int getRefIndex() {
+                return ref == null ? -1 : ref.lineIdx;
+            }
+
+            @Override
+            public String getRefText() {
+                return ref == null ? null : ref.value;
+            }
+
+            @Override
+            public String getRecoText() {
+                return reco == null ? null : reco.value;
+            }
+
+            @Override
+            public List<IPoint> getPath() {
+                return Arrays.asList(new Point(
+                        count.equals(Count.TP) ?
+                                Manipulation.COR :
+                                count.equals(Count.FP) ?
+                                        Manipulation.DEL :
+                                        Manipulation.INS,
+                        reco == null ? null : reco.value,
+                        ref == null ? null : ref.value));
+            }
+
+            @Override
+            public String toString() {
+                return String.format("[%2d,%2d]: '%s'=>'%s' %s", getRecoIndex(), getRefIndex(), reco == null ? "" : reco.value, ref == null ? "" : ref.value, getPath().get(0)).replace("\n","\\n" );
+            }
+        };
     }
 
     @Override
     public void reset() {
         counter.reset();
-        counterIntersect.reset();
-        counterOnlyReco.reset();
-        counterOnlyRef.reset();
+        substitutionCounter.reset();
     }
 
     /**
@@ -142,14 +226,8 @@ public class ErrorModuleBagOfTokens implements IErrorModule {
         LinkedList<String> res = new LinkedList<>();
         if (detailed == null || detailed) {
             List<Pair<String, Long>> result = new LinkedList<>();
-            for (Pair<String, Long> pair : counterIntersect.getResultOccurrence()) {
-                result.add(new Pair<>("TP=" + pair.getFirst(), pair.getSecond()));
-            }
-            for (Pair<String, Long> pair : counterOnlyRef.getResultOccurrence()) {
-                result.add(new Pair<>("FN=" + pair.getFirst(), pair.getSecond()));
-            }
-            for (Pair<String, Long> pair : counterOnlyReco.getResultOccurrence()) {
-                result.add(new Pair<>("FP=" + pair.getFirst(), pair.getSecond()));
+            for (Pair<Substitution, Long> pair : substitutionCounter.getResultOccurrence()) {
+                result.add(new Pair<>(pair.getFirst().toString(), pair.getSecond()));
             }
             Collections.sort(result, new Comparator<Pair<String, Long>>() {
                 @Override
@@ -203,7 +281,56 @@ public class ErrorModuleBagOfTokens implements IErrorModule {
 
     @Override
     public void calculate(List<String> reco, List<String> ref) {
-        calculate(toOneLine(reco), toOneLine(ref));
+        calculate(reco, ref, false);
+    }
+
+    @Override
+    public void calculate(String reco, String ref) {
+        calculate(reco, ref, false);
+    }
+
+    @Override
+    public void calculateWithSegmentation(List<ILine> reco, List<ILine> ref) {
+        calculateWithSegmentation(reco, ref, false);
+    }
+
+    @Override
+    public List<ILineComparison> calculateWithSegmentation(List<ILine> reco, List<ILine> ref, boolean calcLineComparison) {
+        AlignmentTask alignmentTask = new AlignmentTask(reco, ref, tokenizer, stringNormalizer, 0.0);
+        return calculateIntern(alignmentTask, calcLineComparison);
+    }
+
+    @Override
+    public List<ILineComparison> calculate(String reco, String ref, boolean calcLineComparison) {
+        if (stringNormalizer != null) {
+            reco = stringNormalizer.normalize(reco);
+            ref = stringNormalizer.normalize(ref);
+        }
+
+        //tokenize both strings
+        List<String> recoList = tokenizer.tokenize(reco);
+        recoList.add(0, "\n");
+        recoList.add("\n");
+        String[] recos = recoList.toArray(new String[0]);
+        List<String> refList = tokenizer.tokenize(ref);
+        refList.add(0, "\n");
+        refList.add("\n");
+        String[] refs = refList.toArray(new String[0]);
+        AlignmentTask alignmentTask = new AlignmentTask(recos, refs);
+        return calculateIntern(alignmentTask, calcLineComparison);
+    }
+
+    @Override
+    public List<ILineComparison> calculate(List<String> reco, List<String> ref, boolean calcLineComparison) {
+        return calculate(toOneLine(reco), toOneLine(ref), calcLineComparison);
+    }
+
+    @Override
+    public Map<Metric, Double> getMetrics() {
+        Result res = new Result(Method.BOT);
+        res.addCounts(counter);
+        return res.getMetrics();
+
     }
 
     private static class RecoRef {

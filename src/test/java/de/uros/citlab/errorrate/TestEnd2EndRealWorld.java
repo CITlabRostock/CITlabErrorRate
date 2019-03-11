@@ -6,35 +6,22 @@
 package de.uros.citlab.errorrate;
 
 import de.uros.citlab.errorrate.htr.end2end.ErrorModuleEnd2End;
-import de.uros.citlab.errorrate.interfaces.IErrorModule;
 import de.uros.citlab.errorrate.interfaces.ILine;
-import de.uros.citlab.errorrate.normalizer.StringNormalizerDft;
-import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
+import de.uros.citlab.errorrate.interfaces.ILineComparison;
+import de.uros.citlab.errorrate.interfaces.IPoint;
 import de.uros.citlab.errorrate.types.Count;
+import de.uros.citlab.errorrate.types.Method;
 import de.uros.citlab.errorrate.types.StopWatch;
 import de.uros.citlab.errorrate.util.ExtractUtil;
 import de.uros.citlab.errorrate.util.ObjectCounter;
-import de.uros.citlab.tokenizer.TokenizerCategorizer;
-import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
-import de.uros.citlab.tokenizer.categorizer.CategorizerWordMergeGroups;
-import eu.transkribus.interfaces.IStringNormalizer;
-import eu.transkribus.interfaces.ITokenizer;
-import org.apache.commons.math3.util.Pair;
 import org.junit.Assert;
 import org.junit.Test;
-import org.primaresearch.dla.page.Page;
-import org.primaresearch.dla.page.layout.physical.Region;
-import org.primaresearch.dla.page.layout.physical.text.LowLevelTextObject;
-import org.primaresearch.dla.page.layout.physical.text.impl.TextLine;
-import org.primaresearch.dla.page.layout.physical.text.impl.TextRegion;
-import org.primaresearch.io.UnsupportedFormatVersionException;
 
-import java.awt.*;
 import java.io.File;
 import java.io.IOException;
-import java.text.Normalizer;
-import java.util.*;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Here every one can add groundtruth (GT) and hypothesis (HYP) text. Then some
@@ -74,62 +61,108 @@ public class TestEnd2EndRealWorld {
         }
     }
 
-    private static HashMap<ErrorModuleEnd2End.Mode, double[]> expecteds = new HashMap<>();
-    private static HashMap<ErrorModuleEnd2End.Mode, double[]> expectedsSegmentation = new HashMap<>();
+    final static int[] testIndexes = new int[]{0};
+    private static final boolean[] trueFalse = new boolean[]{true, false};
+    //    private static HashMap<boolean[], double[]> expecteds = new HashMap<>();
+    private static double[][][][] expectedsSegmentation = new double[2][2][2][];
 
     static {
-        expecteds.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.2569942611190818, 0.24629374904478069, 0.19306399713979264, 0.311484323083429});
-        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.1750358680057389, 0.20357634112792297, 0.1927064712191634, 0.21337521899353593});
-        expecteds.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.24497847919655666,0.24232003668042182,0.1873435824097247,0.28937352745725853});
-        expecteds.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16660688665710185,0.1974629374904478,0.1873435824097247,0.1803902615840029});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO, new double[]{0.2779770444763271, 0.25981965459269446, 0.19306399713979264, 0.3473086449586178});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO, new double[]{0.17539454806312768, 0.20693871312853432, 0.1927064712191634, 0.22239004349927502});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.RO_SEG, new double[]{0.2666786226685796, 0.2537062509552193, 0.1873435824097247, 0.3265873255603214});
-        expectedsSegmentation.put(ErrorModuleEnd2End.Mode.NO_RO_SEG, new double[]{0.16624820659971307,0.1982271129451322,0.1873435824097247,0.17943450942484293});
+        //restrict reading order - restrict geometry - allow segmentation
+        expectedsSegmentation[0][0][0] = new double[]{0.1750358680057389, 0.20900198685618218, 0.19234894529853414, 0.21256797583081571};
+        expectedsSegmentation[0][0][1] = new double[]{0.16606886657101866, 0.19715726730857405, 0.1873435824097247, 0.17166163141993956};
+        expectedsSegmentation[0][1][0] = new double[]{0.17539454806312768, 0.20395796578967554, 0.19234894529853414, 0.22212137714043687};
+        expectedsSegmentation[0][1][1] = new double[]{0.16594904915679942, 0.19749312136961175, 0.1873435824097247, 0.175577597677513};
+
+        expectedsSegmentation[1][0][0] = new double[]{0.2568149210903874, 0.24629374904478069, 0.19234894529853414, 0.3113595166163142};
+        expectedsSegmentation[1][0][1] = new double[]{0.24497847919655666, 0.24232003668042182, 0.1873435824097247, 0.2891238670694864};
+        expectedsSegmentation[1][1][0] = new double[]{0.2777977044476327, 0.25981965459269446, 0.19234894529853414, 0.3444712990936556};
+        expectedsSegmentation[1][1][1] = new double[]{0.2666786226685796, 0.2537062509552193, 0.1873435824097247, 0.32235649546827794};
+
     }
 
     @Test
-    public void testAllPages() throws IOException {
-        for (boolean usePolygons : new boolean[]{true, false}) {
-            for (ErrorModuleEnd2End.Mode mode : ErrorModuleEnd2End.Mode.values()) {
-                StringBuilder sb = new StringBuilder();
-                double[] doubles = (usePolygons ? expectedsSegmentation : expecteds).get(mode);
-                sb.append(usePolygons ? "expectedsSegmentation" : "expecteds").append(".put(ErrorModuleEnd2End.Mode.").append(mode.name()).append(", new double[]{");
-                for (int i = 0; i < doubles.length; i++) {
-                    double expected = doubles[i];
-//                if (expected != 0.0) {
-//                    continue;
-//                }
-                    double cer = testGermania(mode, i, usePolygons);
-                    sb.append(cer);
-                    if (i < doubles.length - 1) {
-                        sb.append(",");
-                    }
-                    Assert.assertEquals("CER of page " + i + " and mode " + mode + " is wrong", expected, cer, 0.00001);
+    public void testSegmentBug() {
+        File gtFile = new File("src/test/resources/end2end/segment_bug/071_085_002_gt.xml");
+        File hypFile = new File("src/test/resources/end2end/segment_bug/071_085_002_hyp.xml");
+        List<ILine> linesGT = ExtractUtil.getLinesFromFile(gtFile);
+        List<ILine> linesHyp = ExtractUtil.getLinesFromFile(hypFile);
+        ErrorModuleEnd2End module = new ErrorModuleEnd2End(false, false, true, false);
+        module.setCountManipulations(ErrorModuleEnd2End.CountSubstitutions.ERRORS);
+        List<ILineComparison> lineComparisons = module.calculateWithSegmentation(linesHyp, linesGT, true);
+        for (ILineComparison cmp : lineComparisons) {
+            int cnt = 0;
+            for (IPoint distance : cmp.getPath()) {
+                switch (distance.getManipulation()) {
+                    case INS:
+                    case DEL:
+                    case SUB:
+                        cnt++;
                 }
-                sb.append("});");
-                System.out.println(sb);
+            }
+            System.out.println("----------- " + cnt + "/" + cmp.getPath().size() + " -----------");
+            System.out.println(cmp.getRecoIndex() + " '" + cmp.getRecoText() + "'");
+            System.out.println(cmp.getRefIndex() + " '" + cmp.getRefText() + "'");
+        }
+    }
+
+    @Test
+    public void testRO_Consistance() {
+        List<String> linesGT = Arrays.asList("we only want to test", "if a sparate input", "is as good as a", "combined", "input");
+        List<String> linesHyp = Arrays.asList("sde onsdy wantdsto tedst", "isd a ssdarate input", "is asssdgood as a", "combdned", "iaput");
+        de.uros.citlab.errorrate.types.Result resExpect = new de.uros.citlab.errorrate.types.Result(Method.CER);
+        {
+            ErrorModuleEnd2End module = new ErrorModuleEnd2End(true, false, false, false);
+            for (int i = 0; i < linesGT.size(); i++) {
+                module.calculate(linesHyp.get(i), linesGT.get(i));
+            }
+            de.uros.citlab.errorrate.types.Result res = new de.uros.citlab.errorrate.types.Result(Method.CER);
+            resExpect.addCounts(module.getCounter());
+        }
+        for (boolean restrictReadingOrder : trueFalse) {
+            for (boolean allowSegmentationErrors : trueFalse) {
+                de.uros.citlab.errorrate.types.Result resActual = new de.uros.citlab.errorrate.types.Result(Method.CER);
+                ErrorModuleEnd2End module = new ErrorModuleEnd2End(restrictReadingOrder, false, allowSegmentationErrors, false);
+                module.calculate(linesHyp, linesGT);
+                resActual.addCounts(module.getCounter());
+                Map<Count, Long> countActual = resActual.getCounts().getMap();
+                Map<Count, Long> countExpect = resExpect.getCounts().getMap();
+                for (Count count : countActual.keySet()) {
+                    Assert.assertEquals("for R=" + restrictReadingOrder + ", S=" + allowSegmentationErrors + " and count " + count + " has to be the same for same task", countExpect.get(count), countActual.get(count));
+                }
             }
         }
     }
 
-    //    @Test
-    public void testSingle() throws IOException {
-        ErrorModuleEnd2End.Mode mode = ErrorModuleEnd2End.Mode.RO;
-        int i = 0;
-        boolean usePolygon = true;
-        double[] doubles = expecteds.get(mode);
-        double expected = doubles[i];
+    @Test
+    public void testAllPages() throws IOException {
+        for (boolean restrictReadingOrder : new boolean[]{true, false}) {
+            for (boolean restrictGeometry : new boolean[]{true, false}) {
+                for (boolean allowSegmentationErrors : new boolean[]{true, false}) {
+//                    StringBuilder sb = new StringBuilder();
+                    double[] doubles = expectedsSegmentation[restrictReadingOrder ? 1 : 0][restrictGeometry ? 1 : 0][allowSegmentationErrors ? 1 : 0];
+//                    sb.append("expectedsSegmentation").append(".put(new boolean[]{" + restrictReadingOrder + "," + restrictGeometry + "," + allowSegmentationErrors + "}, new double[]{");
+                    for (int i =0; i < testIndexes.length; i++) {
+                        double expected = doubles[testIndexes[i]];
 //                if (expected != 0.0) {
 //                    continue;
 //                }
-        double cer = testGermania(mode, i, usePolygon);
-        Assert.assertEquals("CER of page " + i + " and mode " + mode + " is wrong", expected, cer, 0.00001);
+                        double cer = testGermania(restrictReadingOrder, restrictGeometry, allowSegmentationErrors, testIndexes[i]);
+//                        sb.append(cer);
+//                        if (i < doubles.length - 1) {
+//                            sb.append(",");
+//                        }
+                        Assert.assertEquals("CER of page " + i + " and mode R=" + restrictReadingOrder + ", G=" + restrictGeometry + ", S=" + allowSegmentationErrors + " is wrong", expected, cer, 0.001);
+                    }
+//                    sb.append("});");
+//                    System.out.println(sb);
+                }
+            }
+        }
     }
 
     public void testGermania0_RO() throws IOException {
-        double cer = testGermania(ErrorModuleEnd2End.Mode.RO, 0, false);
-        Assert.assertEquals("CER differs from previous", expecteds.get(ErrorModuleEnd2End.Mode.RO)[0], cer, 0.00001);
+        double cer = testGermania(true, false, false, 0);
+        Assert.assertEquals("CER differs from previous", expectedsSegmentation[1][0][0][0], cer, 0.00001);
         //0m 04s 195mw -> no debug output
         //0m 18s 022ms -> introduce static arrays in CCAbstract
         //0m 21s 680ms -> with String[] as reco and ref
@@ -137,8 +170,8 @@ public class TestEnd2EndRealWorld {
     }
 
     public void testGermania0_RO_SEG() throws IOException {
-        double cer = testGermania(ErrorModuleEnd2End.Mode.RO_SEG, 0, false);
-        Assert.assertEquals("CER differs from previous", expecteds.get(ErrorModuleEnd2End.Mode.RO_SEG)[0], cer, 0.00001);
+        double cer = testGermania(true, false, true, 0);
+        Assert.assertEquals("CER differs from previous", expectedsSegmentation[1][0][1][0], cer, 0.00001);
         //0m 05s 688ms -> add pathFilter for jumpReco
         //0m 24s 564ms -> introduce static arrays in CCAbstract
         //0m 30s 910ms -> with String[] as reco and ref
@@ -149,12 +182,13 @@ public class TestEnd2EndRealWorld {
 //        return testGermania(mode, image, false);
 //    }
 
-    public double testGermania(ErrorModuleEnd2End.Mode mode, int image, boolean usePolygons) throws IOException {
+    public double testGermania(boolean restrictReadingOrder, boolean restrictGeometry, boolean allowSegmentationErrors,
+                               int image) throws IOException {
         StopWatch sw = new StopWatch();
-        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(new CategorizerCharacterDft(), null, mode, usePolygons, false);
-        end2End.setThresholdCouverage(0.1);
+        ErrorModuleEnd2End end2End = new ErrorModuleEnd2End(restrictReadingOrder, restrictGeometry, allowSegmentationErrors, false);
+//        end2End.setThresholdCouverage(0.0);
 //        end2End.setSizeProcessViewer(6000);
-//        end2End.setFileDynProg(new File(mode + ".png"));
+//        end2End.setFileDynProg(new File("out.png"));
         Result gtResult = Result.F1_ATR1;
         Result hypResult = Result.F3_ATR2;
         File[] gts = new File(gtResult.getPath().getPath()).listFiles();
@@ -170,13 +204,13 @@ public class TestEnd2EndRealWorld {
         for (int i = 0; i < gtLines.size(); i++) {
             cnt += gtLines.get(i).getText().length();
         }
-        System.out.println("test with mode " + mode + " for " + cnt + " characters");
+        System.out.println("test with mode R=" + restrictReadingOrder + ", G=" + restrictGeometry + ", S=" + allowSegmentationErrors + " for " + cnt + " characters");
         end2End.calculateWithSegmentation(hypLines, gtLines);
         ObjectCounter<Count> counter = end2End.getCounter();
         System.out.println(((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT));
         System.out.println(counter);
         sw.stop();
-        System.out.println("Stopwatch for mode " + mode + " and image " + image + " = " + sw.toString());
+        System.out.println("Stopwatch for mode R=" + restrictReadingOrder + ", G=" + restrictGeometry + ", S=" + allowSegmentationErrors + " and image " + image + " = " + sw.toString());
         return ((double) counter.get(Count.ERR)) / (double) counter.get(Count.GT);
 //        }
     }
