@@ -1,7 +1,10 @@
 
 # Changelog
 
-# 5.0.2
+# 5.1.0
+* add Coords (Intersection over Union) as alternative to Baseline for geometric comparison
+* add test for ICDAR 2019 competition HDRC
+* bugfix: only show dynProg if size of image is >0.
 
 # 5.0.1
 * bugfix: LineComparison now includes Hypothesis (False Positives)
