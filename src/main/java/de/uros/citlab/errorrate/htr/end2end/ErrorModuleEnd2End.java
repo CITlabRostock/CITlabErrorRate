@@ -5,10 +5,7 @@
  */
 package de.uros.citlab.errorrate.htr.end2end;
 
-import de.uros.citlab.errorrate.interfaces.IErrorModuleWithSegmentation;
-import de.uros.citlab.errorrate.interfaces.ILine;
-import de.uros.citlab.errorrate.interfaces.ILineComparison;
-import de.uros.citlab.errorrate.interfaces.IPoint;
+import de.uros.citlab.errorrate.interfaces.*;
 import de.uros.citlab.errorrate.types.*;
 import de.uros.citlab.errorrate.util.GroupUtil;
 import de.uros.citlab.errorrate.util.HeatMapUtil;
@@ -55,6 +52,11 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
     private final boolean isWER;
     private final boolean isBOW;
     private final boolean countSpaces;
+    private IAdjazentCalculator adjazentCalculator = new AdjacentCalculatorBaselines(thresholdCouverage);
+
+    public enum GeometryComaprison {
+        BASELINE, COORDS;
+    }
 
     public enum CountSubstitutions {
         OFF(false, false),
@@ -171,6 +173,12 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         }
     }
 
+    public void setGeometryComparison(GeometryComaprison geometryComparison) {
+        this.adjazentCalculator = geometryComparison.equals(GeometryComaprison.BASELINE) ?
+                new AdjacentCalculatorBaselines(thresholdCouverage) :
+                new AdjacentCalculatorCoords(thresholdCouverage);
+    }
+
     /**
      * especially for very large character comparisons (>10.000 characters) the problem gets too large.
      * Use branch and bound to only follow paths reference-prefixes, which LD are maximally 'filterOffset' higher
@@ -203,6 +211,9 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
      */
     public void setThresholdCouverage(double thresholdCouverage) {
         this.thresholdCouverage = thresholdCouverage;
+        if (adjazentCalculator != null) {
+            adjazentCalculator.setThreshold(thresholdCouverage);
+        }
     }
 
     /**
@@ -269,7 +280,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
 
     @Override
     public List<ILineComparison> calculateWithSegmentation(List<ILine> reco, List<ILine> ref, boolean calcLineComarison) {
-        AlignmentTask lmr = new AlignmentTask(reco, ref, tokenizer, stringNormalizer, thresholdCouverage);
+        AlignmentTask lmr = new AlignmentTask(reco, ref, tokenizer, stringNormalizer, adjazentCalculator);
         return calculateIntern(lmr, sizeProcessViewer, fileDynProg, calcLineComarison);
     }
 
@@ -708,6 +719,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         }
         pathCalculator.setUpdateScheme(PathCalculatorGraph.UpdateScheme.LAZY);
         pathCalculator.setSizeProcessViewer(sizeProcessViewer);
+        pathCalculator.setShowDynMat(sizeProcessViewer > 0);
         pathCalculator.setFileDynMat(out);
         PathCalculatorGraph.DistanceMat<String, String> mat = pathCalculator.calcDynProg(recos, refs);
 //        pathCalculator.calcBestPath(mat);

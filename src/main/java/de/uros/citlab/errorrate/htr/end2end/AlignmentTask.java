@@ -1,6 +1,6 @@
 package de.uros.citlab.errorrate.htr.end2end;
 
-import de.uros.citlab.errorrate.aligner.BaseLineAligner;
+import de.uros.citlab.errorrate.interfaces.IAdjazentCalculator;
 import de.uros.citlab.errorrate.interfaces.ILine;
 import eu.transkribus.interfaces.IStringNormalizer;
 import eu.transkribus.interfaces.ITokenizer;
@@ -114,11 +114,11 @@ public class AlignmentTask {
         this(recos.getFirst(), recos.getSecond(), refs.getFirst(), refs.getSecond(), adjazent);
     }
 
-    public AlignmentTask(List<ILine> reco, List<ILine> ref, ITokenizer wordTokenizer, IStringNormalizer sn, double thresholdCouverage) {
-        this(reco, ref, wordTokenizer, sn, thresholdCouverage, false);
+    public AlignmentTask(List<ILine> reco, List<ILine> ref, ITokenizer wordTokenizer, IStringNormalizer sn, IAdjazentCalculator adjazentCalculator) {
+        this(reco, ref, wordTokenizer, sn, adjazentCalculator, false);
     }
 
-    public AlignmentTask(List<ILine> reco, List<ILine> ref, ITokenizer wordTokenizer, IStringNormalizer sn, double thresholdCouverage, boolean splitBOW) {
+    public AlignmentTask(List<ILine> reco, List<ILine> ref, ITokenizer wordTokenizer, IStringNormalizer sn, IAdjazentCalculator adjazentCalculator, boolean splitBOW) {
         Polygon[] recos = new Polygon[reco.size()];
         Polygon[] refs = new Polygon[ref.size()];
         Boolean useFilter = null; //only use filter, if baselines are given everywhere
@@ -146,8 +146,7 @@ public class AlignmentTask {
 
         //TODO: tolerances are ignored anyway and will be calculated properly only on expanded polygons
 //        double[] doubles = baseLineAligner.calcTolerances(refs);
-        int[][] gtLists = new BaseLineAligner().getGTLists(refs, null, recos, thresholdCouverage);
-        this.adjazent = getMap(gtLists, recos.length, refs.length);
+        this.adjazent = adjazentCalculator.getAdjacent(recos, refs);
 
         Pair<String[], int[]> recoTokens = getTokensAndLineIndex(reco, wordTokenizer, sn, splitBOW);
         this.recoLineMap = recoTokens.getSecond();
@@ -203,25 +202,6 @@ public class AlignmentTask {
             res2[i] = indexes.get(i);
         }
         return new Pair<>(tokens.toArray(new String[0]), res2);
-    }
-
-    private boolean[][] getMap(int[][] gtLists, int sizeReco, int sizeRef) {
-        boolean[][] res = new boolean[sizeReco][sizeRef];
-        for (int i = 0; i < gtLists.length; i++) {
-            int[] idxs = gtLists[i];
-            for (int k = 0; k < idxs.length; k++) {
-                res[i][idxs[k]] = true;
-            }
-        }
-        return res;
-    }
-
-    private int[] toNativeArray(List<Integer> list) {
-        int[] res = new int[list.size()];
-        for (int i = 0; i < list.size(); i++) {
-            res[i] = list.get(i);
-        }
-        return res;
     }
 
 }

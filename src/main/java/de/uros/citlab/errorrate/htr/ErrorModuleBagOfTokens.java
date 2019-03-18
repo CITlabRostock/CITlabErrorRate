@@ -296,7 +296,7 @@ public class ErrorModuleBagOfTokens implements IErrorModuleWithSegmentation {
 
     @Override
     public List<ILineComparison> calculateWithSegmentation(List<ILine> reco, List<ILine> ref, boolean calcLineComparison) {
-        AlignmentTask alignmentTask = new AlignmentTask(reco, ref, tokenizer, stringNormalizer, 0.0);
+        AlignmentTask alignmentTask = new AlignmentTask(reco, ref, tokenizer, stringNormalizer, new AdjacentCalculatorBaselines(0.0));
         return calculateIntern(alignmentTask, calcLineComparison);
     }
 

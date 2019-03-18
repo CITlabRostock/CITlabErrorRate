@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<PcGts xmlns="http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15 http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15/pagecontent.xsd">
+  <Metadata>
+    <!--webimage: 3-->
+    <!--webaddress: https://familysearch.org/ark:/61903/3:1:939Z-5Q9B-9T-->
+    <Creator>Beijing Formax</Creator>
+    <Created>2016-01-01T00:00:00</Created>
+    <LastChange>2018-09-14T13:51:05</LastChange>
+  </Metadata>
+  <Page imageFilename="004533645_00059.jpg" imageHeight="2632" imageWidth="3000">
+    <TextRegion id="tempReg516675093283341971488">
+      <Coords points="0,0 1,0 1,1 0,1" />
+      <TextLine id="l0" primaryLanguage="Chinese" primaryScript="Hant - Han (Traditional variant)" production="handwritten-printscript" readingDirection="top-to-bottom">
+        <!--number="1" start="upperRight" charDirection="down" lineDirection="left" -->
+        <Coords points="1575,2392 1575,365 1700,365 1700,2392" />
+        <TextEquiv>
+          <Unicode>幸氏家傳始始于興寕厥後移居各省</Unicode>
+        </TextEquiv>
+      </TextLine>
+      <TextLine id="l1" primaryLanguage="Chinese" primaryScript="Hant - Han (Traditional variant)" production="handwritten-printscript" readingDirection="top-to-bottom">
+        <!--number="2" start="upperRight" charDirection="down" lineDirection="left" -->
+        <Coords points="1458,2370 1458,368 1568,368 1568,2370" />
+        <TextEquiv>
+          <Unicode>卅縣云曰人之乎袓木本乎根吾袓源遠</Unicode>
+        </TextEquiv>
+      </TextLine>
+      <TextLine id="l2" primaryLanguage="Chinese" primaryScript="Hant - Han (Traditional variant)" production="handwritten-printscript" readingDirection="top-to-bottom">
+        <!--number="3" start="upperRight" charDirection="down" lineDirection="left" -->
+        <Coords points="1331,2368 1331,370 1453,370 1453,2368" />
+        <TextEquiv>
+          <Unicode>住立業手後耒然山縣新圍之開基建立</Unicode>
+        </TextEquiv>
+      </TextLine>
+      <TextLine id="l3" primaryLanguage="Chinese" primaryScript="Hant - Han (Traditional variant)" production="handwritten-printscript" readingDirection="top-to-bottom">
+        <!--number="4" start="upperRight" charDirection="down" lineDirection="left" -->
+        <Coords points="1204,2360 1204,373 1319,373 1319,2360" />
+        <TextEquiv>
+          <Unicode>流長枝派益廣興寕之居永安墩子头居</Unicode>
+        </TextEquiv>
+      </TextLine>
+      <TextLine id="l4" primaryLanguage="Chinese" primaryScript="Hant - Han (Traditional variant)" production="handwritten-printscript" readingDirection="top-to-bottom">
+        <!--number="6" start="upperRight" charDirection="down" lineDirection="left" -->
+        <Coords points="973,2378 973,375 1075,375 1075,2378" />
+        <TextEquiv>
+          <Unicode>恢後業之有譜猶國之有史須史才</Unicode>
+        </TextEquiv>
+      </TextLine>
+      <TextLine id="l5" primaryLanguage="Chinese" primaryScript="Hant - Han (Traditional variant)" production="handwritten-printscript" readingDirection="top-to-bottom">
+        <!--number="5" start="upperRight" charDirection="down" lineDirection="left" -->
+        <Coords points="1082,2363 1082,365 1195,365 1195,2363" />
+        <TextEquiv>
+          <Unicode>業袓祠之祀袓宗以妥之先靈下治子孫以</Unicode>
+        </TextEquiv>
+      </TextLine>
+<!--      <TextLine id="l6" primaryLanguage="Chinese" primaryScript="Hant - Han (Traditional variant)" production="handwritten-printscript" readingDirection="top-to-bottom">
+       <Coords points="836,2366 836,373 948,373 948,2366" />
+        <TextEquiv>
+          <Unicode>而家必明之法不講而世族昭穆紊</Unicode>
+        </TextEquiv>
+      </TextLine>-->
+      <TextLine id="l7" primaryLanguage="Chinese" primaryScript="Hant - Han (Traditional variant)" production="handwritten-printscript" readingDirection="top-to-bottom">
+        <!--number="8" start="upperRight" charDirection="down" lineDirection="left" -->
+        <Coords points="719,2360 719,370 817,370 817,2360" />
+        <TextEquiv>
+          <Unicode>乱尊敬宗收族之道也之此而微譜法</Unicode>
+        </TextEquiv>
+      </TextLine>
+    </TextRegion>
+  </Page>
+</PcGts>

@@ -32,7 +32,7 @@ public class PathCalculatorGraph<Reco, Reference> {
     private UpdateScheme updateScheme = UpdateScheme.LAZY;
     private int sizeProcessViewer = -1;
     private File folderDynMats = null;
-    private boolean show = true;
+    private boolean show = false;
     private static final Logger LOG = LoggerFactory.getLogger(PathCalculatorGraph.class);
     private final List<ICostCalculator<Reco, Reference>> costCalculators = new ArrayList<>();
     private final List<ICostCalculatorMulti<Reco, Reference>> costCalculatorsMutli = new ArrayList<>();
@@ -668,7 +668,7 @@ public class PathCalculatorGraph<Reco, Reference> {
 
 
                 image = new JLabel();
-                image.setIcon(new ImageIcon(HeatMapUtil.getHeatMap(new double[size][size], 7)));
+                image.setIcon(new ImageIcon(HeatMapUtil.getHeatMap(new double[size<1?1000:size][size<1?1000:size], 7)));
                 image.setAlignmentX(Component.CENTER_ALIGNMENT);
                 progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
                 meinPanel.add(image);

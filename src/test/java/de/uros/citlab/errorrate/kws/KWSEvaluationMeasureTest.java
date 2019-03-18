@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -223,7 +224,7 @@ public class KWSEvaluationMeasureTest {
     @Test
     public void testMatchList() throws IOException {
         System.out.println("testMatchList");
-        List<String> readLines = FileUtils.readLines(new File("src/test/resources/kw.txt"));
+        List<String> readLines = FileUtils.readLines(new File("src/test/resources/kw.txt"), Charset.defaultCharset());
 //        List<String> readLines = Arrays.asList("seyn");
         KeywordExtractor kwe = new KeywordExtractor();
         KWS.GroundTruth keywordGroundTruth = kwe.getKeywordGroundTruth(getStringList(listGT), null, readLines);
@@ -263,7 +264,7 @@ public class KWSEvaluationMeasureTest {
     @Test
     public void testRealScenario() throws IOException {
         System.out.println("testRealScenario");
-        List<String> readLines = FileUtils.readLines(new File("src/test/resources/kw.txt"));
+        List<String> readLines = FileUtils.readLines(new File("src/test/resources/kw.txt"),Charset.defaultCharset());
 //        List<String> readLines = Arrays.asList("seyn");
         KeywordExtractor kwe = new KeywordExtractor();
         KWS.GroundTruth keywordGroundTruth = kwe.getKeywordGroundTruth(getStringList(listGT), null, readLines);
@@ -298,7 +299,7 @@ public class KWSEvaluationMeasureTest {
     @Test
     public void testStatistic() throws IOException {
         System.out.println("testStatistic");
-        List<String> readLines = FileUtils.readLines(new File("src/test/resources/kw.txt"));
+        List<String> readLines = FileUtils.readLines(new File("src/test/resources/kw.txt"),Charset.defaultCharset());
 //        List<String> readLines = Arrays.asList("sein");
         KeywordExtractor kwe = new KeywordExtractor();
         KWS.GroundTruth keywordGroundTruth = kwe.getKeywordGroundTruth(getStringList(listGT), null, readLines);
