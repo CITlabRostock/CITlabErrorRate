@@ -48,10 +48,7 @@
  	<logger name="de.uros.citlab.errorrate.normalizer.StringNormalizerDft" level="ERROR" />
  	<logger name="eu.transkribus.core.util.PageXmlUtils" level="INFO" />
  	<logger name="eu.transkribus.interfaces.types.util.ImageUtils" level="INFO" />
-	<logger name="de.planet.imaging.util.OpenCVHelper" level="ERROR" />
-	<logger name="de.planet.imaging.types.HybridImage" level="INFO" />
 	<logger name="org.apache.commons" level="INFO" />
-	<logger name="de.planet" level="WARN" />
 	<logger name="org.apache" level="INFO" />
 	<logger name="org.dea" level="DEBUG" />
 	<logger name="eu.transkribus" level="DEBUG" />
