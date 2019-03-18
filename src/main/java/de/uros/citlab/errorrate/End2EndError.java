@@ -13,16 +13,18 @@ import de.uros.citlab.errorrate.normalizer.StringNormalizerLetterNumber;
 import de.uros.citlab.errorrate.types.Method;
 import de.uros.citlab.errorrate.types.Metric;
 import de.uros.citlab.errorrate.types.Result;
-import de.uros.citlab.errorrate.util.ExtractUtil;
+import de.uros.citlab.errorrate.util.XmlExtractor;
 import eu.transkribus.interfaces.IStringNormalizer;
 import org.apache.commons.cli.*;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.text.Normalizer;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -42,7 +44,8 @@ public class End2EndError {
         options.addOption("n", "normcanonic", false, "canonical normal form is used (only one of -n or -N is allowed)");
         options.addOption("r", "restrict-readingorder", false, "penalize errors in reading order");
         options.addOption("s", "allow-segmentation-errors", false, "do not penalize errors in over- or under-segmentation");
-        options.addOption("g", "restrict-geometry", false, "use baslines of transcription as additional constraint for error calculation");
+        options.addOption("g", "restrict-geometry", false, "use geometric position of transcription as additional constraint for error calculation (as default compare baselines. With -c: compare coords)");
+        options.addOption("c", "coords", false, "use intersection-over-union from coords instead of baseline couverage to calculate couverage [0.0,1.0]");
         options.addOption("t", "thresh", true, "if -g is set: minimal couverage [0.0,1.0] between baseline so that they are assumed to be adjacent (default: 0.0)");
 //        options.addOption("m", "mapper", true, "property file to normalize strings with a string-string-mapping");
         options.addOption("w", "wer", false, "calculate word error rate instead of character error rate");
@@ -101,6 +104,9 @@ public class End2EndError {
                     cmd.hasOption('s'),
                     cmd.hasOption('w'));
             em.setCountManipulations(countSubstitutions);
+            if (cmd.hasOption('c')) {
+                em.setGeometryComparison(ErrorModuleEnd2End.GeometryComaprison.COORDS);
+            }
             if (cmd.hasOption('t')) {
                 double t = Double.parseDouble(cmd.getOptionValue('t'));
                 if (t < 0.0 || t >= 1.0) {
@@ -132,15 +138,9 @@ public class End2EndError {
                 String reco = recos.get(i);
                 String ref = refs.get(i);
                 LOG.debug("process [{}/{}]:{} <> {}", i + 1, recos.size(), reco, ref);
-                if (geometry) {
-                    List<ILine> recoLines = ExtractUtil.getLinesFromFile(reco);
-                    List<ILine> refLines = ExtractUtil.getLinesFromFile(ref);
-                    em.calculateWithSegmentation(recoLines, refLines);
-                } else {
-                    List<String> recoLines = ExtractUtil.getTextFromFile(reco);
-                    List<String> refLines = ExtractUtil.getTextFromFile(ref);
-                    em.calculate(recoLines, refLines);
-                }
+                List<ILine> recoLines = getLines(XmlExtractor.getLinesFromFile(new File(reco)), cmd.hasOption('c'));
+                List<ILine> refLines = getLines(XmlExtractor.getLinesFromFile(new File(ref)), cmd.hasOption('c'));
+                em.calculateWithSegmentation(recoLines, refLines);
             }
             //print statistic to console
 //            List<Pair<Count, Long>> resultOccurrence = em.getCounter().getResultOccurrence();
@@ -156,6 +156,24 @@ public class End2EndError {
             help("Failed to parse comand line properties", e);
             return null;
         }
+    }
+
+    public List<ILine> getLines(List<XmlExtractor.Line> lines, boolean coords) {
+        List<ILine> res = new LinkedList<>();
+        for (XmlExtractor.Line line : lines) {
+            res.add(new ILine() {
+                @Override
+                public String getText() {
+                    return line.textEquiv;
+                }
+
+                @Override
+                public Polygon getBaseline() {
+                    return coords ? line.coords : line.baseLine;
+                }
+            });
+        }
+        return res;
     }
 
     private void help() {
