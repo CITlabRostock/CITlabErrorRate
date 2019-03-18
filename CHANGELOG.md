@@ -4,6 +4,7 @@
 # 5.1.0
 * add Coords (Intersection over Union) as alternative to Baseline for geometric comparison
 * add test for ICDAR 2019 competition HDRC
+* add option -c to de.uros.citlab.errorrate.End2EndError to compare Coords, not baselines
 * bugfix: only show dynProg if size of image is >0.
 
 # 5.0.1
