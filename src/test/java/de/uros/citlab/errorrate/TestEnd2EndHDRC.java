@@ -59,7 +59,7 @@ public class TestEnd2EndHDRC {
                 Assert.assertEquals(1.0, run.get(Metric.ACC), 0.001);
                 Assert.assertEquals(1.0, run.get(Metric.F), 0.001);
                 impl.reset();
-                impl.setFileDynProg(new File("restrictReadingOrder_" + restrictReadingOrder + "_restirctGeometry_" + restirctGeometry + ".png"));
+//                impl.setFileDynProg(new File("restrictReadingOrder_" + restrictReadingOrder + "_restirctGeometry_" + restirctGeometry + ".png"));
 //                impl.setSizeProcessViewer(1000);
                 run(impl, linesFromGt, linesFromHyp);
                 ObjectCounter<Count> counter = impl.getCounter();
