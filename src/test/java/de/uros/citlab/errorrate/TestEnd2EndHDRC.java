@@ -12,6 +12,7 @@ import de.uros.citlab.errorrate.types.Count;
 import de.uros.citlab.errorrate.types.Metric;
 import de.uros.citlab.errorrate.util.ObjectCounter;
 import de.uros.citlab.errorrate.util.XmlExtractor;
+import eu.transkribus.interfaces.IStringNormalizer;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -43,6 +44,8 @@ public class TestEnd2EndHDRC {
 
     private static File XML_GT = new File("src/test/resources/end2end/ICDAR-2019-HDRC/page/004533645_00059.xml");
     private static File XML_HYP = new File("src/test/resources/end2end/ICDAR-2019-HDRC/page/004533645_00059_changed.xml");
+    private static File XML_GT_1 = new File("src/test/resources/end2end/ICDAR-2019-HDRC_1/GT2.xml");
+    private static File XML_HYP_1 = new File("src/test/resources/end2end/ICDAR-2019-HDRC_1/Pred2.xml");
 
     @Test
     public void testExample() {
@@ -53,6 +56,7 @@ public class TestEnd2EndHDRC {
             for (boolean restirctGeometry : trueFalse) {
                 System.out.println("restrictReadingOrder = " + restrictReadingOrder + " restirctGeometry = " + restirctGeometry);
                 ErrorModuleEnd2End impl = new ErrorModuleEnd2End(restrictReadingOrder, restirctGeometry, false, false);
+                impl.setCountManipulations(ErrorModuleEnd2End.CountSubstitutions.ALL);
                 run(impl, linesFromGt, linesFromGt);
                 Map<Metric, Double> run = impl.getMetrics();
                 Assert.assertEquals(0.0, run.get(Metric.ERR), 0.001);
@@ -70,17 +74,70 @@ public class TestEnd2EndHDRC {
         }
 
     }
+    @Test
+    public void testExample1() {
+        List<XmlExtractor.Line> linesFromGt = XmlExtractor.getLinesFromFile(XML_GT_1);
+        List<XmlExtractor.Line> linesFromHyp = XmlExtractor.getLinesFromFile(XML_HYP_1);
+        boolean[] trueFalse = new boolean[]{true, false};
+        for (boolean restrictReadingOrder : trueFalse) {
+            for (boolean restirctGeometry : trueFalse) {
+                System.out.println("restrictReadingOrder = " + restrictReadingOrder + " restirctGeometry = " + restirctGeometry);
+                ErrorModuleEnd2End impl = new ErrorModuleEnd2End(restrictReadingOrder, restirctGeometry, true, true);
+                impl.setStringNormalizer(new IStringNormalizer() {
+                    //assume characters to be word - that allows the algorithm to switch after each word the line and does not count spaces if wer=true
+                    @Override
+                    public String normalize(String s) {
+                        String[] split = s.split("");
+                        StringBuilder sb = new StringBuilder();
+                        for (String s1 : split) {
+                            sb.append(s1).append(" ");
+                        }
+                        return sb.toString().trim();
+                    }
+                });
+                List<ILineComparison> run1 = run(impl, linesFromGt, linesFromGt);
+                Map<Metric, Double> run = impl.getMetrics();
+                Assert.assertEquals(0.0, run.get(Metric.ERR), 0.001);
+                Assert.assertEquals(1.0, run.get(Metric.ACC), 0.001);
+                Assert.assertEquals(1.0, run.get(Metric.F), 0.001);
+                impl.reset();
+//                impl.setFileDynProg(new File("restrictReadingOrder_" + restrictReadingOrder + "_restirctGeometry_" + restirctGeometry + ".png"));
+//                impl.setSizeProcessViewer(1000);
+                run(impl, linesFromGt, linesFromHyp);
+                ObjectCounter<Count> counter = impl.getCounter();
+                System.out.println(counter);
+                System.out.println("ACC = " + (1 - impl.getMetrics().get(Metric.ERR)));
+                System.out.println("-----------------------------------------------------");
+            }
+        }
 
-    public void run(ErrorModuleEnd2End impl, List<XmlExtractor.Line> linesFromGt, List<XmlExtractor.Line> linesFromHyp) {
-        impl.setGeometryComparison(ErrorModuleEnd2End.GeometryComaprison.COORDS);
+    }
+
+    public List<ILineComparison> run(ErrorModuleEnd2End impl, List<XmlExtractor.Line> linesFromGt, List<XmlExtractor.Line> linesFromHyp) {
+//        impl.setGeometryComparison(ErrorModuleEnd2End.GeometryComaprison.COORDS);
         List<ILineComparison> iLineComparisons = impl.calculateWithSegmentation(getLines(linesFromHyp), getLines(linesFromGt), true);
-//        for (ILineComparison iLineComparison : iLineComparisons) {
-//            System.out.println(iLineComparison);
-//        }
+        for (ILineComparison iLineComparison : iLineComparisons) {
+            System.out.println(iLineComparison);
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("%10s","reco:"));
+            for (char c : iLineComparison.getRecoText().toCharArray()) {
+                sb.append(String.format("\\u%04x ", (int) c));
+            }
+            System.out.println(sb);
+            sb=new StringBuilder();
+            sb.append(String.format("%10s","ref:"));
+            for (char c : iLineComparison.getRefText().toCharArray()) {
+                sb.append(String.format("\\u%04x ", (int) c));
+            }
+            System.out.println(sb);
+
+        }
+
         Map<Metric, Double> metrics = impl.getMetrics();
 //        for (Metric metric : metrics.keySet()) {
 //            System.out.println(metric + " => " + metrics.get(metric));
 //        }
+        return iLineComparisons;
     }
 
     public List<ILine> getLines(List<XmlExtractor.Line> lines) {

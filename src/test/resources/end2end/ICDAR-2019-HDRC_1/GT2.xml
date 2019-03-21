@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<PcGts xmlns="http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15 http://schema.primaresearch.org/PAGE/gts/pagecontent/2017-07-15/pagecontent.xsd">
+  <Metadata>
+    <!--webimage: 92-->
+    <!--webaddress: https://familysearch.org/ark:/61903/3:1:9392-SPSR-8B-->
+    <Creator>Beijing Formax</Creator>
+    <Created>2016-01-01T00:00:00</Created>
+    <LastChange>2018-09-16T19:19:19</LastChange>
+  </Metadata>
+  <Page imageFilename="004709126_00544.jpg" imageHeight="2375" imageWidth="2577">
+    <TextRegion id="tempReg474191035117749242162">
+      <Coords points="0,0 1,0 1,1 0,1" />
+      <TextLine id="l0" primaryLanguage="Chinese" primaryScript="Hant - Han (Traditional variant)" production="handwritten-printscript" readingDirection="top-to-bottom">
+        <!--number="1" start="upperRight" charDirection="down" lineDirection="left" -->
+        <Coords points="1,20 1,1 500,1 500,20" />
+        <TextEquiv>
+          <Unicode>RAJKUMAR</Unicode>
+        </TextEquiv>
+      </TextLine>
+      <TextLine id="l1" primaryLanguage="Chinese" primaryScript="Hant - Han (Traditional variant)" production="handwritten-printscript" readingDirection="top-to-bottom">
+        <!--number="2" start="upperRight" charDirection="down" lineDirection="left" -->
+        <Coords points="505,20 505,1 555,1 555,20" />
+        <TextEquiv>
+          <Unicode>IS</Unicode>
+        </TextEquiv>
+      </TextLine>
+    </TextRegion>
+  </Page>
+</PcGts>
