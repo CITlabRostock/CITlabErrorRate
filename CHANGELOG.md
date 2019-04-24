@@ -1,6 +1,10 @@
 
 # Changelog
 
+# 5.1.0
+* update to new dependencies: parent-pom 1.5
+* bugfix: Bag-of-Words no RuntimeException
+
 # 5.0.1
 * bugfix: LineComparison now includes Hypothesis (False Positives)
 * bugfix: For not-emtpy hypothesis and empty reference, calculation is correct
