@@ -134,6 +134,50 @@ public class TestEnd2EndRealWorld {
     }
 
     @Test
+    public void testHM() {
+        List<String> linesGT = Arrays.asList((
+                        "A:\n" +
+                        "Hur" +
+                        "").split("\n"));
+        String hyp =
+                        "A :\n" +
+                        "r" +
+                        "";
+        List<String> linesHypLineBreak = Arrays.asList(hyp.split("\n"));
+        List<String> linesHypSpace = Arrays.asList(hyp.replaceAll("\n", " "));
+        List<ILineComparison> calculateLineBreak = null;
+        List<ILineComparison> calculateSpace = null;
+        ObjectCounter<Count> counter;
+        {
+            ErrorModuleEnd2End em = new ErrorModuleEnd2End(false, false, true, false);
+            ErrorModuleEnd2End.CountSubstitutions countSubstitutions = ErrorModuleEnd2End.CountSubstitutions.ALL;
+            em.setCountManipulations(countSubstitutions);
+            calculateLineBreak = em.calculate(linesHypLineBreak, linesGT, true);
+            System.out.println(em.getCounter());
+            counter = em.getCounter();
+        }
+        ObjectCounter<Count> counterOneLine;
+        System.out.println("--------------");
+        {
+            ErrorModuleEnd2End em = new ErrorModuleEnd2End(false, false, true, false);
+            ErrorModuleEnd2End.CountSubstitutions countSubstitutions = ErrorModuleEnd2End.CountSubstitutions.ALL;
+            em.setCountManipulations(countSubstitutions);
+            calculateSpace = em.calculate(linesHypSpace, linesGT, true);
+            System.out.println(em.getCounter());
+            counterOneLine = em.getCounter();
+        }
+        System.out.println("with LB:---------------------------------------");
+        for (ILineComparison iLineComparison : calculateLineBreak) {
+            System.out.println(iLineComparison);
+        }
+        System.out.println("without LB:-----------------------------------");
+        for (ILineComparison iLineComparison : calculateSpace) {
+            System.out.println(iLineComparison);
+        }
+        Assert.assertEquals(counter.get(Count.ERR), counterOneLine.get(Count.ERR));
+    }
+
+    @Test
     public void testAllPages() throws IOException {
         for (boolean restrictReadingOrder : new boolean[]{true, false}) {
             for (boolean restrictGeometry : new boolean[]{true, false}) {
@@ -141,7 +185,7 @@ public class TestEnd2EndRealWorld {
 //                    StringBuilder sb = new StringBuilder();
                     double[] doubles = expectedsSegmentation[restrictReadingOrder ? 1 : 0][restrictGeometry ? 1 : 0][allowSegmentationErrors ? 1 : 0];
 //                    sb.append("expectedsSegmentation").append(".put(new boolean[]{" + restrictReadingOrder + "," + restrictGeometry + "," + allowSegmentationErrors + "}, new double[]{");
-                    for (int i =0; i < testIndexes.length; i++) {
+                    for (int i = 0; i < testIndexes.length; i++) {
                         double expected = doubles[testIndexes[i]];
 //                if (expected != 0.0) {
 //                    continue;

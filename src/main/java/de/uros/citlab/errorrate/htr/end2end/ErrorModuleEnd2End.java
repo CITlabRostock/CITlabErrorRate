@@ -745,6 +745,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         //if reference length of subproblem is 0, any recognition have to be deleted.
         // Count as HYP and DEL - but skip spaces, if mode is ignoreSegmentation (artificially segment at spaces => no count)
         if (countChars(refSubProblemTranscription.getFirst()) == 0) {
+            int cntDel = 0;
             String[] recoSubProblem = recoSubProblemTranscription.getFirst();
             int[] recoSubProblemIndex = recoSubProblemTranscription.getSecond();
             for (int i = 0; i < recoSubProblem.length; i++) {
@@ -755,9 +756,11 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                         //allow any partition of text - then it is better to substitute spaces by newlines. Do not count spaces.
                         continue;
                     }
+                    cntDel++;
                     pathCountResult.add(new Substitution(new String[]{s}, new String[0]), Count.HYP, Count.DEL);
                 }
             }
+            LOG.debug("add count {} deletions because of remaining subproblem has empty reference and recognition '{}' ", cntDel, Arrays.toString(recoSubProblem).replaceAll("\n","\\\\n" ));
             return pathCountResult;
         }
         //if subproblem is not trivial, solve it recursively.
@@ -1045,7 +1048,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
 //                    }
                     lc = getLineComparison(
                             -1,
-                            alignmentTask.getRefLineMap()[i - 2],
+                            alignmentTask.getRefLineMap()[i - 1],
                             "",
                             refBuilder.toString(),
                             manipulations);
@@ -1074,7 +1077,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     }
                     int i = path.get(0).getPoint()[0];
                     lc = getLineComparison(
-                            alignmentTask.getRecoLineMap()[i - 2],
+                            alignmentTask.getRecoLineMap()[i - 1],
                             -1,
                             recoBuilder.toString(),
                             "",
@@ -1089,8 +1092,8 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                 manipulations.add(new Point(Manipulation.valueOf(point.getManipulation()), reco, ref));
             }
             lc = getLineComparison(
-                    alignmentTask.getRecoLineMap()[path.get(0).getPoint()[0] - 1],
-                    alignmentTask.getRefLineMap()[path.get(0).getPoint()[1] - 1],
+                    alignmentTask.getRecoLineMap()[path.get(0).getPoint()[0]],
+                    alignmentTask.getRefLineMap()[path.get(0).getPoint()[1]],
                     recoBuilder.toString(),
                     refBuilder.toString(),
                     manipulations);
