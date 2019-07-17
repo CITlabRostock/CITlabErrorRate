@@ -160,9 +160,9 @@ public class PathCalculatorGraph<Reco, Reference> {
             return "DistanceSmall{" +
                     " pos=" + Arrays.toString(point) +
                     ", prev=" + Arrays.toString(pointPrevious) +
-                    ", costs=" + costsAcc +
+                    ", costs=" + String.format("%6f", costsAcc) +
 //                    ", marked=" + marked +
-                    ", CC=" + costCalculator +
+                    ", CC=" + (costCalculator == null ? null : costCalculator.getClass().getSimpleName()) +
                     '}';
         }
     }
@@ -331,31 +331,41 @@ public class PathCalculatorGraph<Reco, Reference> {
         }
         if (distOld == null) {
             if (addDistance) {
+                //Priority Queue: ADD
                 distMat.set(posNew, distNew);
                 int size = QSortedCostAcc.size();
                 QSortedCostAcc.add(distNew);
                 if (QSortedCostAcc.size() == size) {
                     throw new RuntimeException("error in using tree");
                 }
+                if (LOG.isTraceEnabled()) {
+                    LOG.trace("at " + posNew[0] + ";" + posNew[1] + " set      " + distNew);
+                }
+            } else {
+                if (LOG.isTraceEnabled()) {
+                    LOG.trace("at " + posNew[0] + ";" + posNew[1] + " skip     " + distNew);
+                }
             }
         } else if (cmpCostsAcc.compare(distNew, distOld) < 0) {
             if (addDistance) {
+                //Priority Queue: DECREASE
                 distMat.set(posNew, distNew);
                 QSortedCostAcc.remove(distOld);
                 QSortedCostAcc.add(distNew);
+                if (LOG.isTraceEnabled()) {
+                    LOG.trace("at " + posNew[0] + ";" + posNew[1] + " decrease " + distNew + " before " + distOld);
+                }
             } else {
+                //Priority Queue: DELETE
                 distMat.set(posNew, null);
                 QSortedCostAcc.remove(distOld);
+                if (LOG.isTraceEnabled()) {
+                    LOG.trace("at " + posNew[0] + ";" + posNew[1] + " remove   " + distOld + " ignore " + distNew);
+                }
             }
-
-        }
-        if (LOG.isTraceEnabled()) {
-            if (distOld == null) {
-                LOG.trace("calculate at " + posNew[0] + ";" + posNew[1] + " distance " + distNew);
-            } else if (cmpCostsAcc.compare(distNew, distOld) < 0) {
-                LOG.trace("calculate at " + posNew[0] + ";" + posNew[1] + " distance " + distNew);
-            } else {
-                LOG.trace("calculate at " + posNew[0] + ";" + posNew[1] + " distance " + distOld);
+        }else{
+            if (LOG.isTraceEnabled()) {
+                LOG.trace("at " + posNew[0] + ";" + posNew[1] + " leave    " + distOld + " skip   " + distNew);
             }
         }
         return cnt;
@@ -432,6 +442,9 @@ public class PathCalculatorGraph<Reco, Reference> {
         while (!QSortedCostAcc.isEmpty()) {
             cntVerticies++;
             DistanceSmall distActual = QSortedCostAcc.pollFirst();
+            if(LOG.isTraceEnabled()){
+                LOG.trace("at " + distActual.point[0] + ";" + distActual.point[1] + " follow " + distActual );
+            }
             if (updateScheme.equals(UpdateScheme.LAZY) && distMat.getLastElement() == distActual) {
                 break;
             }
@@ -444,6 +457,9 @@ public class PathCalculatorGraph<Reco, Reference> {
             if (filter != null && !filter.followPathsFromBestEdge(distActual)) {
                 if (log)
                     StopWatch.stop("FilterAllow");
+                if(LOG.isTraceEnabled()){
+                    LOG.trace("at " + distActual.point[0] + ";" + distActual.point[1] + " filter   " + distActual );
+                }
                 continue;
             }
             if (log) StopWatch.stop("FilterAllow");

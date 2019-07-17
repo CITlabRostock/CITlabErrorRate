@@ -13,11 +13,14 @@ import de.uros.citlab.errorrate.types.Metric;
 import de.uros.citlab.errorrate.types.Result;
 import de.uros.citlab.errorrate.util.ObjectCounter;
 import de.uros.citlab.tokenizer.categorizer.CategorizerCharacterDft;
+import de.uros.citlab.tokenizer.categorizer.CategorizerWordMergeGroups;
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.Arrays;

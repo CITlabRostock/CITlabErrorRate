@@ -1,7 +1,13 @@
 
 # Changelog
 
-# 5.0.2
+# 5.1.1
+* bugfix: pathfilter works correct when no restriction to reading order is set
+* bugfix: index of line comparison is also correct for lines with lenth 1
+
+# 5.1.0
+* update to new dependencies: parent-pom 1.5
+* bugfix: Bag-of-Words no RuntimeException
 
 # 5.0.1
 * bugfix: LineComparison now includes Hypothesis (False Positives)

@@ -47,7 +47,7 @@ public class End2EndError {
 //        options.addOption("m", "mapper", true, "property file to normalize strings with a string-string-mapping");
         options.addOption("w", "wer", false, "calculate word error rate instead of character error rate");
         options.addOption("d", "detailed", false, "use detailed calculation (creates confusion map) (only one of -d and -D allowed at the same time) ");
-        options.addOption("D", "Detailed", false, "use detailed calculation (creates substitution map) (only one of -d and -D allowed at the same time)");
+        options.addOption("D", "Detailed", false, "use detailedq calculation (creates substitution map) (only one of -d and -D allowed at the same time)");
         options.addOption("l", "letters", false, "calculate error rates only for codepoints, belonging to the unicode category \"L\", \"N\" or \"Z\".");
 //        options.addOption("b", "bag", false, "using bag of words instead of dynamic programming tabular");
     }
