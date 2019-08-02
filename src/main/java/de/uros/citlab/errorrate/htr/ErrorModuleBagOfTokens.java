@@ -109,9 +109,9 @@ public class ErrorModuleBagOfTokens implements IErrorModuleWithSegmentation {
         Collections.sort(recoTokens);
         int idxRef = 0;
         int idxReco = 0;
-        for (int i = 0; i < refTokens.size(); i++) {
+//        for (int i = 0; i < refTokens.size(); i++) {
 
-//        while (idxReco < recoTokens.size() && idxRef < refTokens.size()) {
+        while (idxReco < recoTokens.size() && idxRef < refTokens.size()) {
             Token recoToken = recoTokens.get(idxReco);
             Token refToken = refTokens.get(idxRef);
             int cmp = refToken.compareTo(recoToken);
