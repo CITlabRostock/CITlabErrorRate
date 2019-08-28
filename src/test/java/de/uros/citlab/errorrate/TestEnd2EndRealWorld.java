@@ -222,7 +222,7 @@ public class TestEnd2EndRealWorld {
         //6m 59s 357ms -> with List<String> as reco and ref
     }
 
-//    public double testGermania(ErrorModuleEnd2End.Mode mode, int image) throws IOException {
+//    public double testGermania(ErrorModuleT2IInner.Mode mode, int image) throws IOException {
 //        return testGermania(mode, image, false);
 //    }
 

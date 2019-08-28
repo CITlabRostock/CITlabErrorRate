@@ -634,7 +634,7 @@ public class TestEnd2End {
         ErrorModuleEnd2End impl = new ErrorModuleEnd2End(false, false, false, false);
         impl.setStringNormalizer(sn);
         impl.setCountManipulations(ErrorModuleEnd2End.CountSubstitutions.ERRORS);
-//        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
+//        ((ErrorModuleT2IInner) impl).setSizeProcessViewer(6000);
         impl.calculate(hyp, gt);
         List<String> results = impl.getResults();
         for (int i = 0; i < results.size(); i++) {
@@ -702,7 +702,7 @@ public class TestEnd2End {
         ErrorModuleEnd2End impl = new ErrorModuleEnd2End(restrictReadingOrder, false, allowSegmentation, word);
         impl.setStringNormalizer(sn);
         impl.setCountManipulations(ErrorModuleEnd2End.CountSubstitutions.ALL);
-//        ((ErrorModuleEnd2End) impl).setSizeProcessViewer(6000);
+//        ((ErrorModuleT2IInner) impl).setSizeProcessViewer(6000);
         return impl.calculate(hyp, gt, true);
 
     }

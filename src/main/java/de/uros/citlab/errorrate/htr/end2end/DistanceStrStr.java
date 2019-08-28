@@ -4,14 +4,14 @@ import de.uros.citlab.errorrate.types.PathCalculatorGraph;
 
 import java.util.Arrays;
 
-class DistanceStrStr extends PathCalculatorGraph.DistanceSmall implements PathCalculatorGraph.IDistance<String, String> {
+public class DistanceStrStr extends PathCalculatorGraph.DistanceSmall implements PathCalculatorGraph.IDistance<String, String> {
 
     DistanceStrStr(TYPE type, double costs, double costAcc, String reco, String ref, int[] pointPrevious, int[] point) {
         this(type, costs, costAcc, reco == null ? null : new String[]{reco}, ref == null ? null : new String[]{ref}, pointPrevious, point);
     }
 
 
-    enum TYPE {
+    public enum TYPE {
         INS, DEL, SUB, COR,
         JUMP_RECO, COR_LINEBREAK,
         INS_LINE, DEL_LINE,

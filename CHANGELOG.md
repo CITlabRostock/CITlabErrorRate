@@ -1,6 +1,9 @@
 
 # Changelog
 
+# 5.2.0
+* add Text-to-Image measure
+
 # 5.1.1
 * bugfix: pathfilter works correct when no restriction to reading order is set
 * bugfix: index of line comparison is also correct for lines with lenth 1

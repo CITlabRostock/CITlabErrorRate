@@ -5,7 +5,7 @@ import de.uros.citlab.errorrate.types.PathCalculatorGraph;
 import java.util.LinkedList;
 import java.util.List;
 
-class CCLineBreakRecoJump extends CCAbstract implements PathCalculatorGraph.ICostCalculatorMulti<String, String>, PathCalculatorGraph.PathFilter<String, String> {
+public class CCLineBreakRecoJump extends CCAbstract implements PathCalculatorGraph.ICostCalculatorMulti<String, String>, PathCalculatorGraph.PathFilter<String, String> {
     private int xMax = 0;
 
     public CCLineBreakRecoJump(Voter voter) {

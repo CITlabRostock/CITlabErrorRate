@@ -2,7 +2,7 @@ package de.uros.citlab.errorrate.htr.end2end;
 
 import de.uros.citlab.errorrate.types.PathCalculatorGraph;
 
-class CCSubOrCor extends CCAbstract {
+public class CCSubOrCor extends CCAbstract {
 
     public CCSubOrCor(Voter voter) {
         super(voter);

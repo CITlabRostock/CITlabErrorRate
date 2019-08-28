@@ -2,7 +2,7 @@ package de.uros.citlab.errorrate.htr.end2end;
 
 import de.uros.citlab.errorrate.types.PathCalculatorGraph;
 
-class CCDel extends CCAbstract {
+public class CCDel extends CCAbstract {
 
     public CCDel(Voter voter) {
         super(voter);

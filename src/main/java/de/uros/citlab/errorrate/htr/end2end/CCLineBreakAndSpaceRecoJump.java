@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import java.util.LinkedList;
 import java.util.List;
 
-class CCLineBreakAndSpaceRecoJump extends CCAbstract implements PathCalculatorGraph.ICostCalculatorMulti<String, String>, PathCalculatorGraph.PathFilter<String, String> {
+public class CCLineBreakAndSpaceRecoJump extends CCAbstract implements PathCalculatorGraph.ICostCalculatorMulti<String, String>, PathCalculatorGraph.PathFilter<String, String> {
     private int xMax = 0;
     private double valMax = 0.0;
     private final static Logger LOG = LoggerFactory.getLogger(CCLineBreakAndSpaceRecoJump.class);

@@ -4,7 +4,7 @@ import de.uros.citlab.errorrate.types.PathCalculatorGraph;
 
 import java.util.Arrays;
 
-class CCInsLine extends CCAbstract {
+public class CCInsLine extends CCAbstract {
     public CCInsLine(Voter voter) {
         super(voter);
     }
