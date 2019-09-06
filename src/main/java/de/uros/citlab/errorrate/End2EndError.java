@@ -46,8 +46,8 @@ public class End2EndError {
         options.addOption("t", "thresh", true, "if -g is set: minimal couverage [0.0,1.0] between baseline so that they are assumed to be adjacent (default: 0.0)");
 //        options.addOption("m", "mapper", true, "property file to normalize strings with a string-string-mapping");
         options.addOption("w", "wer", false, "calculate word error rate instead of character error rate");
-        options.addOption("d", "detailed", false, "use detailed calculation (creates confusion map) (only one of -d and -D allowed at the same time) ");
-        options.addOption("D", "Detailed", false, "use detailedq calculation (creates substitution map) (only one of -d and -D allowed at the same time)");
+//        options.addOption("d", "detailed", false, "use detailed calculation (creates confusion map) (only one of -d and -D allowed at the same time) ");
+//        options.addOption("D", "Detailed", false, "use detailedq calculation (creates substitution map) (only one of -d and -D allowed at the same time)");
         options.addOption("l", "letters", false, "calculate error rates only for codepoints, belonging to the unicode category \"L\", \"N\" or \"Z\".");
 //        options.addOption("b", "bag", false, "using bag of words instead of dynamic programming tabular");
     }
@@ -62,9 +62,9 @@ public class End2EndError {
             if (cmd.hasOption("h")) {
                 help();
             }
-            if (cmd.hasOption('d') && cmd.hasOption('D')) {
-                help("only one of the parameter -d and -D have to be set. Note that -D includes the output of -d");
-            }
+//            if (cmd.hasOption('d') && cmd.hasOption('D')) {
+//                help("only one of the parameter -d and -D have to be set. Note that -D includes the output of -d");
+//            }
 //            if (cmd.hasOption('d') || cmd.hasOption('D')) {
 //                help("the options -d and -D are not supported yet.");
 //            }
@@ -188,6 +188,7 @@ public class End2EndError {
     }
 
     public static void main(String[] args) {
+        LOG.debug("debug test" );
 //        args = ("--help").split(" ");
         End2EndError erp = new End2EndError();
         Result res = erp.run(args);

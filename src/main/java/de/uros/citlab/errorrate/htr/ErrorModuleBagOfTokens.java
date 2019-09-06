@@ -84,7 +84,7 @@ public class ErrorModuleBagOfTokens implements IErrorModuleWithSegmentation {
         String[] recosLst = alignmentTask.getRecos();
         int[] recoLineMap = alignmentTask.getRecoLineMap();
         for (int i = 0; i < recosLst.length; i++) {
-            if(recosLst[i].equals("\n")){
+            if (recosLst[i].equals("\n")) {
                 continue;
             }
             int lineID = recoLineMap == null ? -1 : recoLineMap[i];
@@ -96,7 +96,7 @@ public class ErrorModuleBagOfTokens implements IErrorModuleWithSegmentation {
         String[] refsLst = alignmentTask.getRefs();
         int[] refLineMap = alignmentTask.getRefLineMap();
         for (int i = 0; i < refsLst.length; i++) {
-            if(refsLst[i].equals("\n")){
+            if (refsLst[i].equals("\n")) {
                 continue;
             }
             int lineID = refLineMap == null ? -1 : refLineMap[i];
@@ -180,6 +180,16 @@ public class ErrorModuleBagOfTokens implements IErrorModuleWithSegmentation {
             }
 
             @Override
+            public int getInnerRecoIndex() {
+                return getRecoIndex() == -1 ? -1 : 0;
+            }
+
+            @Override
+            public int getInnerRefIndex() {
+                return getRefIndex() == -1 ? -1 : 0;
+            }
+
+            @Override
             public String getRefText() {
                 return ref == null ? null : ref.value;
             }
@@ -203,7 +213,7 @@ public class ErrorModuleBagOfTokens implements IErrorModuleWithSegmentation {
 
             @Override
             public String toString() {
-                return String.format("[%2d,%2d]: '%s'=>'%s' %s", getRecoIndex(), getRefIndex(), reco == null ? "" : reco.value, ref == null ? "" : ref.value, getPath().get(0)).replace("\n","\\n" );
+                return String.format("[%2d:%2d]=>[%2d:%2d]: '%s'=>'%s' %s", getRecoIndex(), getInnerRecoIndex(),getRefIndex(), getInnerRefIndex(), reco == null ? "" : reco.value, ref == null ? "" : ref.value, getPath().get(0)).replace("\n", "\\n");
             }
         };
     }

@@ -17,16 +17,16 @@ mvn package [-DskipTests=true]
 ## Running:
 
 ### End-2-End Character Error Rate (CER)
-This tool makes it possible to measure the CER of an End2End system.
+This tool makes it possible to measure the CER or WER of an End2End system.
 In general it calculate the number of manipulations
 (insertion, deletion, substitution) that have to be done to come from the
-hypothesis/recognition to the ground truth/reference. The CER is equal to
-``#manipulation/#GT``, whereals ``#GT`` is the number of ground truth characters.
+hypothesis/recognition to the ground truth/reference. The CER/WER is equal to
+``#manipulation/#GT``, whereals ``#GT`` is the number of ground truth characters/words.
 
 The tool has several options to be configured.
 A first overview over all parameters can be gathered by  
 ```
-java -jar target/CITlabErrorRate.jar \
+java -jar target/CITlabErrorRate-jar-with-dependencies.jar \
 <list_pageXml_groundtruth> \
 <list_pageXml_hypothesis> \
 [-d] [-D] [-g] [-h] [-l] [-N] [-n] [-r] [-s] [-t <arg>] [-u]
@@ -51,11 +51,7 @@ So ``["first line", "second line"]`` vs. ``["second line", "first line"]`` would
 That means a space ``\+u0020`` can be interpretet as space or as split of lines.
 So ``["split and", "merge lines"]`` vs. ``["split", "and merge", "lines"]`` would be correct.
 * __-g__ the geometric postion of the line plays a role. The couverage between two lines have above a threshold (see parameter -t).
-* __-t \<FLOAT\>__ the minimal couverage [0.0,1.0) between two line so that they were assumed to be adjacent.
-
-Parameter for analizing errors, but __not implemented yet__:
-* __-d__ the algorithm will return all manipulations which had to be done to come from the hypothesis to the ground truth (insertions, deletions, substitutions)
-* __-D__ the algorithm will return all operations which had to be done to come from the hypothesis to the ground truth (corrects, insertions, deletions, substitutions)
+* __-t \<FLOAT\>__ the minimal couverage [0.0,1.0) between two baselines so that they were assumed to be adjacent. The Method with Intesection-over-Union is not implemented so far.
 
 ### HTR:
 It can calculate Character Error Rate (CER), Word Error Rate (WER),

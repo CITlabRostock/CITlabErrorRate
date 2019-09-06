@@ -19,6 +19,15 @@ public interface ILineComparison {
      * @return index of reference text line
      */
     int getRefIndex();
+    /**
+     * @return index in the recognition text line
+     */
+    int getInnerRecoIndex();
+
+    /**
+     * @return index in the of reference text line
+     */
+    int getInnerRefIndex();
 
     /**
      * @return text of recognition

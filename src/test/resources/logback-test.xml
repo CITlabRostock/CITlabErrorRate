@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- For assistance related to logback-translator or configuration -->
+<!-- files in general, please contact the logback user mailing list -->
+<!-- at http://www.qos.ch/mailman/listinfo/logback-user -->
+<!-- -->
+<!-- For professional support please see -->
+<!-- http://www.qos.ch/shop/products/professionalSupport -->
+<!-- -->
+<configuration>
+
+	<property name="conversionPattern" value="%d{MM/dd HH:mm:ss.SSS}%X{ip}%X{user}%X{gui} %5p | [%c{1}, %t] %m%n"></property>
+    <if condition='isDefined("catalina.base")'>
+	    <then>
+	    	<property name="logsDir" value="${catalina.base}/logs/"></property>  
+	    </then>
+	    <else>
+	      <property name="logsDir" value="logs/"></property>  
+	    </else>
+  	</if>
+
+	<appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<pattern>%d{MM/dd HH:mm:ss.SSS} %5p | [%thread | %c] %m%n</pattern>
+		</encoder>
+	</appender>
+
+<!--	<appender name="LOGFILE"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<File>${logsDir}${project.build.finalName}.log</File>
+		<Append>true</Append>
+		<encoder>
+			<pattern>${conversionPattern}</pattern>
+		</encoder>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${logsDir}trpServer.log.%d{.yyyy-MM}
+			</fileNamePattern>
+		</rollingPolicy>
+	</appender>
+-->	
+	<!-- planet.jar logging -->
+	<root level="INFO">
+		<appender-ref ref="CONSOLE" />
+	</root>
+ 	<logger name="de.uros.citlab.errorrate" level="DEBUG" />
+</configuration>

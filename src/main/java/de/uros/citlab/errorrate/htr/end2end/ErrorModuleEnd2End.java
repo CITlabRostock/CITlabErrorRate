@@ -524,25 +524,24 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         }, new GroupUtil.Mapper<PathCalculatorGraph.IDistance<String, String>, PathQuality>() {
             @Override
             public PathQuality map(List<PathCalculatorGraph.IDistance<String, String>> elements) {
-                switch (DistanceStrStr.TYPE.valueOf(elements.get(0).getManipulation())) {
+                PathCalculatorGraph.IDistance<String, String> elementFirst = elements.get(0);
+                switch (DistanceStrStr.TYPE.valueOf(elementFirst.getManipulation())) {
                     case INS_LINE: {
-                        PathCalculatorGraph.IDistance<String, String> el = elements.get(0);
                         return new PathQuality(isWER,
-                                (el.getCosts()),
-                                el.getPoint()[0] - 1,
-                                el.getPoint()[0] - 1,
-                                el.getPointPrevious()[1],//+1-1=0
-                                el.getPoint()[1] - 1,
+                                (elementFirst.getCosts()),
+                                elementFirst.getPoint()[0] - 1,
+                                elementFirst.getPoint()[0] - 1,
+                                elementFirst.getPointPrevious()[1],//+1-1=0
+                                elementFirst.getPoint()[1] - 1,
                                 elements);
                     }
                     case DEL_LINE: {
-                        PathCalculatorGraph.IDistance<String, String> el = elements.get(0);
                         return new PathQuality(isWER,
-                                (el.getCosts()),
-                                el.getPointPrevious()[0],//+1-1=0
-                                el.getPoint()[0] - 1,
-                                el.getPoint()[1] - 1,
-                                el.getPoint()[1] - 1,
+                                (elementFirst.getCosts()),
+                                elementFirst.getPointPrevious()[0],//+1-1=0
+                                elementFirst.getPoint()[0] - 1,
+                                elementFirst.getPoint()[1] - 1,
+                                elementFirst.getPoint()[1] - 1,
                                 elements);
                     }
                     default:
@@ -564,11 +563,29 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                                 endRef = e.getPoint()[1] - 1;
                             }
                         }
+                        PathCalculatorGraph.IDistance<String, String> elementLast = elements.get(elements.size() - 1);
                         if (startReco < 0 || startRef < 0 || endReco < 0 || endRef < 0) {
-                            throw new RuntimeException("path " + elements + " only contains INS and DEL");
+                            //path only contains INS and DEL and no SUB - so all have to be INS or DEL, not both.
+                            if (elementFirst.getManipulation().equals(DistanceStrStr.TYPE.INS.toString())) {
+                                return new PathQuality(isWER,
+                                        elementLast.getCostsAcc() - elementFirst.getCostsAcc() + elementFirst.getCosts(),
+                                        elementFirst.getPoint()[0],//+1-1=0
+                                        elementLast.getPoint()[0] - 1,
+                                        elementFirst.getPointPrevious()[1],//+1-1=0
+                                        elementLast.getPoint()[1] - 1,
+                                        elements);
+                            } else {
+                                return new PathQuality(isWER,
+                                        elementLast.getCostsAcc() - elementFirst.getCostsAcc() + elementFirst.getCosts(),
+                                        elementFirst.getPointPrevious()[0],//+1-1=0
+                                        elementLast.getPoint()[0] - 1,
+                                        elementLast.getPoint()[1],//+1-1=0
+                                        elementLast.getPoint()[1] - 1,
+                                        elements);
+                            }
                         }
                         return new PathQuality(isWER,
-                                (elements.get(elements.size() - 1).getCostsAcc() - elements.get(0).getCostsAcc() + elements.get(0).getCosts()),
+                                (elementLast.getCostsAcc() - elementFirst.getCostsAcc() + elementFirst.getCosts()),
                                 startReco,
                                 endReco,
                                 startRef,
@@ -673,6 +690,22 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
 
     }
 
+    private int getInnerIndex(int[] lineMap, int idxCurrent, int lineCurrent) {
+        if (lineCurrent < 0) {
+            return -1;
+        }
+        if (lineMap[idxCurrent] != lineCurrent) {
+            idxCurrent++;
+        }
+        if (lineMap[idxCurrent] != lineCurrent) {
+            LOG.warn("index of innner position in structure LineComparison is probably calculated wrong");
+        }
+        int idx = 0;
+        while (lineMap[idxCurrent - idx] != -1)
+            idx++;
+        return idx - 1;
+    }
+
     private PathCountResult getPathCountResult(AlignmentTask alignmentTask, int sizeProcessViewer, File out, boolean calcLineComparison) {
         //use dynamic programming to calculateIntern the cheapest path through the dynamic programming tabular
 //        calcBestPathFast(recos, refs);
@@ -689,10 +722,13 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     }
                     pathCountResult.add(new Substitution("", refs[i]), Count.GT, Count.INS);
                     if (calcLineComparison) {
+                        int refLineIdx = alignmentTask.getRefLineMap()[i];
                         pathCountResult.add(
                                 getLineComparison(
                                         -1,
-                                        alignmentTask.getRefLineMap()[i],
+                                        refLineIdx,
+                                        -1,
+                                        getInnerIndex(alignmentTask.getRefLineMap(), i, refLineIdx),
                                         "",
                                         refs[i],
                                         Arrays.asList(new Point(Manipulation.INS, "", refs[i]))
@@ -750,7 +786,19 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             int[] recoSubProblemIndex = recoSubProblemTranscription.getSecond();
             for (int i = 0; i < recoSubProblem.length; i++) {
                 String s = recoSubProblem[i];
-                pathCountResult.add(getLineComparison(recoSubProblemIndex[i], -1, s, null, Arrays.asList(new Point(Manipulation.DEL, s, null))));
+                int recoLineIdx = recoSubProblemIndex[i];
+
+                pathCountResult.add(
+                        getLineComparison(
+                                recoLineIdx,
+                                -1,
+                                getInnerIndex(recoSubProblemTranscription.getSecond(), i, recoLineIdx),
+                                -1,
+                                s,
+                                null,
+                                Arrays.asList(new Point(Manipulation.DEL, s, null))
+                        )
+                );
                 if (!voter.isLineBreak(s)) {
                     if (allowSegmentationErrors && voter.isSpace(s)) {
                         //allow any partition of text - then it is better to substitute spaces by newlines. Do not count spaces.
@@ -760,7 +808,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                     pathCountResult.add(new Substitution(new String[]{s}, new String[0]), Count.HYP, Count.DEL);
                 }
             }
-            LOG.debug("add count {} deletions because of remaining subproblem has empty reference and recognition '{}' ", cntDel, Arrays.toString(recoSubProblem).replaceAll("\n","\\\\n" ));
+            LOG.debug("add count {} deletions because of remaining subproblem has empty reference and recognition '{}' ", cntDel, Arrays.toString(recoSubProblem).replaceAll("\n", "\\\\n"));
             return pathCountResult;
         }
         //if subproblem is not trivial, solve it recursively.
@@ -875,7 +923,7 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
         return new Pair<>(res.toArray(new String[0]), idxs);
     }
 
-    private ILineComparison getLineComparison(int recoIndex, int refIndex, String recoText, String refText, List<IPoint> path) {
+    private ILineComparison getLineComparison(int recoIndex, int refIndex, int recoInnerIndex, int refInnerIndex, String recoText, String refText, List<IPoint> path) {
         return new ILineComparison() {
             @Override
             public int getRecoIndex() {
@@ -893,18 +941,36 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             }
 
             @Override
+            public int getInnerRefIndex() {
+                return refInnerIndex<0?refInnerIndex:isWER?refInnerIndex/2:refInnerIndex;
+            }
+
+            @Override
+            public int getInnerRecoIndex() {
+                return recoInnerIndex<0?recoInnerIndex:isWER?recoInnerIndex/2:recoInnerIndex;
+            }
+
+            @Override
             public String getRecoText() {
                 return recoText;
             }
 
             @Override
-            public List<IPoint> getPath() {
+            public List<IPoint> getPath()
+            {
+                if(isWER){
+                    LinkedList<IPoint> points = new LinkedList<>();
+                    for (int i = 0; i < path.size(); i+=2) {
+                        points.add(path.get(i));
+                    }
+                    return points;
+                }
                 return path;
             }
 
             @Override
             public String toString() {
-                return String.format("[%2d,%2d]: '%s'=>'%s' %s", recoIndex, refIndex, recoText == null ? "" : recoText, refText == null ? "" : refText, path);
+                return String.format("[%2d:%2d]=>[%2d:%2d]: '%s'=>'%s' %s", getRecoIndex(), getInnerRecoIndex(),getRefIndex(), getInnerRefIndex(),  recoText == null ? "" : recoText, refText == null ? "" : refText, getPath());
             }
         };
 
@@ -1020,6 +1086,8 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
             StringBuilder refBuilder = new StringBuilder();
             StringBuilder recoBuilder = new StringBuilder();
             final List<IPoint> manipulations = new LinkedList<>();
+            PathCalculatorGraph.IDistance<String, String> pathBegin = path.get(0);
+            PathCalculatorGraph.IDistance<String, String> pathEnd = path.get(path.size() - 1);
             for (PathCalculatorGraph.IDistance<String, String> point : path) {
                 if (point.getManipulation().equals("INS_LINE")) {
                     for (int i = 0; i < point.getReferences().length; i++) {
@@ -1042,13 +1110,17 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                             }
                         });
                     }
-                    int i = path.get(0).getPoint()[1];
-//                    if (alignmentTask.getRefLineMap()[i-2] <0) {
-//                        i--;
-//                    }
+                    int i = pathBegin.getPoint()[1]-1;
+                    int refLineIdx = alignmentTask.getRefLineMap()[i - 1];
+                    if (refLineIdx == -1) {
+                        i++;
+                        refLineIdx = alignmentTask.getRefLineMap()[i - 1];
+                    }
                     lc = getLineComparison(
                             -1,
-                            alignmentTask.getRefLineMap()[i - 1],
+                            refLineIdx,
+                            -1,
+                            getInnerIndex(alignmentTask.getRefLineMap(), i - 1, refLineIdx),
                             "",
                             refBuilder.toString(),
                             manipulations);
@@ -1075,9 +1147,16 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                             }
                         });
                     }
-                    int i = path.get(0).getPoint()[0];
+                    int i = pathBegin.getPoint()[0]-1;
+                    int recoLineIdx = alignmentTask.getRecoLineMap()[i - 1];
+                    if (recoLineIdx == -1) {
+                        i++;
+                        recoLineIdx = alignmentTask.getRecoLineMap()[i - 1];
+                    }
                     lc = getLineComparison(
-                            alignmentTask.getRecoLineMap()[i - 1],
+                            recoLineIdx,
+                            -1,
+                            getInnerIndex(alignmentTask.getRecoLineMap(), i - 1, recoLineIdx),
                             -1,
                             recoBuilder.toString(),
                             "",
@@ -1091,9 +1170,13 @@ public class ErrorModuleEnd2End implements IErrorModuleWithSegmentation {
                 final Manipulation manipulation = Manipulation.valueOf(point.getManipulation());
                 manipulations.add(new Point(Manipulation.valueOf(point.getManipulation()), reco, ref));
             }
+            int recoLineIdx = pathBegin.getPointPrevious()[0] == pathEnd.getPoint()[0] ? -1 : alignmentTask.getRecoLineMap()[pathBegin.getPoint()[0] - 1];
+            int refLineIdx = pathBegin.getPointPrevious()[1] == pathEnd.getPoint()[1] ? -1 : alignmentTask.getRefLineMap()[pathBegin.getPoint()[1] - 1];
             lc = getLineComparison(
-                    alignmentTask.getRecoLineMap()[path.get(0).getPoint()[0]],
-                    alignmentTask.getRefLineMap()[path.get(0).getPoint()[1]],
+                    recoLineIdx,
+                    refLineIdx,
+                    getInnerIndex(alignmentTask.getRecoLineMap(), pathBegin.getPoint()[0] - 1, recoLineIdx),
+                    getInnerIndex(alignmentTask.getRefLineMap(), pathBegin.getPoint()[1] - 1, refLineIdx),
                     recoBuilder.toString(),
                     refBuilder.toString(),
                     manipulations);

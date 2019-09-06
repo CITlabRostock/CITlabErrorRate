@@ -2,7 +2,9 @@
 # Changelog
 
 # 5.2.0
-* add Text-to-Image measure
+* feature: add Text-to-Image measure
+* feature: ILineComparison is expanded by methods that return the occurance of the first character position within a text line
+* bugfix: correct dealing with beginning and ending spaces in segementation-mode
 
 # 5.1.1
 * bugfix: pathfilter works correct when no restriction to reading order is set
@@ -18,7 +20,7 @@
 
 # 5.0.0
 * bugfix: ILineComparison return right index (was always 0)
-* new feature: first (untested) version for WER
+* feature: first (untested) version for WER
 * simplifying interfaces (have to increase mayor version)
 
 # 4.0.0

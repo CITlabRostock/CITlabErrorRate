@@ -22,6 +22,7 @@ import eu.transkribus.interfaces.ITokenizer;
 import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.util.*;
@@ -37,7 +38,7 @@ import java.util.*;
 class ErrorModuleT2IInner implements IErrorModuleWithSegmentation {
     private final ObjectCounter<Count> counter = new ObjectCounter<>();
     private final ObjectCounter<Substitution> substitutionCounter = new ObjectCounter<>();
-    private final ITokenizer tokenizer=new TokenizerCategorizer(new CategorizerCharacterDft());
+    private final ITokenizer tokenizer = new TokenizerCategorizer(new CategorizerCharacterDft());
     private CountSubstitutions countManipulations = CountSubstitutions.OFF;
     private IStringNormalizer stringNormalizer = null;
     private final PathCalculatorGraph<String, String> pathCalculator = new PathCalculatorGraph<>();
@@ -687,7 +688,7 @@ class ErrorModuleT2IInner implements IErrorModuleWithSegmentation {
 
     private PathCountResult getPathCountResultFallback(AlignmentTask alignmentTask, int sizeProcessViewer, File out, boolean calcLineComparison) {
         ErrorModuleT2IInner fallback = new ErrorModuleT2IInner(allowSegmentationErrors);
-        LOG.warn("fallback - probably ending into infinity loop" );
+        LOG.warn("fallback - probably ending into infinity loop");
         File outSubProblem = null;
         if (out != null) {
             String path = out.getPath();
@@ -767,6 +768,16 @@ class ErrorModuleT2IInner implements IErrorModuleWithSegmentation {
             }
 
             @Override
+            public int getInnerRecoIndex() {
+                throw new NotImplementedException();
+            }
+
+            @Override
+            public int getInnerRefIndex() {
+                throw new NotImplementedException();
+            }
+
+            @Override
             public String getRefText() {
                 return refText;
             }
@@ -783,7 +794,7 @@ class ErrorModuleT2IInner implements IErrorModuleWithSegmentation {
 
             @Override
             public String toString() {
-                return String.format("[%2d,%2d]: '%s'=>'%s' %s", recoIndex, refIndex, recoText == null ? "" : recoText, refText == null ? "" : refText, path);
+                return String.format("[%2d]=>[%2d]: '%s'=>'%s' %s", getRecoIndex(),  getRefIndex(), recoText == null ? "" : recoText, refText == null ? "" : refText, path);
             }
         };
 

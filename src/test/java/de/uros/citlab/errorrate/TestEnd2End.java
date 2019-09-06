@@ -527,7 +527,7 @@ public class TestEnd2End {
                     ErrorModuleEnd2End impl = new ErrorModuleEnd2End(restrictReadingOrder, restrictGeometry, allowSegmentationErrors, true);
                     List<ILineComparison> iLineComparisons = impl.calculateWithSegmentation(reco, ref, true);
                     for (ILineComparison iLineComparison : iLineComparisons) {
-//            System.out.println(iLineComparison);
+                        System.out.println(iLineComparison);
                     }
                     System.out.println();
                     System.out.println("R = " + restrictReadingOrder + " G = " + restrictGeometry + " S = " + allowSegmentationErrors);
@@ -575,6 +575,23 @@ public class TestEnd2End {
                 return getPoly(xMin, xMax, y);
             }
         };
+    }
+
+    @Test
+    public void testInsDelRuntimeException() {
+
+        boolean mode_readingorder = false; //punish wrong reading order
+        boolean mode_segmentation = false; //punish wrong segmentation
+        boolean geometry = false;
+        ErrorModuleEnd2End em = new ErrorModuleEnd2End(mode_readingorder, geometry, !mode_segmentation, false);
+        String hyp =
+                "A\nB C";
+        String gt =
+                "A \nC";
+        List<ILineComparison> calculate = em.calculate(Arrays.asList(hyp.split("\n")), Arrays.asList(gt.split("\n")), true);
+        for (ILineComparison iLineComparison : calculate) {
+            System.out.println(iLineComparison);
+        }
     }
 
     @Test
