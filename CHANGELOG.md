@@ -1,6 +1,8 @@
 
 # Changelog
 
+# 5.2.1
+
 # 5.2.0
 * feature: add Text-to-Image measure
 * feature: ILineComparison is expanded by methods that return the occurance of the first character position within a text line
